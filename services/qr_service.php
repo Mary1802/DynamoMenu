@@ -1,0 +1,3 @@
+<?php
+
+// Service QR code
