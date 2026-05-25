@@ -7,7 +7,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Admin - Dashboard</title>
-	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="../assets/css/bootstrap.min.css">
 	<link rel="stylesheet" href="../assets/css/style.css">
 	<style>
 		:root{ --accent-color: #f4c95a; --bg-panel:#0b0b0c; --panel-2:#0f0f10; }
@@ -201,7 +201,7 @@
 		</main>
 	</div>
 
-	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<script src="../assets/js/chart.umd.min.js"></script>
 	<script>
 		const ctx = document.getElementById('revenueChart').getContext('2d');
 		new Chart(ctx, {

@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DynamoMenu - Menu</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         :root { --accent-color: #ff6f1f; }
@@ -77,42 +77,56 @@
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/bootstrap.bundle.min.js"></script>
     <script>
         const categories = ['All','Plats principaux','Apéritifs','Entrées','Kombo','Boissons','Desserts','Accompagnements'];
-        function localImg(name){ return '../assets/images/' + encodeURIComponent(name); }
+        
+        const categoryFolders = {
+            'Plats principaux': 'plats_principaux',
+            'Apéritifs': 'aperitifs',
+            'Entrées': 'entrees',
+            'Kombo': 'kombo',
+            'Boissons': 'boissons',
+            'Desserts': 'desserts',
+            'Accompagnements': 'accompagnements'
+        };
+
+        function localImg(name, cat = null){
+            const folder = cat && categoryFolders[cat] ? categoryFolders[cat] + '/' : '';
+            return '../assets/images/' + folder + encodeURIComponent(name);
+        }
 
         const items = [];
         function add(cat,name,desc,price,img,rating=4.3,reviews=50){ items.push({category:cat,name,desc,price,img:img||'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80',rating,reviews}); }
 
         // --- Plats principaux (20)
-        add('Plats principaux','Pizza Margherita','Tomate, mozzarella, basilic',24, localImg('Pizza.jpg'),4.6,210);
-        add('Plats principaux','Tacos Maison','Tacos garnis de viande épicée',27, localImg('Tacos.jpg'),4.3,115);
-        add('Plats principaux','Poulet Mayo','Poulet rôti, sauce mayo',22, localImg('Poulet mayo.jpg'),4.5,89);
-        add('Plats principaux','Spaghetti Bolognaise','Pâtes à la sauce bolognaise',19, localImg('spaghetti bolognaise.jpg'),4.4,152);
-        add('Plats principaux','Fried Rice','Riz sauté aux légumes',18, localImg('Fried rice.jpg'),4.2,76);
-        add('Plats principaux','Crevettes Sautées','Crevettes à l’ail et beurre',34, localImg('Crevetes.jpg'),4.7,98);
-        add('Plats principaux','Poisson Grillé','Poisson ambassade grillé',36, localImg('poisson ambassade.jpg'),4.5,125);
-        add('Plats principaux','Poisson Fumé','Filet de poisson fumé',28, localImg('Poisson fumé.jpg'),4.2,64);
-        add('Plats principaux','Ntaba','Spécialité locale Ntaba',30, localImg('Ntaba.jpg'),4.6,44);
-        add('Plats principaux','Poisson Salé','Poisson salé braisé',26, localImg('Poisson salé.jpg'),4.1,54);
-        add('Plats principaux','Poulet Rôti','Poulet entier rôti',23, localImg('poulet.jpg'),4.3,210);
-        add('Plats principaux','Macaroni Saucisse','Macaroni avec saucisse',20, localImg('Macaroni saucisse.jpg'),4.0,89);
-        add('Plats principaux','Saucisses Grillées','Saucisses maison',17, localImg('Saucisses.jpg'),4.1,65);
-        add('Plats principaux','Combo Burger Poulet','Burger maison + frites',29, localImg('combo burger frites poulet.jpg'),4.4,310);
-        add('Plats principaux','Riz Blanc et Légumes','Accompagnement de saison',15, localImg('Riz blanc.jpg'),4.0,42);
-        add('Plats principaux','Fufu et Sauce','Fufu traditionnel avec sauce',16, localImg('Fufu.jpg'),4.2,33);
+        add('Plats principaux','Pizza Margherita','Tomate, mozzarella, basilic',24, localImg('Pizza.jpg', 'Plats principaux'),4.6,210);
+        add('Plats principaux','Tacos Maison','Tacos garnis de viande épicée',27, localImg('Tacos.jpg', 'Plats principaux'),4.3,115);
+        add('Plats principaux','Poulet Mayo','Poulet rôti, sauce mayo',22, localImg('Poulet mayo.jpg', 'Plats principaux'),4.5,89);
+        add('Plats principaux','Spaghetti Bolognaise','Pâtes à la sauce bolognaise',19, localImg('spaghetti bolognaise.jpg', 'Plats principaux'),4.4,152);
+        add('Plats principaux','Fried Rice','Riz sauté aux légumes',18, localImg('Fried rice.jpg', 'Plats principaux'),4.2,76);
+        add('Plats principaux','Crevettes Sautées','Crevettes à l\'ail et beurre',34, localImg('Crevetes.jpg', 'Plats principaux'),4.7,98);
+        add('Plats principaux','Poisson Grillé','Poisson ambassade grillé',36, localImg('poisson ambassade.jpg', 'Plats principaux'),4.5,125);
+        add('Plats principaux','Poisson Fumé','Filet de poisson fumé',28, localImg('Poisson fumé.jpg', 'Plats principaux'),4.2,64);
+        add('Plats principaux','Ntaba','Spécialité locale Ntaba',30, localImg('Ntaba.jpg', 'Plats principaux'),4.6,44);
+        add('Plats principaux','Poisson Salé','Poisson salé braisé',26, localImg('Poisson salé.jpg', 'Plats principaux'),4.1,54);
+        add('Plats principaux','Poulet Rôti','Poulet entier rôti',23, localImg('poulet.jpg', 'Plats principaux'),4.3,210);
+        add('Plats principaux','Macaroni Saucisse','Macaroni avec saucisse',20, localImg('Macaroni saucisse.jpg', 'Plats principaux'),4.0,89);
+        add('Plats principaux','Saucisses Grillées','Saucisses maison',17, localImg('Saucisses.jpg', 'Plats principaux'),4.1,65);
+        add('Plats principaux','Combo Burger Poulet','Burger maison + frites',29, localImg('combo burger frites poulet.jpg', 'Plats principaux'),4.4,310);
+        add('Plats principaux','Riz Blanc et Légumes','Accompagnement de saison',15, localImg('Riz blanc.jpg', 'Plats principaux'),4.0,42);
+        add('Plats principaux','Fufu et Sauce','Fufu traditionnel avec sauce',16, localImg('Fufu.jpg', 'Plats principaux'),4.2,33);
         add('Plats principaux','Poulet Épicé','Poulet mariné et épicé',25, null,4.2,88);
-        add('Plats principaux','Burger Maison','Burger gourmet',21, localImg('KFC.jpg'),4.3,140);
+        add('Plats principaux','Burger Maison','Burger gourmet',21, localImg('KFC.jpg', 'Plats principaux'),4.3,140);
         add('Plats principaux','Grills Salmon Deluxe','Saumon au beurre citronné',38, null,4.8,66);
-        add('Plats principaux','Saucisses & Frites','Plateau familial',26, localImg('Saucisses frites.jpg'),4.2,112);
+        add('Plats principaux','Saucisses & Frites','Plateau familial',26, localImg('Saucisses frites.jpg', 'Plats principaux'),4.2,112);
 
         // --- Apéritifs (5)
-        add('Apéritifs','Samoussa','Triangles croustillants farcis',6, localImg('Samoussa.jpg'),4.4,125);
-        add('Apéritifs','Frites','Frites croustillantes',5, localImg('Frites.jpg'),4.2,410);
-        add('Apéritifs','Bananes Frites','Plantain frit sucré',5, localImg('Bananes.jpg'),4.1,84);
-        add('Apéritifs','Chikwangue Grillé','Cassava cake grillé',6, localImg('Chikwangue.jpg'),4.0,30);
-        add('Apéritifs','Makoso','Beignet local',6, localImg('makoso.jpg'),4.1,27);
+        add('Apéritifs','Samoussa','Triangles croustillants farcis',6, localImg('Samoussa.jpg', 'Apéritifs'),4.4,125);
+        add('Apéritifs','Frites','Frites croustillantes',5, localImg('Frites.jpg', 'Apéritifs'),4.2,410);
+        add('Apéritifs','Bananes Frites','Plantain frit sucré',5, localImg('Bananes.jpg', 'Apéritifs'),4.1,84);
+        add('Apéritifs','Chikwangue Grillé','Cassava cake grillé',6, localImg('Chikwangue.jpg', 'Apéritifs'),4.0,30);
+        add('Apéritifs','Makoso','Beignet local',6, localImg('makoso.jpg', 'Apéritifs'),4.1,27);
 
         // --- Entrées (5)
         add('Entrées','Salade Verte','Salade fraîche',8, null,4.1,54);
@@ -122,17 +136,17 @@
         add('Entrées','Plateau de Crudités','Assortiment de légumes',8, null,4.0,15);
 
         // --- Kombo (5)
-        add('Kombo','Kombo Famille','Assortiment pour 4 personnes',55, localImg('combo burger frites poulet.jpg'),4.6,48);
-        add('Kombo','Kombo Burger','Burger + frites + boisson',28, localImg('combo burger frites poulet.jpg'),4.4,142);
-        add('Kombo','Kombo Poulet','Poulet + riz + salade',30, localImg('poulet.jpg'),4.3,36);
-        add('Kombo','Kombo Poisson','Poisson + plantain + salade',32, localImg('poisson ambassade.jpg'),4.4,29);
+        add('Kombo','Kombo Famille','Assortiment pour 4 personnes',55, localImg('combo burger frites poulet.jpg', 'Kombo'),4.6,48);
+        add('Kombo','Kombo Burger','Burger + frites + boisson',28, localImg('combo burger frites poulet.jpg', 'Kombo'),4.4,142);
+        add('Kombo','Kombo Poulet','Poulet + riz + salade',30, localImg('poulet.jpg', 'Kombo'),4.3,36);
+        add('Kombo','Kombo Poisson','Poisson + plantain + salade',32, localImg('poisson ambassade.jpg', 'Kombo'),4.4,29);
         add('Kombo','Kombo Mix','Mix spécial du chef',40, null,4.5,22);
 
         // --- Boissons (20)
-        add('Boissons','Jus de Fruit','Jus frais maison',4, localImg('Jus de fruit.jpg'),4.2,120);
-        add('Boissons','Milkshake Vanille','Milkshake onctueux',5, localImg('Milkshakes.jpg'),4.3,88);
-        add('Boissons','Cocktail de Fruits','Mix vitaminé',5, localImg('Coktail de fruit.jpg'),4.1,75);
-        add('Boissons','Smoothie Banane','Smoothie à la banane',5, localImg('glace a la banane.jpg'),4.0,55);
+        add('Boissons','Jus de Fruit','Jus frais maison',4, localImg('Jus de fruit.jpg', 'Boissons'),4.2,120);
+        add('Boissons','Milkshake Vanille','Milkshake onctueux',5, localImg('Milkshakes.jpg', 'Boissons'),4.3,88);
+        add('Boissons','Cocktail de Fruits','Mix vitaminé',5, localImg('Coktail de fruit.jpg', 'Boissons'),4.1,75);
+        add('Boissons','Smoothie Banane','Smoothie à la banane',5, localImg('glace a la banane.jpg', 'Boissons'),4.0,55);
         add('Boissons','Thé Glacé','Thé maison',3, null,4.0,21);
         add('Boissons','Coca-Cola','Boisson gazeuse',3, null,4.0,310);
         add('Boissons','Eau Minérale','Bouteille 50cl',2, null,4.0,500);
@@ -151,8 +165,8 @@
         add('Boissons','Shake Banane','Banana shake',5, null,4.1,33);
 
         // --- Desserts (10)
-        add('Desserts','Gâteau au Chocolat','Moelleux au chocolat',7, localImg('Gateau au chocolat.jpg'),4.7,129);
-        add('Desserts','Glace à la Banane','Crème glacée banane',6, localImg('glace a la banane.jpg'),4.4,98);
+        add('Desserts','Gâteau au Chocolat','Moelleux au chocolat',7, localImg('Gateau au chocolat.jpg', 'Desserts'),4.7,129);
+        add('Desserts','Glace à la Banane','Crème glacée banane',6, localImg('glace a la banane.jpg', 'Desserts'),4.4,98);
         add('Desserts','Tarte aux Fruits','Tarte de saison',7, null,4.2,34);
         add('Desserts','Crème Brûlée','Crème vanille caramélisée',8, null,4.5,44);
         add('Desserts','Brownie','Brownie chocolat',6, null,4.3,67);
@@ -163,11 +177,11 @@
         add('Desserts','Caramel Balls','Boulettes caramélisées',9, null,4.4,52);
 
         // --- Accompagnements (5)
-        add('Accompagnements','Frites','Pommes frites',4, localImg('Frites.jpg'),4.3,410);
-        add('Accompagnements','Riz Blanc','Riz vapeur',3, localImg('Riz blanc.jpg'),4.0,210);
-        add('Accompagnements','Pommes de Terre','Pommes de terre rissolées',4, localImg('Pomme de terre.jpg'),4.1,64);
+        add('Accompagnements','Frites','Pommes frites',4, localImg('Frites.jpg', 'Accompagnements'),4.3,410);
+        add('Accompagnements','Riz Blanc','Riz vapeur',3, localImg('Riz blanc.jpg', 'Accompagnements'),4.0,210);
+        add('Accompagnements','Pommes de Terre','Pommes de terre rissolées',4, localImg('Pomme de terre.jpg', 'Accompagnements'),4.1,64);
         add('Accompagnements','Salade Verte','Salade fraîche',4, null,4.0,88);
-        add('Accompagnements','Makoso','Accompagnement local',5, localImg('makoso.jpg'),4.2,27);
+        add('Accompagnements','Makoso','Accompagnement local',5, localImg('makoso.jpg', 'Accompagnements'),4.2,27);
 
         // render categories buttons
         const categoriesContainer = document.getElementById('categories');

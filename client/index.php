@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DynamoMenu - Accueil</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
@@ -21,6 +21,7 @@
                 <li class="nav-item"><a class="nav-link text-white" href="index.php">Home</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="menu.php">Menu</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="#contact.php">Contact</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="../login.php">Employé</a></li>
             </ul>
             <a class="btn btn-primary ms-lg-4" href="#contact.php">Contact Now</a>
         </div>
@@ -43,6 +44,4 @@
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <script src="../assets/js/bootstrap.bundle.min.js"></script>
