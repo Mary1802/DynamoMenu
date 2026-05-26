@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DynamoMenu - Menu</title>
-    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         :root { --accent-color: #ff6f1f; }
@@ -25,23 +25,23 @@
 <body>
     <header class="navbar navbar-expand-lg navbar-dark px-4 py-3">
         <a class="navbar-brand fw-bold text-white" href="index.php">DynamoMenu</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="#navMenu" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navMenu">
             <ul class="navbar-nav ms-auto align-items-lg-center">
-                <li class="nav-item"><a class="nav-link text-white" href="index.php">Home</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="index.php">Accueil</a></li>
                 <li class="nav-item"><a class="nav-link text-white active" aria-current="page" href="menu.php">Menu</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="commande.php">Commande</a></li>
-                <li class="nav-item ms-3">
-                    <a class="btn btn-outline-light position-relative" href="commande.php" id="cartBtn" aria-label="Panier">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16">
-                          <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .49.598l-1.5 6A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L1.01 1.607 1 1.5H.5zM5 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
-                        </svg>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cartCount">0</span>
+                <li class="nav-item">
+                    <a class="nav-link text-white position-relative" href="panier.php">
+                        Panier
+                        <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">0</span>
                     </a>
                 </li>
+                <li class="nav-item"><a class="nav-link text-white" href="#contact.php">Contact</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="../login.php">Employé</a></li>
             </ul>
+            <a class="btn btn-primary ms-lg-4" href="#contact.php">Contact Now</a>
         </div>
     </header>
 
@@ -65,7 +65,7 @@
         </div>
 
         <!-- Floating quick cart -->
-                <a href="commande.php" class="position-fixed d-flex align-items-center justify-content-center bg-warning text-dark rounded-circle" style="width:56px;height:56px;right:20px;bottom:20px;z-index:1070;box-shadow:0 6px 18px rgba(0,0,0,0.2);">
+                <a href="panier.php" class="position-fixed d-flex align-items-center justify-content-center bg-warning text-dark rounded-circle" style="width:56px;height:56px;right:20px;bottom:20px;z-index:1070;box-shadow:0 6px 18px rgba(0,0,0,0.2);">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16">
               <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .49.598l-1.5 6A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L1.01 1.607 1 1.5H.5zM5 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
             </svg>
@@ -73,115 +73,85 @@
         </a>
 
         <div class="text-center">
-            <a class="btn btn-primary btn-lg px-5" href="commande.php">Commander</a>
+            <a class="btn btn-primary btn-lg px-5" href="panier.php">Voir mon panier</a>
         </div>
     </main>
 
-    <script src="../assets/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const categories = ['All','Plats principaux','Apéritifs','Entrées','Kombo','Boissons','Desserts','Accompagnements'];
-        
-        const categoryFolders = {
-            'Plats principaux': 'plats_principaux',
-            'Apéritifs': 'aperitifs',
-            'Entrées': 'entrees',
-            'Kombo': 'kombo',
-            'Boissons': 'boissons',
-            'Desserts': 'desserts',
-            'Accompagnements': 'accompagnements'
-        };
-
-        function localImg(name, cat = null){
-            const folder = cat && categoryFolders[cat] ? categoryFolders[cat] + '/' : '';
-            return '../assets/images/' + folder + encodeURIComponent(name);
-        }
+        function localImg(name){ return '../assets/images/' + encodeURIComponent(name); }
 
         const items = [];
         function add(cat,name,desc,price,img,rating=4.3,reviews=50){ items.push({category:cat,name,desc,price,img:img||'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80',rating,reviews}); }
 
         // --- Plats principaux (20)
-        add('Plats principaux','Pizza Margherita','Tomate, mozzarella, basilic',24, localImg('Pizza.jpg', 'Plats principaux'),4.6,210);
-        add('Plats principaux','Tacos Maison','Tacos garnis de viande épicée',27, localImg('Tacos.jpg', 'Plats principaux'),4.3,115);
-        add('Plats principaux','Poulet Mayo','Poulet rôti, sauce mayo',22, localImg('Poulet mayo.jpg', 'Plats principaux'),4.5,89);
-        add('Plats principaux','Spaghetti Bolognaise','Pâtes à la sauce bolognaise',19, localImg('spaghetti bolognaise.jpg', 'Plats principaux'),4.4,152);
-        add('Plats principaux','Fried Rice','Riz sauté aux légumes',18, localImg('Fried rice.jpg', 'Plats principaux'),4.2,76);
-        add('Plats principaux','Crevettes Sautées','Crevettes à l\'ail et beurre',34, localImg('Crevetes.jpg', 'Plats principaux'),4.7,98);
-        add('Plats principaux','Poisson Grillé','Poisson ambassade grillé',36, localImg('poisson ambassade.jpg', 'Plats principaux'),4.5,125);
-        add('Plats principaux','Poisson Fumé','Filet de poisson fumé',28, localImg('Poisson fumé.jpg', 'Plats principaux'),4.2,64);
-        add('Plats principaux','Ntaba','Spécialité locale Ntaba',30, localImg('Ntaba.jpg', 'Plats principaux'),4.6,44);
-        add('Plats principaux','Poisson Salé','Poisson salé braisé',26, localImg('Poisson salé.jpg', 'Plats principaux'),4.1,54);
-        add('Plats principaux','Poulet Rôti','Poulet entier rôti',23, localImg('poulet.jpg', 'Plats principaux'),4.3,210);
-        add('Plats principaux','Macaroni Saucisse','Macaroni avec saucisse',20, localImg('Macaroni saucisse.jpg', 'Plats principaux'),4.0,89);
-        add('Plats principaux','Saucisses Grillées','Saucisses maison',17, localImg('Saucisses.jpg', 'Plats principaux'),4.1,65);
-        add('Plats principaux','Combo Burger Poulet','Burger maison + frites',29, localImg('combo burger frites poulet.jpg', 'Plats principaux'),4.4,310);
-        add('Plats principaux','Riz Blanc et Légumes','Accompagnement de saison',15, localImg('Riz blanc.jpg', 'Plats principaux'),4.0,42);
-        add('Plats principaux','Fufu et Sauce','Fufu traditionnel avec sauce',16, localImg('Fufu.jpg', 'Plats principaux'),4.2,33);
-        add('Plats principaux','Poulet Épicé','Poulet mariné et épicé',25, null,4.2,88);
-        add('Plats principaux','Burger Maison','Burger gourmet',21, localImg('KFC.jpg', 'Plats principaux'),4.3,140);
-        add('Plats principaux','Grills Salmon Deluxe','Saumon au beurre citronné',38, null,4.8,66);
-        add('Plats principaux','Saucisses & Frites','Plateau familial',26, localImg('Saucisses frites.jpg', 'Plats principaux'),4.2,112);
+        add('Plats principaux','Pizza Margherita','Tomate, mozzarella, basilic',24, localImg('Pizza.jpg'),4.6,210);
+        add('Plats principaux','Tacos Maison','Tacos garnis de viande épicée',27, localImg('Tacos.jpg'),4.3,115);
+        add('Plats principaux','Poulet Mayo','Poulet rôti, sauce mayo',22, localImg('Poulet mayo.jpg'),4.5,89);
+        add('Plats principaux','Spaghetti Bolognaise','Pâtes à la sauce bolognaise',19, localImg('spaghetti bolognaise.jpg'),4.4,152);
+        add('Plats principaux','Fried Rice','Riz sauté aux légumes',18, localImg('Fried rice.jpg'),4.2,76);
+        add('Plats principaux','Crevettes Sautées','Crevettes à l’ail et beurre',34, localImg('Crevetes.jpg'),4.7,98);
+        add('Plats principaux','Poisson Grillé','Poisson ambassade grillé',36, localImg('poisson ambassade.jpg'),4.5,125);
+        add('Plats principaux','Poisson Fumé','Filet de poisson fumé',28, localImg('Poisson fumé.jpg'),4.2,64);
+        add('Plats principaux','Ntaba','Spécialité locale Ntaba',30, localImg('Ntaba.jpg'),4.6,44);
+        add('Plats principaux','Poisson Salé','Poisson salé braisé',26, localImg('Poisson salé.jpg'),4.1,54);
+        add('Plats principaux','Poulet Rôti','Poulet entier rôti',23, localImg('poulet.jpg'),4.3,210);
+        add('Plats principaux','Macaroni Saucisse','Macaroni avec saucisse',20, localImg('Macaroni saucisse.jpg'),4.0,89);
+        add('Plats principaux','Saucisses Grillées','Saucisses maison',17, localImg('Saucisses.jpg'),4.1,65);
+        add('Plats principaux','Combo Burger Poulet','Burger maison + frites',29, localImg('combo burger frites poulet.jpg'),4.4,310);
+        add('Plats principaux','Riz Blanc et Légumes','Accompagnement de saison',15, localImg('Riz blanc.jpg'),4.0,42);
+        add('Plats principaux','Fufu et Sauce','Fufu traditionnel avec sauce',16, localImg('Fufu.jpg'),4.2,33);
+        add('Plats principaux','Burger Maison','Burger gourmet',21, localImg('KFC.jpg'),4.3,140);
+        add('Plats principaux','Saucisses & Frites','Plateau familial',26, localImg('Saucisses frites.jpg'),4.2,112);
 
         // --- Apéritifs (5)
-        add('Apéritifs','Samoussa','Triangles croustillants farcis',6, localImg('Samoussa.jpg', 'Apéritifs'),4.4,125);
-        add('Apéritifs','Frites','Frites croustillantes',5, localImg('Frites.jpg', 'Apéritifs'),4.2,410);
-        add('Apéritifs','Bananes Frites','Plantain frit sucré',5, localImg('Bananes.jpg', 'Apéritifs'),4.1,84);
-        add('Apéritifs','Chikwangue Grillé','Cassava cake grillé',6, localImg('Chikwangue.jpg', 'Apéritifs'),4.0,30);
-        add('Apéritifs','Makoso','Beignet local',6, localImg('makoso.jpg', 'Apéritifs'),4.1,27);
+        add('Apéritifs','Samoussa','Triangles croustillants farcis',6, localImg('Samoussa.jpg'),4.4,125);
+        add('Apéritifs','Croquettes au fromage','Croquettes au fromage',5, localImg('croquettes au fromage.png'),4.2,410);
+        add('Apéritifs','Croquettes aux pommes de terre','Croquettes aux pommes de terre',5, localImg('croquettes aux pommes de terre.png'),4.1,84);
+        add('Apéritifs','4 Petits pains ','Petits pains',6, localImg('petits pains.png'),4.0,30);
+        add('Apéritifs','3 Croissants au beurre','Croissants au beurre',6, localImg('croissants au beurre.png'),4.1,27);
 
         // --- Entrées (5)
-        add('Entrées','Salade Verte','Salade fraîche',8, null,4.1,54);
-        add('Entrées','Soupe du Jour','Soupe selon l’arrivage',9, null,4.0,31);
-        add('Entrées','Bruschetta','Pain grillé, tomate et basilic',7, null,4.2,47);
-        add('Entrées','Carpaccio de Boeuf','Fines tranches de boeuf',12, null,4.5,22);
-        add('Entrées','Plateau de Crudités','Assortiment de légumes',8, null,4.0,15);
+        add('Entrées','Salade Verte','Salade fraîche',8, localImg('salade aux légumes.png'),4.1,54);
+        add('Entrées','Soupe du Jour','Soupe aux légumes',9, localImg('soupes aux légumes.png'),4.0,31);
+        add('Entrées','Salade Verte','Salade avocat',8, localImg('salade avocat.png'), 4.0,31);
+        add('Entrées','Carpaccio de Boeuf','Fines tranches de boeuf',12, localImg('bouillon à la viande de boeuf.png'),4.5,22);
+        
 
         // --- Kombo (5)
-        add('Kombo','Kombo Famille','Assortiment pour 4 personnes',55, localImg('combo burger frites poulet.jpg', 'Kombo'),4.6,48);
-        add('Kombo','Kombo Burger','Burger + frites + boisson',28, localImg('combo burger frites poulet.jpg', 'Kombo'),4.4,142);
-        add('Kombo','Kombo Poulet','Poulet + riz + salade',30, localImg('poulet.jpg', 'Kombo'),4.3,36);
-        add('Kombo','Kombo Poisson','Poisson + plantain + salade',32, localImg('poisson ambassade.jpg', 'Kombo'),4.4,29);
-        add('Kombo','Kombo Mix','Mix spécial du chef',40, null,4.5,22);
+        add('Kombo','Combo 2 Burger + frites + coca','Assortiment pour 2 personnes',55, localImg('combo 2burgers frites coca.png'),4.6,48);
+        add('Kombo','Combo Burger','Burger + frites + boisson',28, localImg('combo burger frites poulet.jpg'),4.4,142);
+        add('Kombo','Combo Sandwich','Sandwich + frites + salade',30, localImg('combo sandwich frites.png'),4.3,36);
+        add('Kombo','Kombo Croque monsieur','3 Croques monsieur + frites + Cocktail',32, localImg('3 croques monsieur frites mojito.png'),4.4,29);
 
         // --- Boissons (20)
-        add('Boissons','Jus de Fruit','Jus frais maison',4, localImg('Jus de fruit.jpg', 'Boissons'),4.2,120);
-        add('Boissons','Milkshake Vanille','Milkshake onctueux',5, localImg('Milkshakes.jpg', 'Boissons'),4.3,88);
-        add('Boissons','Cocktail de Fruits','Mix vitaminé',5, localImg('Coktail de fruit.jpg', 'Boissons'),4.1,75);
-        add('Boissons','Smoothie Banane','Smoothie à la banane',5, localImg('glace a la banane.jpg', 'Boissons'),4.0,55);
-        add('Boissons','Thé Glacé','Thé maison',3, null,4.0,21);
-        add('Boissons','Coca-Cola','Boisson gazeuse',3, null,4.0,310);
+        add('Boissons','Jus de Fruit','Jus frais maison',4, localImg('Jus de fruit.jpg'),4.2,120);
+        add('Boissons','Milkshake','Milkshake onctueux',5, localImg('Milkshakes.jpg'),4.3,88);
+        add('Boissons','Cocktail de Fruits','Mix vitaminé',5, localImg('Coktail de fruit.jpg'),4.1,75);
+        add('Boissons','Smoothie Banane','Smoothie à la banane',5, localImg('glace a la banane.jpg'),4.0,55);
+        add('Boissons','Coca-Cola, Fanta, Sprite','Boisson gazeuse',3, localImg('boissons coca cola.png'),4.0,310);
         add('Boissons','Eau Minérale','Bouteille 50cl',2, null,4.0,500);
-        add('Boissons','Expresso','Café expresso',2, null,4.1,220);
-        add('Boissons','Limonade Maison','Citronnade',3, null,4.2,80);
-        add('Boissons','Jus Mangue','Mangue pressée',4, null,4.3,44);
-        add('Boissons','Milkshake Chocolat','Shake chocolat',5, null,4.2,67);
-        add('Boissons','Shake Fraise','Milkshake fraise',5, null,4.1,55);
-        add('Boissons','Smoothie Vert','Détox vert',6, null,4.4,30);
-        add('Boissons','Boisson Énergisante','Canette',4, null,4.0,19);
-        add('Boissons','Thé Chaud','Infusion chaude',2, null,4.0,70);
-        add('Boissons','Café Latte','Latte crémeux',3, null,4.2,90);
-        add('Boissons','Chocolat Chaud','Boisson cacao',3, null,4.3,64);
-        add('Boissons','Jus Ananas','Ananas pressé',4, null,4.0,48);
-        add('Boissons','Smoothie Exotique','Mangue & passion',6, null,4.5,27);
-        add('Boissons','Shake Banane','Banana shake',5, null,4.1,33);
+        add('Boissons','Pinacolada','Cocktail',3, localImg('pinnacolada.png'),4.2,80);
+        add('Boissons','Mojito','Cocktail',3, localImg('mojito.png'),4.2,80);
+        add('Boissons','Jack Daniels','Whisky',4, localImg('whisky jack daniel.jpg'),4.3,44);
+        add('Boissons','Red Label','Whisky',5, localImg('whisky red label.jpg'),4.2,67);
+        add('Boissons','Heinekein','Bierre',5, localImg('bierre heinekein.jpg'),4.2,67);
 
         // --- Desserts (10)
-        add('Desserts','Gâteau au Chocolat','Moelleux au chocolat',7, localImg('Gateau au chocolat.jpg', 'Desserts'),4.7,129);
-        add('Desserts','Glace à la Banane','Crème glacée banane',6, localImg('glace a la banane.jpg', 'Desserts'),4.4,98);
-        add('Desserts','Tarte aux Fruits','Tarte de saison',7, null,4.2,34);
-        add('Desserts','Crème Brûlée','Crème vanille caramélisée',8, null,4.5,44);
-        add('Desserts','Brownie','Brownie chocolat',6, null,4.3,67);
-        add('Desserts','Salade de Fruits','Fruits frais',5, null,4.0,22);
-        add('Desserts','Panna Cotta','Panna cotta vanille',7, null,4.1,18);
-        add('Desserts','Donuts','Donuts glacés',5, null,4.0,29);
-        add('Desserts','Mousse au Chocolat','Mousse légère',6, null,4.6,77);
-        add('Desserts','Caramel Balls','Boulettes caramélisées',9, null,4.4,52);
+        add('Desserts','Gâteau au Chocolat','Moelleux au chocolat',7, localImg('Gateau au chocolat.jpg'),4.7,129);
+        add('Desserts','Glace à la Banane','Crème glacée banane',6, localImg('glace a la banane.jpg'),4.4,98);
+        add('Desserts','Churros','Dessert italien',6, localImg('spring au chocolat.png'),4.4,98);
+        add('Desserts','Salade de fruit','Salade de fruit',7, localImg('salade de fruit.png'),4.2,34);
+        add('Desserts','Crepes au chocolat','Crepe au chocolat',7, localImg('crepes au chocolat.jpg'),4.2,34);
 
         // --- Accompagnements (5)
-        add('Accompagnements','Frites','Pommes frites',4, localImg('Frites.jpg', 'Accompagnements'),4.3,410);
-        add('Accompagnements','Riz Blanc','Riz vapeur',3, localImg('Riz blanc.jpg', 'Accompagnements'),4.0,210);
-        add('Accompagnements','Pommes de Terre','Pommes de terre rissolées',4, localImg('Pomme de terre.jpg', 'Accompagnements'),4.1,64);
-        add('Accompagnements','Salade Verte','Salade fraîche',4, null,4.0,88);
-        add('Accompagnements','Makoso','Accompagnement local',5, localImg('makoso.jpg', 'Accompagnements'),4.2,27);
+        add('Accompagnements','Frites','Pommes frites',4, localImg('Frites.jpg'),4.3,410);
+        add('Accompagnements','Fufu','Farine de mais',4, localImg('Fufu.jpg'),4.3,410);
+        add('Accompagnements','Riz Blanc','Riz vapeur',3, localImg('Riz blanc.jpg'),4.0,210);
+        add('Accompagnements','Pommes de Terre','Pommes de terre rissolées',4, localImg('Pomme de terre.jpg'),4.1,64);
+        add('Accompagnements','Chikwangue','Manioc',4, localImg('Chikwangue.jpg'),4.0,88);
+        add('Accompagnements','Bananes Plantain','Accompagnement local',5, localImg('Bananes.jpg'),4.2,27);
 
         // render categories buttons
         const categoriesContainer = document.getElementById('categories');
@@ -236,16 +206,76 @@
             });
         }
 
-        // Cart functions using localStorage
-        function loadCart(){ try{ return JSON.parse(localStorage.getItem('dynamo_cart')||'[]'); }catch(e){ return []; } }
-        function saveCart(cart){ localStorage.setItem('dynamo_cart', JSON.stringify(cart)); updateCartCount(); }
-        function updateCartCount(){ const cart = loadCart(); const total = cart.reduce((s,i)=>s+(i.qty||1),0); document.getElementById('cartCount').textContent = total; const f = document.getElementById('floatingCartCount'); if(f) f.textContent = total; }
-        function addToCart(idx){ const item = currentList[idx]; if(!item) return; const cart = loadCart(); const found = cart.find(c=>c.name===item.name); if(found){ found.qty = (found.qty||1)+1; } else { cart.push({name:item.name,price:item.price,qty:1,img:item.img,category:item.category}); } saveCart(cart); showToast(item.name + ' ajouté au panier'); }
+        // Cart functions using AJAX to PHP session
+        function updateCartCount(){ 
+            fetch('get_cart_count.php')
+                .then(response => response.json())
+                .then(data => {
+                    const cartBadge = document.getElementById('cartCount');
+                    const floatingBadge = document.getElementById('floatingCartCount');
+                    
+                    if (cartBadge) {
+                        cartBadge.textContent = data.count;
+                        // Cacher le badge si 0
+                        if (data.count === 0) {
+                            cartBadge.style.display = 'none';
+                        } else {
+                            cartBadge.style.display = 'block';
+                        }
+                    }
+                    
+                    if (floatingBadge) {
+                        floatingBadge.textContent = data.count;
+                        // Cacher le badge flottant si 0
+                        if (data.count === 0) {
+                            floatingBadge.style.display = 'none';
+                        } else {
+                            floatingBadge.style.display = 'block';
+                        }
+                    }
+                });
+        }
+        
+        function addToCart(idx){ 
+            const item = currentList[idx]; 
+            if(!item) return; 
+            
+            // Envoyer l'item au serveur via AJAX
+            const formData = new FormData();
+            formData.append('type', 'menu_item');
+            formData.append('name', item.name);
+            formData.append('price', item.price);
+            formData.append('quantite', 1);
+            formData.append('img', item.img);
+            formData.append('category', item.category);
+            
+            fetch('panier.php?action=add', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    updateCartCount();
+                    showToast(item.name + ' ajouté au panier');
+                } else {
+                    showToast('Erreur: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Erreur lors de l\'ajout au panier');
+            });
+        }
 
         function showToast(message){ const toastEl = document.getElementById('cartToast'); document.getElementById('cartToastBody').textContent = message; const toast = new bootstrap.Toast(toastEl); toast.show(); }
 
         // initial
-        updateCartCount(); render('All');
+        updateCartCount(); 
+        render('All');
+        
+        // Vérifier le panier toutes les 5 secondes
+        setInterval(updateCartCount, 5000);
     </script>
 </body>
 </html>

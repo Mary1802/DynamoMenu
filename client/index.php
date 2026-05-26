@@ -18,8 +18,14 @@
         </button>
         <div class="collapse navbar-collapse" id="navMenu">
             <ul class="navbar-nav ms-auto align-items-lg-center">
-                <li class="nav-item"><a class="nav-link text-white" href="index.php">Home</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="index.php">Accueil</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="menu.php">Menu</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-white position-relative" href="panier.php">
+                        Panier
+                        <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">0</span>
+                    </a>
+                </li>
                 <li class="nav-item"><a class="nav-link text-white" href="#contact.php">Contact</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="../login.php">Employé</a></li>
             </ul>
@@ -39,9 +45,34 @@
                 </div>
             </div>
             <div class="col-lg-6 text-center">
-                <div class="hero-card p-3 rounded-4 shadow-lg"></div>
+                <img src="../assets/images/kombo/combo burger frites poulet.jpg" alt="Combo Burger Frites Poulet" class="img-fluid rounded-4 shadow-lg" style="height: 420px; object-fit: cover; width: 100%;">
             </div>
         </div>
     </main>
 
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Mettre à jour le badge du panier
+        function updateCartBadge() {
+            fetch('get_cart_count.php')
+                .then(response => response.json())
+                .then(data => {
+                    const cartBadge = document.getElementById('cartCount');
+                    if (cartBadge) {
+                        cartBadge.textContent = data.count;
+                        // Cacher le badge si 0
+                        if (data.count === 0) {
+                            cartBadge.style.display = 'none';
+                        } else {
+                            cartBadge.style.display = 'block';
+                        }
+                    }
+                });
+        }
+        
+        // Mettre à jour au chargement
+        document.addEventListener('DOMContentLoaded', updateCartBadge);
+        
+        // Vérifier le panier toutes les 5 secondes
+        setInterval(updateCartBadge, 5000);
+    </script>

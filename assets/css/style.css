@@ -2,7 +2,7 @@ body {
     min-height: 100vh;
     margin: 0;
     color: #f8f9fa;
-    background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80');
+    background-image: url('../images/boissons/Mojito.png');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -45,14 +45,16 @@ body > * {
     display: grid;
     place-items: center;
 }
-.hero-card::before {
-    content: '';
-    width: 260px;
-    height: 260px;
-    border-radius: 50%;
-    background: radial-gradient(circle at top left, rgba(255,111,31,0.6), transparent 60%), radial-gradient(circle at bottom right, rgba(255,255,255,0.12), transparent 50%), #111;
-    box-shadow: 0 20px 80px rgba(0,0,0,0.35);
-}
+
+    .hero-card::before {
+        display: none;
+    }
+    .hero-card .hero-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: cover;
+        border-radius: 1rem;
+    }
 .menu-title {
     color: #fff;
 }
@@ -94,3 +96,4 @@ body > * {
 .menu-card .text-muted {
     color: rgba(255,255,255,0.72) !important;
 }
+

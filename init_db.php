@@ -37,8 +37,10 @@ try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS client (
         id_client INT PRIMARY KEY AUTO_INCREMENT,
         nom_client VARCHAR(100) NOT NULL,
-        points INT DEFAULT 0,
+        prenom_client VARCHAR(100),
+        email_client VARCHAR(100),
         telephone_client VARCHAR(20),
+        points INT DEFAULT 0,
         date_inscription TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
 
@@ -74,8 +76,10 @@ try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS boisson (
         id_boisson INT PRIMARY KEY AUTO_INCREMENT,
         nom_boisson VARCHAR(100) NOT NULL,
+        type_boisson ENUM('soda', 'eau', 'jus', 'alcool') DEFAULT 'soda',
         dosage VARCHAR(100),
-        quantite_boisson INT DEFAULT 0
+        quantite_boisson INT DEFAULT 0,
+        options_fruits VARCHAR(255) DEFAULT ''
     )");
 
     // Table contenant les détails de commandes
@@ -87,6 +91,8 @@ try {
         quantite INT NOT NULL,
         prix DECIMAL(10, 2) NOT NULL,
         sous_total DECIMAL(10, 2) NOT NULL,
+        sauces VARCHAR(255) DEFAULT '',
+        personnalisation_boisson VARCHAR(255) DEFAULT '',
         FOREIGN KEY (num_commande) REFERENCES commande(num_commande) ON DELETE CASCADE,
         FOREIGN KEY (id_plat) REFERENCES plat(id_plat) ON DELETE SET NULL,
         FOREIGN KEY (id_boisson) REFERENCES boisson(id_boisson) ON DELETE SET NULL
@@ -97,7 +103,20 @@ try {
         num_facture INT PRIMARY KEY AUTO_INCREMENT,
         num_commande INT UNIQUE,
         total_paye DECIMAL(10, 2) NOT NULL,
+        mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL,
         date_facture TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (num_commande) REFERENCES commande(num_commande) ON DELETE CASCADE
+    )");
+
+    // Table demandes de paiement (pour les demandes des clients)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS demande_paiement (
+        id_demande INT PRIMARY KEY AUTO_INCREMENT,
+        num_commande INT NOT NULL,
+        mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL,
+        montant DECIMAL(10, 2) NOT NULL,
+        statut ENUM('en_attente', 'traitee', 'annulee') DEFAULT 'en_attente',
+        date_demande TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        date_traitement TIMESTAMP NULL,
         FOREIGN KEY (num_commande) REFERENCES commande(num_commande) ON DELETE CASCADE
     )");
 
@@ -123,11 +142,11 @@ try {
     }
 
     // Insérer des clients de test
-    $stmt = $pdo->prepare("INSERT IGNORE INTO client (nom_client, points, telephone_client) VALUES (?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT IGNORE INTO client (nom_client, prenom_client, email_client, telephone_client, points) VALUES (?, ?, ?, ?, ?)");
     $clients = [
-        ['Dupont Jean', 0, '0612345678'],
-        ['Martin Sophie', 10, '0623456789'],
-        ['Bernard Luc', 5, '0634567890'],
+        ['Dupont', 'Jean', 'jean.dupont@email.com', '0612345678', 0],
+        ['Martin', 'Sophie', 'sophie.martin@email.com', '0623456789', 10],
+        ['Bernard', 'Luc', 'luc.bernard@email.com', '0634567890', 5],
     ];
     foreach ($clients as $cli) {
         $stmt->execute($cli);
@@ -159,11 +178,14 @@ try {
     }
 
     // Insérer des boissons de test
-    $stmt = $pdo->prepare("INSERT IGNORE INTO boisson (nom_boisson, dosage, quantite_boisson) VALUES (?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT IGNORE INTO boisson (nom_boisson, type_boisson, dosage, quantite_boisson, options_fruits) VALUES (?, ?, ?, ?, ?)");
     $boissons = [
-        ['Soda Frais', '33cl', 50],
-        ['Eau Minérale', '50cl', 40],
-        ['Jus de Fruit', '25cl', 30],
+        ['Soda Frais', 'soda', '33cl', 50, ''],
+        ['Eau Minérale', 'eau', '50cl', 40, ''],
+        ['Jus de Fruit', 'jus', '25cl', 30, 'orange,pomme,ananas,mangue'],
+        ['Coca-Cola', 'soda', '33cl', 50, ''],
+        ['Jus d\'Orange', 'jus', '25cl', 30, 'orange'],
+        ['Jus de Pomme', 'jus', '25cl', 30, 'pomme'],
     ];
     foreach ($boissons as $boisson) {
         $stmt->execute($boisson);
