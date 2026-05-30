@@ -91,6 +91,14 @@ try {
             <h1>🔄 Mise à jour de la base de données</h1>";
 
     $log = [];
+
+    require_once __DIR__ . '/includes/schema_upgrade.php';
+    try {
+        schema_upgrade($pdo);
+        $log[] = '✅ Schéma fidélité & notifications : appliqué';
+    } catch (PDOException $e) {
+        $log[] = '❌ Schéma fidélité : ' . $e->getMessage();
+    }
     
     // Liste des requêtes à exécuter
     $queries = [
@@ -109,6 +117,11 @@ try {
         // 4. Table facture
         "ALTER TABLE facture ADD COLUMN mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL AFTER total_paye" => "Colonne 'mode_paiement'",
         
+        "ALTER TABLE table_restaurant ADD COLUMN code_table VARCHAR(32) NULL UNIQUE AFTER num_table" => "Colonne table 'code_table'",
+        "ALTER TABLE table_restaurant ADD COLUMN actif TINYINT(1) NOT NULL DEFAULT 1" => "Colonne table 'actif'",
+        "ALTER TABLE table_restaurant ADD COLUMN libelle VARCHAR(100) NULL AFTER nombre_place" => "Colonne table 'libelle'",
+        "ALTER TABLE commande ADD COLUMN mode_paiement_souhaite ENUM('especes','mobile_money') NULL AFTER montant_total" => "Colonne commande 'mode_paiement_souhaite'",
+
         // 5. Table demande_paiement
         "CREATE TABLE IF NOT EXISTS demande_paiement (
             id_demande INT PRIMARY KEY AUTO_INCREMENT,

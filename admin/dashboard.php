@@ -20,6 +20,8 @@ try {
     die('Erreur de connexion: ' . $e->getMessage());
 }
 
+require_once __DIR__ . '/../includes/dashboard_helpers.php';
+
 // Récupérer les statistiques
 $stats = [
     'total_orders' => $pdo->query("SELECT COUNT(*) FROM commande")->fetchColumn(),
@@ -46,7 +48,7 @@ $stmt = $pdo->prepare("
     SELECT p.nom_plat, COUNT(d.id_detail) as ventes, SUM(d.sous_total) as revenu
     FROM contient d
     JOIN plat p ON d.id_plat = p.id_plat
-    GROUP BY p.id_plat
+    GROUP BY p.id_plat, p.nom_plat
     ORDER BY ventes DESC
     LIMIT 3
 ");
@@ -56,275 +58,23 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <!doctype html>
 <html lang="fr">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin - Dashboard Professionnel</title>
-    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/dashboards.css">
-    <style>
-        /* Styles spécifiques au dashboard admin */
-        .admin-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .metric-card {
-            background: linear-gradient(135deg, var(--panel-bg) 0%, #0e0e0f 100%);
-            border: 1px solid var(--panel-border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-        }
-        
-        .metric-value {
-            font-size: 2.2rem;
-            font-weight: 800;
-            color: var(--text-primary);
-            margin: 0.5rem 0;
-            line-height: 1;
-        }
-        
-        .metric-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 500;
-        }
-        
-        .metric-change {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            font-size: 0.8rem;
-            font-weight: 500;
-            margin-top: 0.5rem;
-        }
-        
-        .metric-change.positive {
-            color: var(--success-color);
-        }
-        
-        .metric-change.negative {
-            color: var(--danger-color);
-        }
-        
-        .chart-container {
-            background: linear-gradient(135deg, var(--panel-bg) 0%, #0e0e0f 100%);
-            border: 1px solid var(--panel-border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .chart-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 1rem;
-        }
-        
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .data-table th {
-            text-align: left;
-            padding: 0.75rem;
-            border-bottom: 1px solid var(--panel-border);
-            color: var(--text-muted);
-            font-weight: 500;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .data-table td {
-            padding: 0.75rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-        }
-        
-        .data-table tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-        
-        .data-table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .progress-bar {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 0.25rem;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            border-radius: 3px;
-        }
-        
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-        
-        @media (max-width: 1200px) {
-            .quick-actions {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .quick-actions {
-                grid-template-columns: 1fr;
-            }
-            
-            .admin-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .action-btn {
-            background: linear-gradient(135deg, var(--panel-bg) 0%, #0e0e0f 100%);
-            border: 1px solid var(--panel-border);
-            border-radius: 12px;
-            padding: 1.25rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            text-decoration: none;
-            color: var(--text-secondary);
-            transition: all 0.2s ease;
-            min-height: 90px;
-        }
-        
-        .action-btn:hover {
-            border-color: var(--primary-color);
-            color: var(--text-primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(255, 111, 31, 0.1);
-        }
-        
-        .action-icon {
-            width: 44px;
-            height: 44px;
-            min-width: 44px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, rgba(255, 111, 31, 0.1), rgba(244, 201, 90, 0.05));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            color: var(--primary-color);
-        }
-        
-        .action-content {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .action-content h4 {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0 0 0.25rem 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .action-content p {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin: 0;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        
-        .hourly-chart {
-            display: flex;
-            align-items: flex-end;
-            height: 150px;
-            gap: 0.5rem;
-            padding: 1rem 0;
-        }
-        
-        .hour-bar {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .bar-value {
-            background: linear-gradient(to top, var(--primary-color), var(--secondary-color));
-            width: 100%;
-            border-radius: 4px 4px 0 0;
-            min-height: 4px;
-        }
-        
-        .bar-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-        }
-        
-        .section-divider {
-            height: 1px;
-            background: var(--panel-border);
-            margin: 2.5rem 0;
-        }
-        
-        .compact-table {
-            max-height: 250px;
-            overflow-y: auto;
-        }
-        
-        .compact-table::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .compact-table::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
-        }
-        
-        .compact-table::-webkit-scrollbar-thumb {
-            background: var(--primary-color);
-            border-radius: 3px;
-        }
-    </style>
+    <?php dashboard_asset_links('Admin - Tableau de bord'); ?>
 </head>
 <body class="dashboard-body">
-    <div class="d-flex">
-        <!-- Sidebar -->
-        <aside class="dashboard-sidebar d-flex flex-column">
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+    <header class="dashboard-topbar">
+        <button type="button" class="dashboard-menu-toggle" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="dashboardSidebar">
+            <i class="bi bi-list" aria-hidden="true"></i>
+        </button>
+        <div class="dashboard-topbar-brand">Dynamo<span>Menu</span></div>
+        <div style="width: 42px;"></div>
+    </header>
+
+    <div class="dashboard-shell">
+        <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
             <div class="sidebar-brand">
-                <div class="brand-logo">⚙️</div>
+                <div class="brand-logo">DM</div>
                 <div class="brand-title">DynamoMenu</div>
                 <div class="brand-subtitle">Administration</div>
             </div>
@@ -332,38 +82,62 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <nav class="sidebar-nav">
                 <div class="nav-item">
                     <a class="nav-link active" href="dashboard.php">
-                        <span class="nav-icon">📊</span>
+                        <span class="nav-icon"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
                         <span>Dashboard</span>
                     </a>
                 </div>
                 <div class="nav-item">
+                    <a class="nav-link" href="tables.php">
+                        <span class="nav-icon"><i class="bi bi-qr-code" aria-hidden="true"></i></span>
+                        <span>Tables & QR</span>
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a class="nav-link" href="commandes.php">
-                        <span class="nav-icon">📋</span>
+                        <span class="nav-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
                         <span>Commandes</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a class="nav-link" href="plats.php">
-                        <span class="nav-icon">🍽️</span>
+                        <span class="nav-icon"><i class="bi bi-grid" aria-hidden="true"></i></span>
                         <span>Menu</span>
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a class="nav-link" href="utilisateurs.php">
-                        <span class="nav-icon">👥</span>
-                        <span>Utilisateurs</span>
+                    <a class="nav-link" href="clients.php">
+                        <span class="nav-icon"><i class="bi bi-people" aria-hidden="true"></i></span>
+                        <span>Clients</span>
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a class="nav-link" href="#">
-                        <span class="nav-icon">📈</span>
-                        <span>Analytics</span>
+                    <a class="nav-link" href="fidelite.php">
+                        <span class="nav-icon"><i class="bi bi-gift" aria-hidden="true"></i></span>
+                        <span>Fidélité</span>
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a class="nav-link" href="#">
-                        <span class="nav-icon">⚙️</span>
-                        <span>Paramètres</span>
+                    <a class="nav-link" href="notifications.php">
+                        <span class="nav-icon"><i class="bi bi-bell" aria-hidden="true"></i></span>
+                        <span>Notifications</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="employes.php">
+                        <span class="nav-icon"><i class="bi bi-person-badge" aria-hidden="true"></i></span>
+                        <span>Employés</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="stats.php">
+                        <span class="nav-icon"><i class="bi bi-graph-up" aria-hidden="true"></i></span>
+                        <span>Statistiques</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="logs.php">
+                        <span class="nav-icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
+                        <span>Journaux</span>
                     </a>
                 </div>
             </nav>
@@ -386,19 +160,20 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <!-- Header -->
             <header class="dashboard-header">
                 <div class="header-title">
-                    <h1>Tableau de bord Administrateur</h1>
+                    <span class="header-eyebrow">Administration</span>
+                    <h1>Tableau de bord</h1>
                     <p>Vue d'ensemble et statistiques de votre restaurant</p>
                 </div>
                 
                 <div class="header-actions">
                     <div class="search-box">
-                        <input type="text" class="search-input" placeholder="Rechercher...">
-                        <span class="search-icon">🔍</span>
+                        <input type="search" class="search-input" placeholder="Rechercher..." aria-label="Rechercher">
+                        <span class="search-icon"><i class="bi bi-search" aria-hidden="true"></i></span>
                     </div>
                     
-                    <a href="#" class="notification-btn">
-                        <span>🔔</span>
-                        <span class="notification-badge">5</span>
+                    <a href="notifications.php" class="notification-btn" aria-label="Notifications">
+                        <i class="bi bi-bell" aria-hidden="true"></i>
+                        <span class="notification-badge"><?php echo (int) $stats['pending_orders']; ?></span>
                     </a>
                 </div>
             </header>
@@ -407,38 +182,22 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="admin-grid">
                 <div class="metric-card">
                     <div class="metric-label">Commandes totales</div>
-                    <div class="metric-value"><?php echo $stats['total_orders']; ?></div>
-                    <div class="metric-change positive">
-                        <span>↑</span>
-                        <span>+12.5% ce mois</span>
-                    </div>
+                    <div class="metric-value"><?php echo (int) $stats['total_orders']; ?></div>
                 </div>
                 
                 <div class="metric-card">
                     <div class="metric-label">Chiffre d'affaires</div>
-                    <div class="metric-value">€<?php echo number_format($stats['total_revenue'], 0, ',', ' '); ?></div>
-                    <div class="metric-change positive">
-                        <span>↑</span>
-                        <span>+18.2% ce mois</span>
-                    </div>
+                    <div class="metric-value"><?php echo number_format($stats['total_revenue'], 0, ',', ' '); ?> €</div>
                 </div>
                 
                 <div class="metric-card">
                     <div class="metric-label">Clients actifs</div>
-                    <div class="metric-value"><?php echo $stats['active_clients']; ?></div>
-                    <div class="metric-change positive">
-                        <span>↑</span>
-                        <span>+8% ce mois</span>
-                    </div>
+                    <div class="metric-value"><?php echo (int) $stats['active_clients']; ?></div>
                 </div>
                 
                 <div class="metric-card">
                     <div class="metric-label">Commandes en attente</div>
-                    <div class="metric-value"><?php echo $stats['pending_orders']; ?></div>
-                    <div class="metric-change negative">
-                        <span>↓</span>
-                        <span>-5% aujourd'hui</span>
-                    </div>
+                    <div class="metric-value"><?php echo (int) $stats['pending_orders']; ?></div>
                 </div>
             </div>
 
@@ -449,7 +208,7 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <!-- Commandes récentes -->
                     <div class="chart-container">
                         <div class="chart-title">Commandes récentes</div>
-                        <div class="compact-table">
+                        <div class="compact-table table-responsive-wrap">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -474,16 +233,17 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <td><?php echo htmlspecialchars($order['nom_client'] ?? 'Client'); ?></td>
                                         <td>€<?php echo number_format($order['montant_total'], 2); ?></td>
                                         <td>
-                                            <?php 
-                                            $status_badges = [
-                                                'en_attente' => '<span class="order-status status-pending">⏳</span>',
-                                                'en_preparation' => '<span class="order-status status-preparing">🔥</span>',
-                                                'prete' => '<span class="order-status status-ready">✅</span>',
-                                                'livree' => '<span class="order-status status-delivered">🚚</span>',
-                                                'annulee' => '<span class="order-status status-cancelled">❌</span>'
+                                            <?php
+                                            $status_labels = [
+                                                'en_attente' => ['En attente', 'status-en-attente'],
+                                                'en_preparation' => ['En préparation', 'status-en-preparation'],
+                                                'prete' => ['Prête', 'status-prete'],
+                                                'livree' => ['Livrée', 'status-livree'],
+                                                'annulee' => ['Annulée', 'status-annulee'],
                                             ];
-                                            echo $status_badges[$order['statut']] ?? $order['statut'];
+                                            $st = $status_labels[$order['statut']] ?? [htmlspecialchars($order['statut']), ''];
                                             ?>
+                                            <span class="order-status <?php echo $st[1]; ?>"><?php echo $st[0]; ?></span>
                                         </td>
                                         <td><?php echo date('H:i', strtotime($order['date_commande'])); ?></td>
                                     </tr>
@@ -520,7 +280,7 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <!-- Meilleurs plats -->
                     <div class="chart-container">
                         <div class="chart-title">Meilleurs plats</div>
-                        <div class="compact-table">
+                        <div class="compact-table table-responsive-wrap">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -553,31 +313,29 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <!-- Statistiques de statut -->
                     <div class="chart-container">
                         <div class="chart-title">Statut des commandes</div>
-                        <div style="padding: 1rem 0;">
-                            <div style="margin-bottom: 1rem;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                                    <span style="color: var(--text-secondary); font-size: 0.85rem;">En attente</span>
-                                    <span style="color: var(--text-primary); font-weight: 500;"><?php echo $stats['pending_orders']; ?></span>
+                        <div class="py-2">
+                            <div class="progress-row">
+                                <div class="progress-row-header">
+                                    <span>En attente</span>
+                                    <span><?php echo (int) $stats['pending_orders']; ?></span>
                                 </div>
                                 <div class="progress-bar">
                                     <div class="progress-fill" style="width: <?php echo ($stats['pending_orders'] / max($stats['total_orders'], 1)) * 100; ?>%"></div>
                                 </div>
                             </div>
-                            
-                            <div style="margin-bottom: 1rem;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                                    <span style="color: var(--text-secondary); font-size: 0.85rem;">En préparation</span>
-                                    <span style="color: var(--text-primary); font-weight: 500;"><?php echo $stats['preparing_orders']; ?></span>
+                            <div class="progress-row">
+                                <div class="progress-row-header">
+                                    <span>En préparation</span>
+                                    <span><?php echo (int) $stats['preparing_orders']; ?></span>
                                 </div>
                                 <div class="progress-bar">
                                     <div class="progress-fill" style="width: <?php echo ($stats['preparing_orders'] / max($stats['total_orders'], 1)) * 100; ?>%"></div>
                                 </div>
                             </div>
-                            
-                            <div style="margin-bottom: 1rem;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                                    <span style="color: var(--text-secondary); font-size: 0.85rem;">Prêtes</span>
-                                    <span style="color: var(--text-primary); font-weight: 500;"><?php echo $stats['ready_orders']; ?></span>
+                            <div class="progress-row mb-0">
+                                <div class="progress-row-header">
+                                    <span>Prêtes</span>
+                                    <span><?php echo (int) $stats['ready_orders']; ?></span>
                                 </div>
                                 <div class="progress-bar">
                                     <div class="progress-fill" style="width: <?php echo ($stats['ready_orders'] / max($stats['total_orders'], 1)) * 100; ?>%"></div>
@@ -593,11 +351,11 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- Actions rapides - Section séparée -->
             <div>
-                <h3 style="color: var(--text-primary); font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem;">Actions rapides</h3>
+                <h2 class="section-heading">Actions rapides</h2>
                 
                 <div class="quick-actions">
                     <a href="commandes.php" class="action-btn">
-                        <div class="action-icon">📋</div>
+                        <div class="action-icon"><i class="bi bi-receipt" aria-hidden="true"></i></div>
                         <div class="action-content">
                             <h4>Gérer les commandes</h4>
                             <p>Voir et gérer toutes les commandes</p>
@@ -605,26 +363,26 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </a>
                     
                     <a href="plats.php" class="action-btn">
-                        <div class="action-icon">🍽️</div>
+                        <div class="action-icon"><i class="bi bi-grid" aria-hidden="true"></i></div>
                         <div class="action-content">
                             <h4>Modifier le menu</h4>
                             <p>Ajouter ou modifier des plats</p>
                         </div>
                     </a>
                     
-                    <a href="utilisateurs.php" class="action-btn">
-                        <div class="action-icon">👥</div>
+                    <a href="employes.php" class="action-btn">
+                        <div class="action-icon"><i class="bi bi-people" aria-hidden="true"></i></div>
                         <div class="action-content">
                             <h4>Gérer le personnel</h4>
                             <p>Ajouter ou modifier des employés</p>
                         </div>
                     </a>
                     
-                    <a href="#" class="action-btn">
-                        <div class="action-icon">📊</div>
+                    <a href="stats.php" class="action-btn">
+                        <div class="action-icon"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i></div>
                         <div class="action-content">
-                            <h4>Générer un rapport</h4>
-                            <p>Exporter les données du mois</p>
+                            <h4>Statistiques</h4>
+                            <p>CA journalier et mensuel</p>
                         </div>
                     </a>
                 </div>
@@ -632,7 +390,7 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </main>
     </div>
 
-    <script src="../assets/js/bootstrap.bundle.min.js"></script>
+    <?php dashboard_scripts(); ?>
     <script>
         // Animation des barres du graphique horaire
         document.addEventListener('DOMContentLoaded', function() {

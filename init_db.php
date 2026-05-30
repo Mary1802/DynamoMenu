@@ -7,7 +7,7 @@
 session_start();
 
 // Configuration
-$db_config = require '../config/db.php';
+$db_config = require __DIR__ . '/config/db.php';
 
 try {
     $pdo = new PDO(
@@ -47,7 +47,10 @@ try {
     // Table des tables de restaurant
     $pdo->exec("CREATE TABLE IF NOT EXISTS table_restaurant (
         num_table INT PRIMARY KEY,
-        nombre_place INT NOT NULL
+        nombre_place INT NOT NULL,
+        libelle VARCHAR(100) NULL,
+        code_table VARCHAR(32) NULL UNIQUE,
+        actif TINYINT(1) NOT NULL DEFAULT 1
     )");
 
     // Table commandes
@@ -60,6 +63,7 @@ try {
         quantite_boissons INT DEFAULT 0,
         statut ENUM('en_attente', 'en_preparation', 'prete', 'livree', 'annulee') DEFAULT 'en_attente',
         montant_total DECIMAL(10, 2) DEFAULT 0.00,
+        mode_paiement_souhaite ENUM('especes', 'mobile_money') NULL,
         FOREIGN KEY (id_client) REFERENCES client(id_client) ON DELETE SET NULL,
         FOREIGN KEY (num_table) REFERENCES table_restaurant(num_table) ON DELETE SET NULL
     )");
@@ -208,6 +212,9 @@ try {
 
     // Insérer une facture pour la commande prête
     $pdo->exec("INSERT IGNORE INTO facture (num_commande, total_paye) VALUES (3, 14.50)");
+
+    require_once __DIR__ . '/includes/schema_upgrade.php';
+    schema_upgrade($pdo);
 
     echo "<div style='background: linear-gradient(180deg, #070707, #0b0b0d); color: #e6e6e6; min-height: 100vh; padding: 40px; font-family: Arial, sans-serif;'>";
     echo "<div style='max-width: 700px; margin: 0 auto; background: rgba(15, 15, 16, 0.8); padding: 30px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);'>";

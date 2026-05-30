@@ -1,5 +1,24 @@
 <?php
-// Page d'accueil client
+session_start();
+$db_config = require __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/table_context.php';
+
+try {
+    $pdo = new PDO(
+        'mysql:host=' . $db_config['host'] . ';dbname=' . $db_config['dbname'],
+        $db_config['user'],
+        $db_config['password'],
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    bootstrap_table_context($pdo);
+} catch (PDOException $e) {
+    die('Erreur de connexion');
+}
+
+$tableCtx = table_session();
+$tableError = $_SESSION['table_error'] ?? null;
+unset($_SESSION['table_error']);
+$scanError = isset($_GET['err']) && $_GET['err'] === 'table';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -34,6 +53,15 @@
     </header>
 
     <main class="container-fluid px-4 py-5 hero-section">
+        <?php if ($tableError || $scanError): ?>
+        <div class="alert alert-warning mb-4" role="alert">
+            <?php echo htmlspecialchars($tableError ?: 'Veuillez scanner le QR code présent sur votre table pour commander.'); ?>
+        </div>
+        <?php elseif ($tableCtx): ?>
+        <div class="alert alert-success mb-4 py-2" role="status">
+            Vous êtes à la <strong><?php echo htmlspecialchars($tableCtx['label']); ?></strong> — bon appétit !
+        </div>
+        <?php endif; ?>
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
                 <p class="text-uppercase text-warning mb-3">Commandez. Mangez. Profitez ! </p>

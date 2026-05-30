@@ -1,3 +1,10 @@
 <?php
+session_start();
 
-// Commandes cuisine
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'cuisinier') {
+    header('Location: ../client/index.php');
+    exit;
+}
+
+header('Location: dashboard.php');
+exit;

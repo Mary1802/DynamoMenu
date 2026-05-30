@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Configuration de la base de données
 $db_config = require '../config/db.php';
+require_once __DIR__ . '/../includes/table_context.php';
 try {
     $pdo = new PDO(
         "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
@@ -13,6 +13,9 @@ try {
 } catch (PDOException $e) {
     die('Erreur de connexion: ' . $e->getMessage());
 }
+
+bootstrap_table_context($pdo);
+$tableCtx = table_session();
 
 // Récupérer les plats et boissons
 $plats = $pdo->query("SELECT * FROM plat ORDER BY categorie")->fetchAll(PDO::FETCH_ASSOC);
@@ -571,11 +574,21 @@ $total_ttc = $total_panier + $tva_amount;
                                 <a href="menu.php" class="btn btn-outline-light btn-lg px-5">
                                     ← Continuer mes achats
                                 </a>
+                                <?php if ($tableCtx): ?>
                                 <a href="confirmation.php" class="btn btn-primary btn-lg px-5" style="background: #ff6f1f; border-color: #ff6f1f;">
                                     Confirmer la commande
                                 </a>
+                                <?php else: ?>
+                                <a href="index.php?err=table" class="btn btn-warning btn-lg px-5">Scanner le QR de votre table</a>
+                                <?php endif; ?>
                             </div>
-                            <p class="text-light mt-3">Vous serez redirigé vers la page de confirmation de commande</p>
+                            <p class="text-light mt-3">
+                                <?php if ($tableCtx): ?>
+                                Table <?php echo htmlspecialchars($tableCtx['label']); ?> — addition et suivi après validation.
+                                <?php else: ?>
+                                Scannez le QR code sur votre table avant de confirmer.
+                                <?php endif; ?>
+                            </p>
                         </div>
                     </div>
                 </div>
