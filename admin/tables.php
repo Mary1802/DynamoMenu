@@ -1,10 +1,7 @@
 <?php
-session_start();
 
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
-    header('Location: ../login.php');
-    exit;
-}
+require_once __DIR__ . '/../includes/staff_auth.php';
+staff_require(['admin']);
 
 $db_config = require '../config/db.php';
 require_once '../includes/dashboard_helpers.php';
@@ -58,6 +55,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$code, $num]);
         $message = "Nouveau QR généré pour la table {$num}.";
     }
+
+    if (isset($_POST['update_table'])) {
+        $num = (int) $_POST['num_table'];
+        $places = max(1, (int) ($_POST['nombre_place'] ?? 2));
+        $libelle = trim($_POST['libelle'] ?? '');
+        $stmt = $pdo->prepare('UPDATE table_restaurant SET nombre_place = ?, libelle = ? WHERE num_table = ?');
+        $stmt->execute([$places, $libelle !== '' ? $libelle : null, $num]);
+        $message = "Table n°{$num} modifiée.";
+    }
+
+    if (isset($_POST['delete_table'])) {
+        $num = (int) $_POST['num_table'];
+        try {
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM commande WHERE num_table = ?');
+            $stmt->execute([$num]);
+            if ((int) $stmt->fetchColumn() > 0) {
+                $error = "Impossible de supprimer la table n°{$num} : des commandes y sont encore rattachées.";
+            } else {
+                $pdo->prepare('DELETE FROM table_restaurant WHERE num_table = ?')->execute([$num]);
+                $message = "Table n°{$num} supprimée.";
+            }
+        } catch (PDOException $e) {
+            $error = 'Suppression impossible : ' . $e->getMessage();
+        }
+    }
 }
 
 $tables = $pdo->query('SELECT * FROM table_restaurant ORDER BY num_table')->fetchAll(PDO::FETCH_ASSOC);
@@ -69,6 +91,8 @@ $tables = $pdo->query('SELECT * FROM table_restaurant ORDER BY num_table')->fetc
     <style>
         .qr-thumb { width: 120px; height: 120px; border-radius: 8px; background: #fff; padding: 6px; }
         .code-badge { font-family: monospace; font-size: 0.8rem; color: var(--accent-warning); }
+        .table-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+        .table-edit-form input.form-control { min-width: 90px; }
     </style>
 </head>
 <body class="dashboard-body">
@@ -90,13 +114,7 @@ $tables = $pdo->query('SELECT * FROM table_restaurant ORDER BY num_table')->fetc
                 <div class="nav-item"><a class="nav-link active" href="tables.php"><span class="nav-icon"><i class="bi bi-qr-code"></i></span><span>Tables & QR</span></a></div>
             </nav>
             <div class="sidebar-footer">
-                <div class="user-info">
-                    <div class="user-avatar"><?php echo strtoupper(substr($_SESSION['nom'] ?? 'A', 0, 1)); ?></div>
-                    <div class="user-details">
-                        <div class="user-name"><?php echo htmlspecialchars($_SESSION['nom'] ?? 'Admin'); ?></div>
-                        <div class="user-role">Administrateur</div>
-                    </div>
-                </div>
+                <?php dashboard_sidebar_user_footer('admin'); ?>
             </div>
         </aside>
         <main class="dashboard-main">
@@ -104,7 +122,7 @@ $tables = $pdo->query('SELECT * FROM table_restaurant ORDER BY num_table')->fetc
                 <div class="header-title">
                     <span class="header-eyebrow">Configuration</span>
                     <h1>Tables & codes QR</h1>
-                    <p>Créez les tables du restaurant et imprimez les QR à coller sur chaque table.</p>
+                    <p>Créez les tables, imprimez les QR et collez-les sur chaque table. Le client scanne une fois : il arrive sur l'accueil et sa table reste enregistrée pour menu, panier et commande.</p>
                 </div>
             </header>
 
@@ -147,15 +165,25 @@ $tables = $pdo->query('SELECT * FROM table_restaurant ORDER BY num_table')->fetc
                         <?php foreach ($tables as $t):
                             $url = qr_table_entry_url($t['code_table']);
                             $qrImg = qr_image_url($url);
+                            $formId = 'edit-table-' . (int) $t['num_table'];
                         ?>
                             <tr>
+                                <form id="<?php echo $formId; ?>" method="post" class="d-none">
+                                    <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
+                                </form>
                                 <td><?php echo (int) $t['num_table']; ?></td>
-                                <td><?php echo htmlspecialchars($t['libelle'] ?? '—'); ?></td>
-                                <td><?php echo (int) $t['nombre_place']; ?></td>
+                                <td>
+                                    <input type="text" name="libelle" form="<?php echo $formId; ?>" class="form-control form-control-sm" value="<?php echo htmlspecialchars($t['libelle'] ?? ''); ?>" placeholder="Libellé">
+                                </td>
+                                <td>
+                                    <input type="number" name="nombre_place" form="<?php echo $formId; ?>" class="form-control form-control-sm" min="1" value="<?php echo (int) $t['nombre_place']; ?>" style="width:70px;">
+                                </td>
                                 <td><span class="code-badge"><?php echo htmlspecialchars($t['code_table']); ?></span></td>
                                 <td><img src="<?php echo htmlspecialchars($qrImg); ?>" alt="QR table <?php echo (int) $t['num_table']; ?>" class="qr-thumb"></td>
                                 <td><?php echo (int) $t['actif'] ? 'Active' : 'Inactive'; ?></td>
                                 <td>
+                                    <div class="table-actions">
+                                        <button type="submit" name="update_table" form="<?php echo $formId; ?>" class="btn-primary btn-sm">Enregistrer</button>
                                     <a href="<?php echo htmlspecialchars($url); ?>" target="_blank" rel="noopener" class="link-invoice">Tester</a>
                                     <form method="post" class="d-inline">
                                         <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
@@ -165,6 +193,11 @@ $tables = $pdo->query('SELECT * FROM table_restaurant ORDER BY num_table')->fetc
                                         <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
                                         <button type="submit" name="toggle_actif" class="btn-details btn-sm"><?php echo (int) $t['actif'] ? 'Désactiver' : 'Activer'; ?></button>
                                     </form>
+                                    <form method="post" class="d-inline" onsubmit="return confirm('Supprimer définitivement la table n°<?php echo (int) $t['num_table']; ?> ?');">
+                                        <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
+                                        <button type="submit" name="delete_table" class="btn-details btn-sm" style="color:#dc3545;border-color:rgba(220,53,69,.4);">Supprimer</button>
+                                    </form>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

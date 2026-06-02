@@ -129,22 +129,29 @@ body.dashboard-body.sidebar-open {
     opacity: 1;
 }
 
-/* Sidebar */
+/* Sidebar — hauteur fixe viewport, menu scrollable, pied (déconnexion) toujours visible */
 .dashboard-sidebar {
     width: var(--sidebar-width);
     flex-shrink: 0;
     background: #000000;
     border-right: 1px solid var(--panel-border);
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
     position: fixed;
     left: 0;
     top: 0;
     z-index: 1050;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
     transition: transform 0.28s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .sidebar-brand {
+    flex-shrink: 0;
     padding: 1.5rem 1.25rem;
     border-bottom: 1px solid var(--panel-border);
     text-align: center;
@@ -181,7 +188,12 @@ body.dashboard-body.sidebar-open {
 
 .sidebar-nav {
     padding: 1.25rem 0.85rem;
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 
 .nav-item {
@@ -193,6 +205,7 @@ body.dashboard-body.sidebar-open {
     align-items: center;
     gap: 0.75rem;
     padding: 0.7rem 0.9rem;
+    min-height: 44px;
     color: var(--text-secondary);
     border-radius: var(--radius-md);
     text-decoration: none;
@@ -225,9 +238,10 @@ body.dashboard-body.sidebar-open {
 }
 
 .sidebar-footer {
+    flex-shrink: 0;
     padding: 1.25rem;
     border-top: 1px solid var(--panel-border);
-    margin-top: auto;
+    background: #000000;
 }
 
 .user-info {
@@ -259,6 +273,30 @@ body.dashboard-body.sidebar-open {
 .user-details .user-role {
     font-size: 0.78rem;
     color: var(--text-muted);
+}
+
+.sidebar-logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 0.85rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    background: rgba(220, 53, 69, 0.1);
+    color: #f5a5ad;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-logout-btn:hover {
+    background: rgba(220, 53, 69, 0.2);
+    border-color: rgba(220, 53, 69, 0.55);
+    color: #fff;
 }
 
 /* Contenu principal */
@@ -362,6 +400,9 @@ body.dashboard-body.sidebar-open {
     color: var(--text-secondary);
     text-decoration: none;
     position: relative;
+    cursor: pointer;
+    padding: 0;
+    font: inherit;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
@@ -504,7 +545,197 @@ body.dashboard-body.sidebar-open {
 }
 
 .cuisine-stats {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 0.65rem;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cuisine-stats .stat-card {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 155px;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+}
+
+.cuisine-stats .stat-value {
+    font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+}
+
+.cuisine-stats .stat-label {
+    font-size: 0.68rem;
+}
+
+.admin-metrics-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    margin-bottom: 1.75rem;
+}
+
+.admin-metrics-row .metric-card {
+    flex: 1 1 160px;
+    max-width: 240px;
+    min-width: 140px;
+}
+
+.order-scroll-panel {
+    max-height: min(520px, 58vh);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.order-scroll-panel--short {
+    max-height: min(380px, 45vh);
+}
+
+[data-searchable].is-search-hidden {
+    display: none !important;
+}
+
+.notification-wrap {
+    position: relative;
+}
+
+.notification-panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: min(320px, 92vw);
+    max-height: 360px;
+    overflow-y: auto;
+    background: var(--panel-bg-solid);
+    border: 1px solid var(--panel-border-accent);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-panel);
+    z-index: 1100;
+    padding: 0.75rem 0;
+}
+
+.notification-panel-header {
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0 1rem 0.5rem;
+    border-bottom: 1px solid var(--panel-border);
+    margin-bottom: 0.35rem;
+}
+
+.notification-panel-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.notification-panel-list a {
+    display: block;
+    padding: 0.55rem 1rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.88rem;
+}
+
+.notification-panel-list a:hover {
+    background: rgba(255, 111, 31, 0.1);
+    color: var(--primary-color);
+}
+
+.notification-panel-empty {
+    padding: 0.75rem 1rem;
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
+
+.payment-split-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.payment-split-box {
+    flex: 1 1 140px;
+    padding: 0.85rem;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--panel-border);
+}
+
+.payment-split-box .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.payment-split-box .value {
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-top: 0.25rem;
+}
+
+.items-table-detail {
+    width: 100%;
+    font-size: 0.88rem;
+    margin: 1rem 0;
+    border-collapse: collapse;
+}
+
+.items-table-detail th,
+.items-table-detail td {
+    padding: 0.45rem 0.35rem;
+    border-bottom: 1px solid var(--panel-border);
+    text-align: left;
+}
+
+.items-table-detail th:last-child,
+.items-table-detail td:last-child {
+    text-align: right;
+}
+
+.menu-edit-card {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+}
+
+.menu-edit-card .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.contact-card {
+    padding: 1.25rem;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+}
+
+.contact-card h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
+.contact-card a {
+    color: var(--text-secondary);
+    word-break: break-word;
 }
 
 .stats-row {
@@ -1199,10 +1430,17 @@ body.dashboard-body.sidebar-open {
     .dashboard-header {
         flex-direction: column;
         align-items: stretch;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+    }
+
+    .dashboard-header .search-box {
+        display: none;
     }
 
     .header-actions {
         width: 100%;
+        justify-content: space-between;
     }
 
     .search-box {
@@ -1213,11 +1451,58 @@ body.dashboard-body.sidebar-open {
         width: 100%;
     }
 
+    .order-header,
+    .commande-header,
+    .paiement-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .order-actions,
+    .commande-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .order-actions .btn-primary,
+    .order-actions .btn-outline,
+    .order-actions button,
+    .commande-actions .btn-details,
+    .commande-actions .btn-payer,
+    .commande-actions button {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    .order-actions form,
+    .commande-actions form {
+        width: 100%;
+        margin: 0;
+    }
+
+    .dashboard-card {
+        padding: 1rem;
+    }
+
+    .chart-container {
+        padding: 1rem;
+    }
+
     .admin-grid,
-    .cuisine-stats,
     .stats-row,
     .quick-actions {
         grid-template-columns: 1fr;
+    }
+
+    .cuisine-stats--hide-mobile {
+        display: none !important;
+    }
+
+    .admin-metrics-row .metric-card {
+        flex: 1 1 calc(50% - 0.5rem);
+        max-width: none;
     }
 
     .order-actions .btn-primary,
@@ -1248,6 +1533,16 @@ body.dashboard-body.sidebar-open {
     .dashboard-main {
         padding-left: 0.75rem;
         padding-right: 0.75rem;
+        padding-top: calc(var(--topbar-height) + 0.85rem);
+    }
+
+    .dashboard-topbar-brand {
+        font-size: 0.95rem;
+    }
+
+    .notification-btn {
+        min-width: 42px;
+        min-height: 42px;
     }
 
     .metric-value,
@@ -1267,6 +1562,16 @@ body.dashboard-body.sidebar-open {
 
     .commande-info-grid {
         grid-template-columns: 1fr;
+    }
+
+    .menu-edit-desktop {
+        display: none;
+    }
+}
+
+@media (min-width: 768px) {
+    .menu-edit-mobile {
+        display: none;
     }
 }
 

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/schema_upgrade.php';
+require_once __DIR__ . '/../includes/money.php';
 
 $pdo = admin_pdo();
 schema_upgrade($pdo);
@@ -87,8 +88,8 @@ admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes
                     <td><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($c['date_commande']))); ?></td>
                     <td><?php echo htmlspecialchars(trim(($c['prenom_client'] ?? '') . ' ' . ($c['nom_client'] ?? '—'))); ?></td>
                     <td><?php echo (int) $c['num_table']; ?></td>
-                    <td><?php echo number_format((float) $c['montant_total'], 2); ?> €</td>
-                    <td><?php echo number_format((float) ($c['remise_montant'] ?? 0), 2); ?> €</td>
+                    <td><?php echo format_money((float) $c['montant_total']); ?></td>
+                    <td><?php echo format_money((float) ($c['remise_montant'] ?? 0)); ?></td>
                     <td><span class="status-badge"><?php echo htmlspecialchars($statuts[$c['statut']] ?? $c['statut']); ?></span></td>
                     <td>
                         <form method="post" class="d-flex gap-1 flex-wrap">

@@ -3,6 +3,7 @@ session_start();
 
 // Configuration de la base de données
 $db_config = require '../config/db.php';
+require_once __DIR__ . '/../includes/money.php';
 try {
     $pdo = new PDO(
         "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
@@ -421,7 +422,7 @@ $est_payee = !empty($commande['num_facture']);
                         </div>
                     </div>
                     <div class="article-price">
-                        €<?php echo number_format($article['sous_total'], 2); ?>
+                        <?php echo format_money((float) $article['sous_total']); ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -430,7 +431,7 @@ $est_payee = !empty($commande['num_facture']);
             <!-- Total -->
             <div class="total-section">
                 <div>Total à payer</div>
-                <div>€<?php echo number_format($commande['montant_total'], 2); ?></div>
+                <div><?php echo format_money((float) $commande['montant_total']); ?></div>
             </div>
             
             <?php if ($est_payee): ?>
@@ -461,7 +462,7 @@ $est_payee = !empty($commande['num_facture']);
                         </div>
                         <div class="info-item">
                             <div class="info-label">Montant payé</div>
-                            <div class="info-value">€<?php echo number_format($commande['total_paye'], 2); ?></div>
+                            <div class="info-value"><?php echo format_money((float) $commande['total_paye']); ?></div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Date du paiement</div>
@@ -578,7 +579,7 @@ $est_payee = !empty($commande['num_facture']);
                 
                 // Afficher un message de confirmation
                 const confirmation = confirm(
-                    `Confirmez-vous le paiement de €${<?php echo $commande['montant_total']; ?>} par ${mode} ?\n\n` +
+                    `Confirmez-vous le paiement de <?php echo json_encode(format_money((float) $commande['montant_total']), JSON_UNESCAPED_UNICODE); ?> par ${mode} ?\n\n` +
                     'Le caissier viendra à votre table pour finaliser la transaction.'
                 );
                 

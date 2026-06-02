@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $rewards = fidelity_list_rewards($pdo, false);
-$types = ['pourcentage' => '% réduction', 'montant_fixe' => 'Montant fixe €', 'cadeau' => 'Cadeau'];
+$types = ['pourcentage' => '% réduction', 'montant_fixe' => 'Montant fixe (FC)', 'cadeau' => 'Cadeau'];
 
 admin_shell_start('Admin — Fidélité', 'fidelite', 'Fidélité', 'Récompenses', 'Définissez les paliers échangeables contre des points.');
 ?>

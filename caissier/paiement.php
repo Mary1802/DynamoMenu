@@ -1,11 +1,7 @@
 <?php
-session_start();
 
-// Vérifier l'authentification
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'caissier') {
-    header('Location: ../client/index.php');
-    exit;
-}
+require_once __DIR__ . '/../includes/staff_auth.php';
+staff_require(['caissier']);
 
 // Configuration de la base de données
 $db_config = require '../config/db.php';
@@ -22,7 +18,28 @@ try {
 
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
 require_once __DIR__ . '/../includes/table_context.php';
+require_once __DIR__ . '/../includes/money.php';
 table_ensure_schema($pdo);
+paiement_ensure_schema($pdo);
+contient_ensure_schema($pdo);
+
+/**
+ * Colonnes requises pour la page caisse (installations partielles).
+ */
+function paiement_ensure_schema(PDO $pdo): void
+{
+    $commandeCols = array_column($pdo->query('SHOW COLUMNS FROM commande')->fetchAll(PDO::FETCH_ASSOC), 'Field');
+    if (!in_array('mode_paiement_souhaite', $commandeCols, true)) {
+        $pdo->exec("ALTER TABLE commande ADD COLUMN mode_paiement_souhaite ENUM('especes','mobile_money') NULL AFTER montant_total");
+    }
+
+    $factureCols = array_column($pdo->query('SHOW COLUMNS FROM facture')->fetchAll(PDO::FETCH_ASSOC), 'Field');
+    if (!in_array('mode_paiement', $factureCols, true)) {
+        $pdo->exec("ALTER TABLE facture ADD COLUMN mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL DEFAULT 'especes' AFTER total_paye");
+    }
+}
+
+$error = $error ?? null;
 
 // Traiter le paiement
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payer_commande'])) {
@@ -37,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payer_commande'])) {
         // Créer la facture (commande déjà livrée)
         $stmt = $pdo->prepare("INSERT INTO facture (num_commande, total_paye, mode_paiement) VALUES (?, ?, ?)");
         $stmt->execute([$commande_id, $montant_paye, $mode_paiement]);
+        $num_facture = (int) $pdo->lastInsertId();
         
         // Mettre à jour les demandes de paiement (si la table existe)
         try {
@@ -48,11 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payer_commande'])) {
         
         $pdo->commit();
 
-        require_once __DIR__ . '/../includes/fidelity_service.php';
-        fidelity_award_after_payment($pdo, (int) $commande_id);
-        
-        // Rediriger pour éviter la resoumission
-        header('Location: paiement.php?success=1&commande=' . $commande_id);
+        try {
+            require_once __DIR__ . '/../includes/fidelity_service.php';
+            fidelity_award_after_payment($pdo, (int) $commande_id);
+        } catch (Throwable $e) {
+            // Paiement enregistré ; fidélité optionnelle si tables absentes
+        }
+
+        header('Location: generer_facture.php?facture=' . $num_facture);
         exit;
         
     } catch (Exception $e) {
@@ -77,72 +98,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['annuler_demande'])) {
 }
 
 // Commandes livrées, pas encore facturées
-$stmt = $pdo->prepare("
-    SELECT 
-        c.num_commande,
-        c.date_commande,
-        c.montant_total,
-        c.mode_paiement_souhaite,
-        t.num_table,
-        cl.nom_client,
-        cl.prenom_client,
-        cl.email_client,
-        cl.telephone_client,
-        COUNT(d.id_detail) as nombre_items
-    FROM commande c
-    LEFT JOIN table_restaurant t ON c.num_table = t.num_table
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    LEFT JOIN contient d ON c.num_commande = d.num_commande
-    LEFT JOIN facture f ON f.num_commande = c.num_commande
-    WHERE c.statut = 'livree' AND f.num_facture IS NULL
-    GROUP BY c.num_commande, c.date_commande, c.montant_total, c.mode_paiement_souhaite,
-             t.num_table, cl.nom_client, cl.prenom_client, cl.email_client, cl.telephone_client
-    ORDER BY c.date_commande ASC
-");
 $commandes_a_payer = [];
 $dashboard_error = null;
 try {
-    $stmt->execute();
+    $stmt = $pdo->query("
+        SELECT 
+            c.num_commande,
+            c.date_commande,
+            c.montant_total,
+            c.mode_paiement_souhaite,
+            c.num_table,
+            cl.nom_client,
+            cl.prenom_client,
+            cl.email_client,
+            cl.telephone_client,
+            (SELECT COUNT(*) FROM contient d WHERE d.num_commande = c.num_commande) AS nombre_items
+        FROM commande c
+        LEFT JOIN client cl ON c.id_client = cl.id_client
+        WHERE c.statut = 'livree'
+          AND NOT EXISTS (SELECT 1 FROM facture f WHERE f.num_commande = c.num_commande)
+        ORDER BY c.date_commande ASC
+    ");
     $commandes_a_payer = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    $dashboard_error = 'Impossible de charger les commandes à payer. Vérifiez la base de données (init_db.php ou run_update.php).';
+    $dashboard_error = 'Impossible de charger les commandes à payer : ' . $e->getMessage();
 }
 
 // Récupérer les détails d'une commande spécifique (pour le modal)
 $commande_details = null;
 if (isset($_GET['voir_commande'])) {
-    $commande_id = $_GET['voir_commande'];
-    $stmt = $pdo->prepare("
-        SELECT 
-            c.num_commande,
-            c.date_commande,
-            c.montant_total,
-            c.statut,
-            c.mode_paiement_souhaite,
-            c.id_client,
-            c.num_table,
-            t.num_table AS table_num,
-            cl.nom_client,
-            GROUP_CONCAT(
-                CONCAT(
-                    COALESCE(p.nom_plat, b.nom_boisson),
-                    ' (x', d.quantite, ') - ',
-                    d.prix, '€ = ',
-                    d.sous_total, '€'
-                ) SEPARATOR '||'
-            ) AS details_items
-        FROM commande c
-        LEFT JOIN table_restaurant t ON c.num_table = t.num_table
-        LEFT JOIN client cl ON c.id_client = cl.id_client
-        LEFT JOIN contient d ON c.num_commande = d.num_commande
-        LEFT JOIN plat p ON d.id_plat = p.id_plat
-        LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
-        WHERE c.num_commande = ?
-        GROUP BY c.num_commande, c.date_commande, c.montant_total, c.statut, c.mode_paiement_souhaite,
-                 c.id_client, c.num_table, t.num_table, cl.nom_client
-    ");
-    $stmt->execute([$commande_id]);
-    $commande_details = $stmt->fetch(PDO::FETCH_ASSOC);
+    $commande_id = (int) $_GET['voir_commande'];
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.num_commande,
+                c.date_commande,
+                c.montant_total,
+                c.statut,
+                c.mode_paiement_souhaite,
+                c.id_client,
+                c.num_table,
+                c.num_table AS table_num,
+                cl.nom_client,
+                cl.prenom_client,
+                cl.telephone_client,
+                cl.email_client,
+                (
+                    SELECT GROUP_CONCAT(
+                        CONCAT(
+                            COALESCE(p.nom_plat, b.nom_boisson),
+                            ' (x', d.quantite, ') - ',
+                            d.prix, ' FC = ',
+                            d.sous_total, ' FC'
+                        ) SEPARATOR '||'
+                    )
+                    FROM contient d
+                    LEFT JOIN plat p ON d.id_plat = p.id_plat
+                    LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
+                    WHERE d.num_commande = c.num_commande
+                ) AS details_items
+            FROM commande c
+            LEFT JOIN client cl ON c.id_client = cl.id_client
+            WHERE c.num_commande = ?
+        ");
+        $stmt->execute([$commande_id]);
+        $commande_details = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (PDOException $e) {
+        $commande_details = null;
+        $dashboard_error = 'Détails commande : ' . $e->getMessage();
+    }
 }
 
 $paiements_recents = [];
@@ -168,6 +192,11 @@ try {
 }
 
 $demandes_paiement = dashboard_fetch_demandes_paiement($pdo);
+$notif_items = dashboard_staff_notifications($pdo, 'caissier');
+$notif_count = count($commandes_a_payer) + count($demandes_paiement);
+$commande_lignes = ($commande_details && isset($commande_details['num_commande']))
+    ? dashboard_fetch_order_lines($pdo, (int) $commande_details['num_commande'])
+    : [];
 
 $stats_jour = [
     'total_paiements' => 0,
@@ -227,7 +256,13 @@ try {
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a class="nav-link" href="#">
+                    <a class="nav-link" href="commandes.php">
+                        <span class="nav-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                        <span>Commandes</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="parametres.php">
                         <span class="nav-icon"><i class="bi bi-gear" aria-hidden="true"></i></span>
                         <span>Paramètres</span>
                     </a>
@@ -235,15 +270,7 @@ try {
             </nav>
             
             <div class="sidebar-footer">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo substr($_SESSION['nom'] ?? 'C', 0, 1); ?>
-                    </div>
-                    <div class="user-details">
-                        <div class="user-name"><?php echo htmlspecialchars($_SESSION['nom'] ?? 'Caissier'); ?></div>
-                        <div class="user-role">Caissier</div>
-                    </div>
-                </div>
+                <?php dashboard_sidebar_user_footer('caissier'); ?>
             </div>
         </aside>
 
@@ -259,14 +286,11 @@ try {
                 
                 <div class="header-actions">
                     <div class="search-box">
-                        <input type="search" class="search-input" placeholder="Rechercher une commande..." aria-label="Rechercher une commande">
+                        <input type="search" class="search-input" data-dashboard-search placeholder="Nom, tél., table, n° commande…" aria-label="Rechercher une commande">
                         <span class="search-icon"><i class="bi bi-search" aria-hidden="true"></i></span>
                     </div>
                     
-                    <a href="#" class="notification-btn" aria-label="Commandes à payer">
-                        <i class="bi bi-bell" aria-hidden="true"></i>
-                        <span class="notification-badge"><?php echo count($commandes_a_payer); ?></span>
-                    </a>
+                    <?php dashboard_render_notifications('caissier', $notif_items, $notif_count); ?>
                 </div>
             </header>
 
@@ -277,9 +301,18 @@ try {
             </div>
             <?php endif; ?>
 
+            <?php if (!empty($error)): ?>
+            <div class="success-message" style="color: var(--danger-color); border-color: rgba(220,53,69,0.35); background: rgba(220,53,69,0.1);">
+                <?php echo htmlspecialchars($error); ?>
+            </div>
+            <?php endif; ?>
+
             <?php if (!empty($dashboard_error)): ?>
             <div class="success-message" style="color: var(--danger-color); border-color: rgba(220,53,69,0.35); background: rgba(220,53,69,0.1);">
                 <?php echo htmlspecialchars($dashboard_error); ?>
+                <div class="mt-2 small">
+                    <a href="../run_update.php" class="link-invoice">Exécuter run_update.php</a>
+                </div>
             </div>
             <?php endif; ?>
 
@@ -291,7 +324,7 @@ try {
                 </div>
                 
                 <div class="stat-box">
-                    <div class="stat-value">€<?php echo number_format($stats_jour['total_ca'] ?? 0, 0, ',', ' '); ?></div>
+                    <div class="stat-value"><?php echo format_money((float) ($stats_jour['total_ca'] ?? 0)); ?></div>
                     <div class="stat-label">CA Aujourd'hui</div>
                 </div>
                 
@@ -301,7 +334,7 @@ try {
                 </div>
                 
                 <div class="stat-box">
-                    <div class="stat-value">€<?php echo number_format($stats_jour['moyenne_paiement'] ?? 0, 2, ',', ' '); ?></div>
+                    <div class="stat-value"><?php echo format_money((float) ($stats_jour['moyenne_paiement'] ?? 0)); ?></div>
                     <div class="stat-label">Moyenne</div>
                 </div>
             </div>
@@ -319,7 +352,7 @@ try {
                     <div class="row g-3">
                         <?php foreach ($demandes_paiement as $demande): ?>
                         <div class="col-12">
-                            <div class="commande-item demande-highlight">
+                            <div class="commande-item demande-highlight" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($demande)); ?>">
                                 <div class="commande-header">
                                     <div class="commande-id">
                                         Demande #<?php echo str_pad($demande['id_demande'], 4, '0', STR_PAD_LEFT); ?>
@@ -327,14 +360,14 @@ try {
                                             (Commande #<?php echo str_pad($demande['num_commande'], 5, '0', STR_PAD_LEFT); ?>)
                                         </span>
                                     </div>
-                                    <div class="commande-montant">€<?php echo number_format($demande['montant'], 2); ?></div>
+                                    <div class="commande-montant"><?php echo format_money((float) $demande['montant']); ?></div>
                                 </div>
                                 
                                 <div class="commande-details">
                                     <div>
                                         <span>Table <?php echo $demande['num_table'] ?? 'N/A'; ?></span>
                                         <span> • </span>
-                                        <span><?php echo htmlspecialchars($demande['prenom_client'] . ' ' . $demande['nom_client']); ?></span>
+                                        <span><?php echo htmlspecialchars(trim(($demande['prenom_client'] ?? '') . ' ' . ($demande['nom_client'] ?? ''))); ?></span>
                                     </div>
                                     <div>
                                         <?php
@@ -353,12 +386,12 @@ try {
                                 </div>
                                 
                                 <div class="commande-actions">
-                                    <a href="?voir_commande=<?php echo $demande['num_commande']; ?>" class="btn-details" onclick="openModal(event, <?php echo $demande['num_commande']; ?>)">
+                                    <a href="?voir_commande=<?php echo $demande['num_commande']; ?>" class="btn-details">
                                         <i class="bi bi-list-ul" aria-hidden="true"></i> Voir détails
                                     </a>
-                                    <button type="button" class="btn-payer" onclick="openModal(event, <?php echo $demande['num_commande']; ?>)">
+                                    <a href="?voir_commande=<?php echo $demande['num_commande']; ?>" class="btn-payer">
                                         <i class="bi bi-cash-coin" aria-hidden="true"></i> Traiter le paiement
-                                    </button>
+                                    </a>
                                     <form method="POST" class="d-flex flex-grow-1">
                                         <input type="hidden" name="demande_id" value="<?php echo $demande['id_demande']; ?>">
                                         <button type="submit" name="annuler_demande" class="btn-details btn-danger-outline w-100">
@@ -390,15 +423,15 @@ try {
                     <div class="row g-3">
                         <?php foreach ($commandes_a_payer as $commande): ?>
                         <div class="col-12">
-                            <div class="commande-item" data-commande-id="<?php echo $commande['num_commande']; ?>">
+                            <div class="commande-item" data-commande-id="<?php echo $commande['num_commande']; ?>" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($commande)); ?>">
                                 <div class="commande-header">
                                     <div class="commande-id">Commande #<?php echo str_pad($commande['num_commande'], 5, '0', STR_PAD_LEFT); ?></div>
-                                    <div class="commande-montant">€<?php echo number_format($commande['montant_total'], 2); ?></div>
+                                    <div class="commande-montant"><?php echo format_money((float) $commande['montant_total']); ?></div>
                                 </div>
                                 
                                 <div class="commande-details">
                                     <div>
-                                        <span>Table <?php echo $commande['num_table'] ?? 'N/A'; ?></span>
+                                        <span>Table <?php echo htmlspecialchars((string) ($commande['num_table'] ?? 'N/A')); ?></span>
                                         <span> • </span>
                                         <span><?php echo htmlspecialchars(trim(($commande['prenom_client'] ?? '') . ' ' . ($commande['nom_client'] ?? 'Client'))); ?></span>
                                         <?php if (!empty($commande['telephone_client'])): ?>
@@ -416,12 +449,12 @@ try {
                                 </div>
                                 
                                 <div class="commande-actions">
-                                    <a href="?voir_commande=<?php echo $commande['num_commande']; ?>" class="btn-details" onclick="openModal(event, <?php echo $commande['num_commande']; ?>)">
+                                    <a href="?voir_commande=<?php echo $commande['num_commande']; ?>" class="btn-details">
                                         <i class="bi bi-list-ul" aria-hidden="true"></i> Voir détails
                                     </a>
-                                    <button type="button" class="btn-payer" onclick="openModal(event, <?php echo $commande['num_commande']; ?>)">
+                                    <a href="?voir_commande=<?php echo $commande['num_commande']; ?>" class="btn-payer">
                                         <i class="bi bi-cash-coin" aria-hidden="true"></i> Payer maintenant
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -446,14 +479,14 @@ try {
                             <div class="paiement-item">
                                 <div class="paiement-header">
                                     <div class="paiement-id">Facture #F-<?php echo str_pad($paiement['num_facture'], 4, '0', STR_PAD_LEFT); ?></div>
-                                    <div class="paiement-montant">€<?php echo number_format($paiement['total_paye'], 2); ?></div>
+                                    <div class="paiement-montant"><?php echo format_money((float) $paiement['total_paye']); ?></div>
                                 </div>
                                 
                                 <div class="paiement-details">
                                     <div>
                                         <span>Table <?php echo $paiement['num_table'] ?? 'N/A'; ?></span>
                                         <span> • </span>
-                                        <span><?php echo htmlspecialchars($paiement['prenom_client'] . ' ' . $paiement['nom_client']); ?></span>
+                                        <span><?php echo htmlspecialchars(trim(($paiement['prenom_client'] ?? '') . ' ' . ($paiement['nom_client'] ?? ''))); ?></span>
                                     </div>
                                     <div>
                                         <span class="mode-badge mode-<?php echo htmlspecialchars($paiement['mode_paiement'], ENT_QUOTES, 'UTF-8'); ?>">
@@ -498,38 +531,55 @@ try {
                     </div>
                     <div class="info-item">
                         <div class="info-label">Client</div>
-                        <div class="info-value"><?php echo $commande_details['nom_client'] ?? 'Client'; ?></div>
+                        <div class="info-value"><?php echo htmlspecialchars(trim(($commande_details['prenom_client'] ?? '') . ' ' . ($commande_details['nom_client'] ?? 'Client'))); ?></div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Heure</div>
-                        <div class="info-value"><?php echo date('H:i', strtotime($commande_details['date_commande'])); ?></div>
+                        <div class="info-label">Téléphone</div>
+                        <div class="info-value"><?php echo htmlspecialchars($commande_details['telephone_client'] ?? '—'); ?></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Date</div>
+                        <div class="info-value"><?php echo date('d/m/Y H:i', strtotime($commande_details['date_commande'])); ?></div>
                     </div>
                 </div>
                 
-                <div class="items-list">
-                    <?php 
-                    $items = explode('||', $commande_details['details_items']);
-                    foreach ($items as $item):
-                        if (!empty($item)):
-                            // Extraire les informations de l'item
-                            preg_match('/(.+?) \(x(\d+)\) - ([\d.]+)€ = ([\d.]+)€/', $item, $matches);
-                            if (count($matches) >= 5):
-                    ?>
-                    <div class="item-row">
-                        <div class="item-name"><?php echo htmlspecialchars($matches[1]); ?></div>
-                        <div class="item-quantity">x<?php echo $matches[2]; ?></div>
-                        <div class="item-price"><?php echo $matches[4]; ?>€</div>
-                    </div>
-                    <?php 
-                            endif;
-                        endif;
-                    endforeach; 
-                    ?>
-                </div>
+                <table class="items-table-detail">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Qté</th>
+                            <th>Prix unit.</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($commande_lignes as $ligne): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars(dashboard_line_label($ligne)); ?></td>
+                            <td><?php echo (int) $ligne['quantite']; ?></td>
+                            <td><?php echo format_money((float) $ligne['prix']); ?></td>
+                            <td><?php echo format_money((float) $ligne['sous_total']); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
                 
+                <?php
+                $ttc = (float) $commande_details['montant_total'];
+                $ht = round($ttc / 1.2, 0);
+                $tva = $ttc - $ht;
+                ?>
                 <div class="total-row">
-                    <div>Total à payer</div>
-                    <div>€<?php echo number_format($commande_details['montant_total'], 2); ?></div>
+                    <div>Total HT</div>
+                    <div><?php echo format_money($ht); ?></div>
+                </div>
+                <div class="total-row">
+                    <div>TVA (20 %)</div>
+                    <div><?php echo format_money($tva); ?></div>
+                </div>
+                <div class="total-row">
+                    <div><strong>Total TTC</strong></div>
+                    <div><strong><?php echo format_money($ttc); ?></strong></div>
                 </div>
                 
                 <?php
@@ -556,7 +606,7 @@ try {
                     
                     <button type="submit" name="payer_commande" class="btn-confirm">
                         <i class="bi bi-check-lg" aria-hidden="true"></i>
-                        Confirmer le paiement de <?php echo number_format($commande_details['montant_total'], 2, ',', ' '); ?> €
+                        Confirmer le paiement de <?php echo format_money((float) $commande_details['montant_total']); ?>
                     </button>
                 </form>
                 <?php else: ?>
@@ -571,15 +621,6 @@ try {
 
     <?php dashboard_scripts(); ?>
     <script>
-        // Gestion du modal
-        function openModal(event, commandeId) {
-            event.preventDefault();
-            document.getElementById('paiementModal').style.display = 'flex';
-            
-            // Si on a déjà les détails (via URL), on les affiche
-            // Sinon, on pourrait charger via AJAX
-        }
-        
         function closeModal() {
             document.getElementById('paiementModal').style.display = 'none';
             // Rediriger pour fermer le paramètre URL
@@ -598,19 +639,15 @@ try {
             const options = document.querySelectorAll('.paiement-option');
             const modeInput = document.getElementById('selectedMode');
             
-            options.forEach(option => {
-                option.addEventListener('click', function() {
-                    // Retirer la classe active de toutes les options
-                    options.forEach(opt => opt.classList.remove('active'));
-                    
-                    // Ajouter la classe active à l'option cliquée
-                    this.classList.add('active');
-                    
-                    // Mettre à jour l'input hidden
-                    const mode = this.getAttribute('data-mode');
-                    modeInput.value = mode;
+            if (modeInput) {
+                options.forEach(option => {
+                    option.addEventListener('click', function() {
+                        options.forEach(opt => opt.classList.remove('active'));
+                        this.classList.add('active');
+                        modeInput.value = this.getAttribute('data-mode') || 'especes';
+                    });
                 });
-            });
+            }
             
             // Ouvrir le modal si on a un paramètre dans l'URL
             const urlParams = new URLSearchParams(window.location.search);

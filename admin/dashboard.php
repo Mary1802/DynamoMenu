@@ -1,11 +1,7 @@
 <?php
-session_start();
 
-// Vérifier l'authentification
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header('Location: ../client/index.php');
-    exit;
-}
+require_once __DIR__ . '/../includes/staff_auth.php';
+staff_require(['admin']);
 
 // Configuration de la base de données
 $db_config = require '../config/db.php';
@@ -21,11 +17,19 @@ try {
 }
 
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
+require_once __DIR__ . '/../includes/money.php';
+
+$jour = date('Y-m-d');
+$mois = date('Y-m');
+$ca_jour = dashboard_sales_totals($pdo, 'day', $jour);
+$ca_mois = dashboard_sales_totals($pdo, 'month', $mois);
 
 // Récupérer les statistiques
 $stats = [
     'total_orders' => $pdo->query("SELECT COUNT(*) FROM commande")->fetchColumn(),
-    'total_revenue' => $pdo->query("SELECT COALESCE(SUM(montant_total), 0) FROM commande WHERE statut = 'prete'")->fetchColumn(),
+    'total_revenue' => $ca_mois['ca'],
+    'revenue_day' => $ca_jour['ca'],
+    'revenue_month' => $ca_mois['ca'],
     'active_clients' => $pdo->query("SELECT COUNT(*) FROM client")->fetchColumn(),
     'pending_orders' => $pdo->query("SELECT COUNT(*) FROM commande WHERE statut = 'en_attente'")->fetchColumn(),
     'preparing_orders' => $pdo->query("SELECT COUNT(*) FROM commande WHERE statut = 'en_preparation'")->fetchColumn(),
@@ -129,9 +133,21 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </a>
                 </div>
                 <div class="nav-item">
+                    <a class="nav-link" href="rapports.php">
+                        <span class="nav-icon"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i></span>
+                        <span>Rapports ventes</span>
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a class="nav-link" href="stats.php">
                         <span class="nav-icon"><i class="bi bi-graph-up" aria-hidden="true"></i></span>
                         <span>Statistiques</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="contact.php">
+                        <span class="nav-icon"><i class="bi bi-telephone" aria-hidden="true"></i></span>
+                        <span>Contact</span>
                     </a>
                 </div>
                 <div class="nav-item">
@@ -143,15 +159,7 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </nav>
             
             <div class="sidebar-footer">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo substr($_SESSION['nom'] ?? 'A', 0, 1); ?>
-                    </div>
-                    <div class="user-details">
-                        <div class="user-name"><?php echo htmlspecialchars($_SESSION['nom'] ?? 'Administrateur'); ?></div>
-                        <div class="user-role">Administrateur</div>
-                    </div>
-                </div>
+                <?php dashboard_sidebar_user_footer('admin'); ?>
             </div>
         </aside>
 
@@ -167,7 +175,7 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 <div class="header-actions">
                     <div class="search-box">
-                        <input type="search" class="search-input" placeholder="Rechercher..." aria-label="Rechercher">
+                        <input type="search" class="search-input" data-dashboard-search placeholder="Client, n° commande…" aria-label="Rechercher">
                         <span class="search-icon"><i class="bi bi-search" aria-hidden="true"></i></span>
                     </div>
                     
@@ -178,26 +186,25 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </header>
 
-            <!-- Metrics Grid -->
-            <div class="admin-grid">
-                <div class="metric-card">
-                    <div class="metric-label">Commandes totales</div>
-                    <div class="metric-value"><?php echo (int) $stats['total_orders']; ?></div>
+            <!-- Indicateurs CA (horizontal) -->
+            <div class="admin-metrics-row">
+                <div class="metric-card dashboard-card">
+                    <div class="metric-label">CA journalier</div>
+                    <div class="metric-value"><?php echo format_money((float) $stats['revenue_day']); ?></div>
+                    <div class="stat-change"><?php echo (int) $ca_jour['nb']; ?> facture(s)</div>
                 </div>
-                
-                <div class="metric-card">
-                    <div class="metric-label">Chiffre d'affaires</div>
-                    <div class="metric-value"><?php echo number_format($stats['total_revenue'], 0, ',', ' '); ?> €</div>
+                <div class="metric-card dashboard-card">
+                    <div class="metric-label">CA mensuel</div>
+                    <div class="metric-value"><?php echo format_money((float) $stats['revenue_month']); ?></div>
+                    <div class="stat-change"><?php echo (int) $ca_mois['nb']; ?> facture(s)</div>
                 </div>
-                
-                <div class="metric-card">
-                    <div class="metric-label">Clients actifs</div>
+                <div class="metric-card dashboard-card">
+                    <div class="metric-label">Clients</div>
                     <div class="metric-value"><?php echo (int) $stats['active_clients']; ?></div>
                 </div>
-                
-                <div class="metric-card">
-                    <div class="metric-label">Commandes en attente</div>
-                    <div class="metric-value"><?php echo (int) $stats['pending_orders']; ?></div>
+                <div class="metric-card dashboard-card">
+                    <div class="metric-label">Commandes totales</div>
+                    <div class="metric-value"><?php echo (int) $stats['total_orders']; ?></div>
                 </div>
             </div>
 
@@ -228,10 +235,10 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </tr>
                                     <?php else: ?>
                                     <?php foreach ($recent_orders as $order): ?>
-                                    <tr>
+                                    <tr data-searchable data-search="<?php echo htmlspecialchars(mb_strtolower(($order['nom_client'] ?? '') . ' ' . $order['num_commande'])); ?>">
                                         <td>#<?php echo str_pad($order['num_commande'], 5, '0', STR_PAD_LEFT); ?></td>
                                         <td><?php echo htmlspecialchars($order['nom_client'] ?? 'Client'); ?></td>
-                                        <td>€<?php echo number_format($order['montant_total'], 2); ?></td>
+                                        <td><?php echo format_money((float) $order['montant_total']); ?></td>
                                         <td>
                                             <?php
                                             $status_labels = [
@@ -301,7 +308,7 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <tr>
                                         <td><?php echo htmlspecialchars($plat['nom_plat']); ?></td>
                                         <td><?php echo $plat['ventes']; ?></td>
-                                        <td>€<?php echo number_format($plat['revenu'], 2); ?></td>
+                                        <td><?php echo format_money((float) $plat['revenu']); ?></td>
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php endif; ?>
@@ -378,11 +385,19 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </a>
                     
-                    <a href="stats.php" class="action-btn">
+                    <a href="rapports.php" class="action-btn">
                         <div class="action-icon"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i></div>
                         <div class="action-content">
-                            <h4>Statistiques</h4>
-                            <p>CA journalier et mensuel</p>
+                            <h4>Rapports ventes</h4>
+                            <p>Journalier et mensuel (cash / mobile)</p>
+                        </div>
+                    </a>
+                    
+                    <a href="contact.php" class="action-btn">
+                        <div class="action-icon"><i class="bi bi-telephone" aria-hidden="true"></i></div>
+                        <div class="action-content">
+                            <h4>Contact</h4>
+                            <p>Coordonnées du restaurant</p>
                         </div>
                     </a>
                 </div>

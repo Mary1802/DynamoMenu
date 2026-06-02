@@ -1,13 +1,11 @@
 <?php
-session_start();
 
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'caissier') {
-    header('Location: ../login.php');
-    exit;
-}
+require_once __DIR__ . '/../includes/staff_auth.php';
+staff_require(['caissier']);
 
 $db_config = require '../config/db.php';
 require_once '../includes/dashboard_helpers.php';
+require_once __DIR__ . '/../includes/money.php';
 
 try {
     $pdo = new PDO(
@@ -23,21 +21,8 @@ try {
 $jour = $_GET['date'] ?? date('Y-m-d');
 $mois = $_GET['mois'] ?? date('Y-m');
 
-$stmt = $pdo->prepare("
-    SELECT COUNT(*) AS nb, COALESCE(SUM(total_paye), 0) AS ca,
-           SUM(CASE WHEN mode_paiement = 'especes' THEN total_paye ELSE 0 END) AS ca_especes,
-           SUM(CASE WHEN mode_paiement = 'mobile' THEN total_paye ELSE 0 END) AS ca_mobile
-    FROM facture WHERE DATE(date_facture) = ?
-");
-$stmt->execute([$jour]);
-$rapport_jour = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$stmt = $pdo->prepare("
-    SELECT COUNT(*) AS nb, COALESCE(SUM(total_paye), 0) AS ca
-    FROM facture WHERE DATE_FORMAT(date_facture, '%Y-%m') = ?
-");
-$stmt->execute([$mois]);
-$rapport_mois = $stmt->fetch(PDO::FETCH_ASSOC);
+$rapport_jour = dashboard_sales_totals($pdo, 'day', $jour);
+$rapport_mois = dashboard_sales_totals($pdo, 'month', $mois);
 
 $stmt = $pdo->prepare("
     SELECT f.*, c.num_table, cl.nom_client, cl.prenom_client
@@ -71,8 +56,13 @@ $lignes_jour = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
             <nav class="sidebar-nav">
                 <div class="nav-item"><a class="nav-link" href="paiement.php"><span class="nav-icon"><i class="bi bi-credit-card"></i></span><span>Paiements</span></a></div>
+                <div class="nav-item"><a class="nav-link" href="commandes.php"><span class="nav-icon"><i class="bi bi-receipt"></i></span><span>Commandes</span></a></div>
                 <div class="nav-item"><a class="nav-link active" href="rapports.php"><span class="nav-icon"><i class="bi bi-file-earmark-bar-graph"></i></span><span>Rapports</span></a></div>
+                <div class="nav-item"><a class="nav-link" href="parametres.php"><span class="nav-icon"><i class="bi bi-gear"></i></span><span>Paramètres</span></a></div>
             </nav>
+            <div class="sidebar-footer">
+                <?php dashboard_sidebar_user_footer('caissier'); ?>
+            </div>
         </aside>
         <main class="dashboard-main">
             <header class="dashboard-header">
@@ -84,14 +74,34 @@ $lignes_jour = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <div class="stats-row mb-4">
                 <div class="stat-box">
-                    <div class="stat-value"><?php echo number_format($rapport_jour['ca'], 2, ',', ' '); ?> €</div>
-                    <div class="stat-label">CA du <?php echo htmlspecialchars($jour); ?></div>
+                    <div class="stat-value"><?php echo format_money((float) $rapport_jour['ca']); ?></div>
+                    <div class="stat-label">CA jour <?php echo htmlspecialchars($jour); ?></div>
                     <div class="small text-secondary mt-1"><?php echo (int) $rapport_jour['nb']; ?> paiements</div>
+                    <div class="payment-split-row">
+                        <div class="payment-split-box">
+                            <div class="label">Cash</div>
+                            <div class="value"><?php echo format_money((float) $rapport_jour['ca_especes']); ?></div>
+                        </div>
+                        <div class="payment-split-box">
+                            <div class="label">Mobile money</div>
+                            <div class="value"><?php echo format_money((float) $rapport_jour['ca_mobile']); ?></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-value"><?php echo number_format($rapport_mois['ca'], 2, ',', ' '); ?> €</div>
+                    <div class="stat-value"><?php echo format_money((float) $rapport_mois['ca']); ?></div>
                     <div class="stat-label">CA mois <?php echo htmlspecialchars($mois); ?></div>
                     <div class="small text-secondary mt-1"><?php echo (int) $rapport_mois['nb']; ?> paiements</div>
+                    <div class="payment-split-row">
+                        <div class="payment-split-box">
+                            <div class="label">Cash</div>
+                            <div class="value"><?php echo format_money((float) $rapport_mois['ca_especes']); ?></div>
+                        </div>
+                        <div class="payment-split-box">
+                            <div class="label">Mobile money</div>
+                            <div class="value"><?php echo format_money((float) $rapport_mois['ca_mobile']); ?></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -125,8 +135,8 @@ $lignes_jour = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <td>#<?php echo str_pad($l['num_commande'], 5, '0', STR_PAD_LEFT); ?></td>
                                 <td><?php echo htmlspecialchars(trim(($l['prenom_client'] ?? '') . ' ' . ($l['nom_client'] ?? ''))); ?></td>
                                 <td><?php echo htmlspecialchars((string) $l['num_table']); ?></td>
-                                <td><?php echo htmlspecialchars($l['mode_paiement']); ?></td>
-                                <td><?php echo number_format($l['total_paye'], 2, ',', ' '); ?> €</td>
+                                <td><?php echo htmlspecialchars(dashboard_mode_paiement_label((string) $l['mode_paiement'])); ?></td>
+                                <td><?php echo format_money((float) $l['total_paye']); ?></td>
                                 <td><?php echo date('H:i', strtotime($l['date_facture'])); ?></td>
                             </tr>
                         <?php endforeach; endif; ?>

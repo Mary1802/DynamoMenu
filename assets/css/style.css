@@ -37,6 +37,57 @@ body > * {
 .hero-subtitle {
     color: #d1d1d1;
 }
+.hero-home-image {
+    height: 420px;
+    object-fit: cover;
+    width: 100%;
+}
+@media (max-width: 991.98px) {
+    .hero-image-col {
+        display: none !important;
+    }
+    .hero-section {
+        padding-top: 2rem !important;
+        padding-bottom: 2.5rem !important;
+    }
+    .hero-section .row.g-5 {
+        --bs-gutter-y: 1.25rem;
+    }
+    .hero-title.display-4 {
+        font-size: clamp(1.65rem, 6vw, 2.15rem);
+    }
+}
+.client-table-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffb47f;
+    background: rgba(255, 111, 31, 0.15);
+    border: 1px solid rgba(255, 111, 31, 0.35);
+    border-radius: 999px;
+    padding: 0.25rem 0.65rem;
+    margin-left: auto;
+    margin-right: 0.5rem;
+}
+.client-table-strip {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #7dcea0;
+    background: rgba(40, 167, 69, 0.12);
+    border-bottom: 1px solid rgba(40, 167, 69, 0.25);
+    padding: 0.4rem 0.75rem;
+}
+.client-cart-badge {
+    font-size: 0.6rem;
+}
+.client-navbar .navbar-collapse {
+    margin-top: 0.5rem;
+}
+@media (min-width: 992px) {
+    .client-navbar .navbar-collapse {
+        margin-top: 0;
+    }
+}
 .hero-card {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 111, 31, 0.25);

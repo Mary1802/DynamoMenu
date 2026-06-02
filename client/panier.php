@@ -3,6 +3,8 @@ session_start();
 
 $db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/table_context.php';
+require_once __DIR__ . '/../includes/cart_helpers.php';
+require_once __DIR__ . '/../includes/money.php';
 try {
     $pdo = new PDO(
         "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
@@ -15,6 +17,8 @@ try {
 }
 
 bootstrap_table_context($pdo);
+contient_ensure_schema($pdo);
+require_once __DIR__ . '/../includes/client_header.php';
 $tableCtx = table_session();
 
 // Récupérer les plats et boissons
@@ -47,24 +51,51 @@ if (isset($_GET['action']) && $_GET['action'] === 'add') {
     
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $type = $_POST['type'] ?? 'menu_item';
-        $name = $_POST['name'] ?? '';
-        $price = floatval($_POST['price'] ?? 0);
-        $quantite = intval($_POST['quantite'] ?? 1);
+        $name = trim($_POST['name'] ?? '');
+        $price = (float) ($_POST['price'] ?? 0);
+        if ($price > 0 && $price < 500) {
+            $price = money_from_menu_unit($price);
+        }
+        $quantite = max(1, (int) ($_POST['quantite'] ?? 1));
         $img = $_POST['img'] ?? '';
         $category = $_POST['category'] ?? '';
-        
-        if (!empty($name) && $price > 0) {
+        $personnalisation = trim($_POST['personnalisation'] ?? '');
+
+        if ($name !== '' && $price > 0) {
+            $cartKey = cart_make_key($type, $name, $category, $personnalisation);
+
+            if (cart_is_duplicate_plat($type, $personnalisation) && cart_find_index($_SESSION['panier'], $cartKey) !== null) {
+                echo json_encode([
+                    'success' => false,
+                    'duplicate' => true,
+                    'message' => 'Cet article est déjà dans votre panier. Modifiez la quantité depuis le panier.',
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
             $_SESSION['panier'][] = [
                 'type' => $type,
                 'nom' => $name,
                 'prix' => $price,
                 'quantite' => $quantite,
-                'sous_total' => $price * $quantite,
+                'sous_total' => round($price * $quantite, 2),
                 'img' => $img,
-                'category' => $category
+                'category' => $category,
+                'personnalisation' => $personnalisation,
+                'cart_key' => $cartKey,
             ];
-            
-            echo json_encode(['success' => true, 'count' => count($_SESSION['panier'])]);
+
+            $totalQty = 0;
+            foreach ($_SESSION['panier'] as $it) {
+                $totalQty += (int) ($it['quantite'] ?? 1);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'count' => $totalQty,
+                'cart_key' => $cartKey,
+                'keys' => cart_list_keys($_SESSION['panier']),
+            ], JSON_UNESCAPED_UNICODE);
         } else {
             echo json_encode(['success' => false, 'message' => 'Données invalides']);
         }
@@ -171,6 +202,7 @@ $total_ttc = $total_panier + $tva_amount;
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mon Panier - DynamoMenu</title>
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         body {
@@ -431,30 +463,9 @@ $total_ttc = $total_panier + $tva_amount;
     </style>
 </head>
 <body>
-    <!-- Navigation identique à l'accueil -->
-    <header class="navbar navbar-expand-lg navbar-dark bg-transparent px-4 py-3">
-        <a class="navbar-brand fw-bold text-white" href="index.php">DynamoMenu</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navMenu">
-            <ul class="navbar-nav ms-auto align-items-lg-center">
-                <li class="nav-item"><a class="nav-link text-white" href="index.php">Accueil</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="menu.php">Menu</a></li>
-                <li class="nav-item">
-                    <a class="nav-link text-white position-relative active" href="panier.php">
-                        Panier
-                        <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">0</span>
-                    </a>
-                </li>
-                <li class="nav-item"><a class="nav-link text-white" href="#contact.php">Contact</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="../login.php">Employé</a></li>
-            </ul>
-            <a class="btn btn-outline-light ms-lg-4" href="#contact.php">Contact Now</a>
-        </div>
-    </header>
+    <?php render_client_nav('panier'); ?>
 
-    <main class="container-fluid px-4 py-5">
+    <main class="container-fluid px-3 px-md-4 py-4 py-md-5">
         <div class="row">
             <div class="col-lg-12">
                 <div class="text-center mb-5">
@@ -467,7 +478,7 @@ $total_ttc = $total_panier + $tva_amount;
         <div class="empty-panier">
             <h3>Votre panier est vide</h3>
             <p>Ajoutez des plats et boissons pour commencer votre commande</p>
-            <a href="index.php" class="btn btn-primary mt-3" style="background: #ff6f1f; border-color: #ff6f1f;">
+            <a href="<?php echo htmlspecialchars(table_link('menu.php')); ?>" class="btn btn-primary mt-3" style="background: #ff6f1f; border-color: #ff6f1f;">
                 Voir le menu
             </a>
         </div>
@@ -494,8 +505,8 @@ $total_ttc = $total_panier + $tva_amount;
                                 <div class="item-details mt-2">
                                     <?php if ($item['type'] === 'plat' && !empty($item['sauces'])): ?>
                                     <div class="mb-1"><span class="badge bg-secondary text-white" style="font-size: 0.8rem;">Sauces: <?php echo htmlspecialchars($item['sauces']); ?></span></div>
-                                    <?php elseif ($item['type'] === 'boisson' && !empty($item['personnalisation'])): ?>
-                                    <div class="mb-1"><span class="badge bg-secondary text-white" style="font-size: 0.8rem;">Personnalisation: <?php echo htmlspecialchars($item['personnalisation']); ?></span></div>
+                                    <?php elseif (!empty($item['personnalisation'])): ?>
+                                    <div class="mb-1"><span class="badge bg-secondary text-white" style="font-size: 0.8rem;"><?php echo htmlspecialchars($item['personnalisation']); ?></span></div>
                                     <?php endif; ?>
                                     <?php if (isset($item['category'])): ?>
                                     <div><span class="badge bg-info" style="font-size: 0.8rem;"><?php echo htmlspecialchars($item['category']); ?></span></div>
@@ -505,7 +516,7 @@ $total_ttc = $total_panier + $tva_amount;
                         </div>
                         
                         <div class="col-2 text-center">
-                            <div style="font-weight: 600; color: #fff; font-size: 1.1rem;">€<?php echo number_format($item['prix'], 2); ?></div>
+                            <div style="font-weight: 600; color: #fff; font-size: 1.1rem;"><?php echo format_money((float) $item['prix']); ?></div>
                             <div style="font-size: 0.8rem; color: rgba(229,231,235,0.85);">Prix unitaire</div>
                         </div>
                         
@@ -533,7 +544,7 @@ $total_ttc = $total_panier + $tva_amount;
                     <div class="row mt-2 mb-4">
                         <div class="col-10">
                             <div style="border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 0.5rem; font-size: 0.9rem; color: rgba(229,231,235,0.75);">
-                                <strong>Calcul :</strong> €<?php echo number_format($item['prix'], 2); ?> × <?php echo $item['quantite']; ?> = €<?php echo number_format($item['sous_total'], 2); ?>
+                                <strong>Calcul :</strong> <?php echo format_money((float) $item['prix']); ?> × <?php echo $item['quantite']; ?> = <?php echo format_money((float) $item['sous_total']); ?>
                             </div>
                         </div>
                         <div class="col-2 text-center">
@@ -556,37 +567,37 @@ $total_ttc = $total_panier + $tva_amount;
                         
                         <div class="summary-row">
                             <span>Sous-total des articles</span>
-                            <span>€<?php echo number_format($total_panier, 2); ?></span>
+                            <span><?php echo format_money($total_panier); ?></span>
                         </div>
                         
                         <div class="summary-row">
                             <span>TVA (16%)</span>
-                            <span>€<?php echo number_format($tva_amount, 2); ?></span>
+                            <span><?php echo format_money($tva_amount); ?></span>
                         </div>
                         
                         <div class="summary-row" style="background: rgba(255,255,255,0.08); border-radius: 6px; padding: 1rem; color: #e5e7eb;">
                             <span style="font-size: 1.2rem; font-weight: 700;">Total TTC à payer</span>
-                            <span style="font-size: 1.4rem; font-weight: 700; color: #ff6f1f;">€<?php echo number_format($total_ttc, 2); ?></span>
+                            <span style="font-size: 1.4rem; font-weight: 700; color: #ff6f1f;"><?php echo format_money($total_ttc); ?></span>
                         </div>
                         
                         <div class="text-center mt-5 pt-4" style="border-top: 1px solid #eee;">
                             <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
-                                <a href="menu.php" class="btn btn-outline-light btn-lg px-5">
+                                <a href="<?php echo htmlspecialchars(table_link('menu.php')); ?>" class="btn btn-outline-light btn-lg px-4 px-md-5">
                                     ← Continuer mes achats
                                 </a>
                                 <?php if ($tableCtx): ?>
-                                <a href="confirmation.php" class="btn btn-primary btn-lg px-5" style="background: #ff6f1f; border-color: #ff6f1f;">
+                                <a href="<?php echo htmlspecialchars(table_link('confirmation.php')); ?>" class="btn btn-primary btn-lg px-4 px-md-5" style="background: #ff6f1f; border-color: #ff6f1f;">
                                     Confirmer la commande
                                 </a>
                                 <?php else: ?>
-                                <a href="index.php?err=table" class="btn btn-warning btn-lg px-5">Scanner le QR de votre table</a>
+                                <a href="index.php?err=table" class="btn btn-warning btn-lg px-4 px-md-5">Scanner le QR de la table</a>
                                 <?php endif; ?>
                             </div>
-                            <p class="text-light mt-3">
+                            <p class="text-light mt-3 mb-0 small">
                                 <?php if ($tableCtx): ?>
-                                Table <?php echo htmlspecialchars($tableCtx['label']); ?> — addition et suivi après validation.
+                                Commande pour <strong><?php echo htmlspecialchars($tableCtx['label']); ?></strong> — pas de nouveau scan nécessaire.
                                 <?php else: ?>
-                                Scannez le QR code sur votre table avant de confirmer.
+                                Un scan QR sur votre table suffit pour toute la visite.
                                 <?php endif; ?>
                             </p>
                         </div>

@@ -1,10 +1,27 @@
 ﻿<?php
-session_start();
 
-// Configuration de la base de données
+require_once __DIR__ . '/includes/staff_auth.php';
+
+staff_session_start();
+
 $db_config = require 'config/db.php';
 
 $error = '';
+$success = isset($_GET['logout']) ? 'Vous êtes déconnecté.' : '';
+if (isset($_GET['err'])) {
+    $error = match ($_GET['err']) {
+        'role' => 'Accès refusé pour ce rôle.',
+        'session' => 'Session expirée ou compte modifié. Reconnectez-vous.',
+        'db' => 'Impossible de vérifier la session.',
+        default => 'Veuillez vous connecter.',
+    };
+}
+
+$current = staff_user();
+if ($current !== null) {
+    header('Location: ' . staff_dashboard_url($current['role']));
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
@@ -22,25 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
             );
 
-            $stmt = $pdo->prepare("SELECT id_employe, nom_employe, prenom_employe, email_employe, mot_de_passe FROM employe WHERE email_employe = ? AND role = ?");
+            $stmt = $pdo->prepare('SELECT id_employe, nom_employe, prenom_employe, email_employe, mot_de_passe, role FROM employe WHERE email_employe = ? AND role = ?');
             $stmt->execute([$email, $role]);
             $employe = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($employe && $employe['mot_de_passe'] === $password) {
-                $_SESSION['user_id'] = $employe['id_employe'];
-                $_SESSION['nom'] = $employe['nom_employe'] . ' ' . $employe['prenom_employe'];
-                $_SESSION['email'] = $employe['email_employe'];
-                $_SESSION['role'] = $role;
-
-                if ($role === 'cuisinier') {
-                    header('Location: cuisine/dashboard.php');
-                } elseif ($role === 'caissier') {
-                    header('Location: caissier/paiement.php');
-                } elseif ($role === 'admin') {
-                    header('Location: admin/dashboard.php');
-                } else {
-                    header('Location: client/index.php');
-                }
+            if ($employe && $employe['mot_de_passe'] === $password && $employe['role'] === $role) {
+                staff_login($employe, $role);
+                header('Location: ' . staff_dashboard_url($role));
                 exit;
             } else {
                 $error = 'Email, mot de passe ou rôle incorrect.';
@@ -192,10 +197,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1>🍳 DynamoMenu</h1>
+            <h1>DynamoMenu</h1>
             <p>Connexion Employé</p>
         </div>
 
+        <?php if ($success): ?>
+            <div class="alert" style="border-color: rgba(40,167,69,0.4); color: #7dcea0;">
+                <?php echo htmlspecialchars($success); ?>
+            </div>
+        <?php endif; ?>
         <?php if ($error): ?>
             <div class="alert">
                 <?php echo $error; ?>

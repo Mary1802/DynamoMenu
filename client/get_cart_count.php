@@ -1,12 +1,22 @@
 <?php
+
 session_start();
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../includes/cart_helpers.php';
+
 $count = 0;
-if (isset($_SESSION['panier'])) {
+$keys = [];
+if (isset($_SESSION['panier']) && is_array($_SESSION['panier'])) {
     foreach ($_SESSION['panier'] as $item) {
-        $count += $item['quantite'];
+        $count += (int) ($item['quantite'] ?? 1);
+        if (!empty($item['cart_key'])) {
+            $keys[] = $item['cart_key'];
+        }
     }
 }
 
-echo json_encode(['count' => $count]);
+echo json_encode([
+    'count' => $count,
+    'keys' => array_values(array_unique($keys)),
+], JSON_UNESCAPED_UNICODE);

@@ -68,7 +68,7 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
     <div class="chart-title">Nouveau plat</div>
     <form method="post" class="row g-3">
         <div class="col-md-4"><input type="text" name="nom_plat" class="form-control" placeholder="Nom" required></div>
-        <div class="col-md-2"><input type="number" step="0.01" name="prix_unitaire" class="form-control" placeholder="Prix €" required></div>
+        <div class="col-md-2"><input type="number" step="1" name="prix_unitaire" class="form-control" placeholder="Prix (FC)" required></div>
         <div class="col-md-3"><input type="text" name="categorie" class="form-control" placeholder="Catégorie"></div>
         <div class="col-md-3"><button type="submit" name="add_plat" class="btn-primary w-100">Ajouter plat</button></div>
     </form>
@@ -76,7 +76,23 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
 
 <div class="chart-container mb-4">
     <div class="chart-title">Plats</div>
-    <div class="table-responsive-wrap">
+    <div class="menu-edit-mobile">
+        <?php foreach ($plats as $p): ?>
+        <div class="menu-edit-card">
+            <form method="post">
+                <div class="mb-2"><label class="form-label text-secondary small">Nom</label><input type="text" name="nom_plat" class="form-control form-control-sm" value="<?php echo htmlspecialchars($p['nom_plat']); ?>"></div>
+                <div class="mb-2"><label class="form-label text-secondary small">Prix (FC)</label><input type="number" step="1" name="prix_unitaire" class="form-control form-control-sm" value="<?php echo htmlspecialchars((string) $p['prix_unitaire']); ?>"></div>
+                <div class="mb-2"><label class="form-label text-secondary small">Catégorie</label><input type="text" name="categorie" class="form-control form-control-sm" value="<?php echo htmlspecialchars($p['categorie'] ?? ''); ?>"></div>
+                <input type="hidden" name="id_plat" value="<?php echo (int) $p['id_plat']; ?>">
+                <div class="row-actions">
+                    <button type="submit" name="update_plat" class="btn-details btn-sm">Enregistrer</button>
+                    <button type="submit" name="delete_plat" class="btn-details btn-sm" onclick="return confirm('Supprimer ce plat ?');">Suppr.</button>
+                </div>
+            </form>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <div class="table-responsive-wrap menu-edit-desktop">
         <table class="data-table">
             <thead><tr><th>Nom</th><th>Prix</th><th>Catégorie</th><th>Actions</th></tr></thead>
             <tbody>
@@ -116,7 +132,31 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
 
 <div class="chart-container">
     <div class="chart-title">Boissons</div>
-    <div class="table-responsive-wrap">
+    <div class="menu-edit-mobile">
+        <?php foreach ($boissons as $b): ?>
+        <div class="menu-edit-card">
+            <form method="post">
+                <div class="mb-2"><input type="text" name="nom_boisson" class="form-control form-control-sm" value="<?php echo htmlspecialchars($b['nom_boisson']); ?>"></div>
+                <div class="mb-2">
+                    <select name="type_boisson" class="form-select form-select-sm">
+                        <?php foreach ($typesBoisson as $t): ?>
+                        <option value="<?php echo $t; ?>"<?php echo ($b['type_boisson'] ?? '') === $t ? ' selected' : ''; ?>><?php echo $t; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="mb-2"><input type="text" name="dosage" class="form-control form-control-sm" value="<?php echo htmlspecialchars($b['dosage'] ?? ''); ?>" placeholder="Dosage"></div>
+                <div class="mb-2"><input type="number" name="quantite_boisson" class="form-control form-control-sm" value="<?php echo (int) $b['quantite_boisson']; ?>" placeholder="Stock"></div>
+                <input type="hidden" name="id_boisson" value="<?php echo (int) $b['id_boisson']; ?>">
+                <input type="hidden" name="options_fruits" value="<?php echo htmlspecialchars($b['options_fruits'] ?? ''); ?>">
+                <div class="row-actions">
+                    <button type="submit" name="update_boisson" class="btn-details btn-sm">Enregistrer</button>
+                    <button type="submit" name="delete_boisson" class="btn-details btn-sm" onclick="return confirm('Supprimer ?');">Suppr.</button>
+                </div>
+            </form>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <div class="table-responsive-wrap menu-edit-desktop">
         <table class="data-table">
             <thead><tr><th>Nom</th><th>Type</th><th>Dosage</th><th>Stock</th><th>Actions</th></tr></thead>
             <tbody>

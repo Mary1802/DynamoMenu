@@ -9,6 +9,7 @@ if (empty($_SESSION['panier'])) {
 $db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/table_context.php';
 require_once __DIR__ . '/../includes/fidelity_service.php';
+require_once __DIR__ . '/../includes/money.php';
 try {
     $pdo = new PDO(
         "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
@@ -22,14 +23,13 @@ try {
 
 bootstrap_table_context($pdo);
 fidelity_ensure($pdo);
+contient_ensure_schema($pdo);
 $tableCtx = table_session();
 $recompenses_fidelite = fidelity_list_rewards($pdo);
 if (!$tableCtx) {
     header('Location: index.php?err=table');
     exit;
 }
-
-$tables = $pdo->query('SELECT * FROM table_restaurant WHERE actif = 1 ORDER BY num_table')->fetchAll(PDO::FETCH_ASSOC);
 
 // Vérifier que les colonnes client attendues existent avant d’utiliser ALTER TABLE
 $clientColumns = array_column($pdo->query("SHOW COLUMNS FROM client")->fetchAll(PDO::FETCH_ASSOC), 'Field');
@@ -147,6 +147,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
                         $item['prix'],
                         $item['sous_total'],
                         $item['personnalisation'] ?? ''
+                    ]);
+                } elseif ($item['type'] === 'menu_item') {
+                    $label = $item['nom'];
+                    if (!empty($item['personnalisation'])) {
+                        $label .= ' — ' . $item['personnalisation'];
+                    }
+                    $stmt = $pdo->prepare("
+                        INSERT INTO contient (num_commande, id_plat, id_boisson, quantite, prix, sous_total, personnalisation_boisson)
+                        VALUES (?, NULL, NULL, ?, ?, ?, ?)
+                    ");
+                    $stmt->execute([
+                        $num_commande,
+                        $item['quantite'],
+                        $item['prix'],
+                        $item['sous_total'],
+                        $label,
                     ]);
                 }
             }
@@ -487,32 +503,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
                                     x<?php echo $item['quantite']; ?>
                                     <?php if ($item['type'] === 'plat' && !empty($item['sauces'])): ?>
                                     <br>Sauces: <?php echo htmlspecialchars($item['sauces']); ?>
-                                    <?php elseif ($item['type'] === 'boisson' && !empty($item['personnalisation'])): ?>
+                                    <?php elseif (!empty($item['personnalisation'])): ?>
                                     <br><?php echo htmlspecialchars($item['personnalisation']); ?>
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <div>€<?php echo number_format($item['sous_total'], 2); ?></div>
+                            <div><?php echo format_money((float) $item['sous_total']); ?></div>
                         </div>
                         <?php endforeach; ?>
                         
                         <div class="recap-item">
                             <div>Sous-total</div>
-                            <div>€<?php echo number_format($total_panier, 2); ?></div>
+                            <div><?php echo format_money($total_panier); ?></div>
                         </div>
                         
                         <div class="recap-item">
                             <div>TVA (16%)</div>
-                            <div>€<?php echo number_format($tva_amount, 2); ?></div>
+                            <div><?php echo format_money($tva_amount); ?></div>
                         </div>
                         
                         <div class="recap-item" id="recapRemiseRow" style="display:none;">
                             <div>Réduction fidélité</div>
-                            <div id="recapRemise">- €0.00</div>
+                            <div id="recapRemise">- 0 FC</div>
                         </div>
                         <div class="recap-total">
                             <div>Total TTC</div>
-                            <div id="recapTotal">€<?php echo number_format($total_ttc, 2); ?></div>
+                            <div id="recapTotal"><?php echo format_money($total_ttc); ?></div>
                         </div>
                     </div>
                 </div>
@@ -544,7 +560,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
             firstTable.dispatchEvent(new Event('change'));
         }
 
-        const totalAvantRemise = <?php echo json_encode(round($total_ttc, 2)); ?>;
+        const MONEY = <?php echo json_encode(money_js_config(), JSON_UNESCAPED_UNICODE); ?>;
+        const totalAvantRemise = <?php echo json_encode(round($total_ttc, 0)); ?>;
+        function fmtMoney(cdf) {
+            return new Intl.NumberFormat('fr-CD', { maximumFractionDigits: MONEY.decimals }).format(Math.round(cdf)) + ' ' + MONEY.symbol;
+        }
         const emailEl = document.getElementById('email');
         const rewardSelect = document.getElementById('id_recompense');
         const fidelityInfo = document.getElementById('fidelityInfo');
@@ -555,7 +575,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
             if (!opt || !opt.value) return 0;
             const type = opt.dataset.type;
             const value = parseFloat(opt.dataset.value || '0');
-            if (type === 'pourcentage') return Math.round(totalAvantRemise * (value / 100) * 100) / 100;
+            if (type === 'pourcentage') return Math.round(totalAvantRemise * (value / 100));
             if (type === 'montant_fixe') return Math.min(totalAvantRemise, value);
             return 0;
         }
@@ -566,11 +586,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
             const totalEl = document.getElementById('recapTotal');
             if (remise > 0) {
                 row.style.display = 'flex';
-                document.getElementById('recapRemise').textContent = '- €' + remise.toFixed(2);
-                totalEl.textContent = '€' + Math.max(0, totalAvantRemise - remise).toFixed(2);
+                document.getElementById('recapRemise').textContent = '- ' + fmtMoney(remise);
+                totalEl.textContent = fmtMoney(Math.max(0, totalAvantRemise - remise));
             } else {
                 row.style.display = 'none';
-                totalEl.textContent = '€' + totalAvantRemise.toFixed(2);
+                totalEl.textContent = fmtMoney(totalAvantRemise);
             }
         }
 

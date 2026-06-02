@@ -5,6 +5,9 @@
  */
 function schema_upgrade(PDO $pdo): void
 {
+    require_once __DIR__ . '/money.php';
+    contient_ensure_schema($pdo);
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS recompense_fidelite (
         id_recompense INT PRIMARY KEY AUTO_INCREMENT,
         libelle VARCHAR(120) NOT NULL,
@@ -65,7 +68,7 @@ function schema_upgrade(PDO $pdo): void
         $defaults = [
             ['5 % de réduction', 'Sur la commande en cours', 25, 'pourcentage', 5],
             ['10 % de réduction', 'Réservé aux clients fidèles', 50, 'pourcentage', 10],
-            ['2 € offerts', 'Remise fixe immédiate', 30, 'montant_fixe', 2],
+            ['5 600 FC offerts', 'Remise fixe immédiate', 30, 'montant_fixe', 5600],
             ['Dessert offert', 'Cadeau maison', 80, 'cadeau', 0],
         ];
         foreach ($defaults as $row) {

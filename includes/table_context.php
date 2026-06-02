@@ -97,6 +97,35 @@ function table_session(): ?array
     ];
 }
 
+/**
+ * Ajoute ?t=CODE à un lien client (secours si la session expire sur mobile).
+ */
+function table_link(string $path): string
+{
+    $ctx = table_session();
+    if (!$ctx || empty($ctx['code_table'])) {
+        return $path;
+    }
+
+    $sep = str_contains($path, '?') ? '&' : '?';
+
+    return $path . $sep . 't=' . rawurlencode((string) $ctx['code_table']);
+}
+
+/**
+ * Après scan QR réussi : URL propre sans ?t= (la table reste en session).
+ */
+function table_redirect_after_scan(string $target = 'index.php'): void
+{
+    $code = trim((string) ($_GET['t'] ?? $_GET['table'] ?? ''));
+    if ($code === '' || !table_session()) {
+        return;
+    }
+
+    header('Location: ' . $target);
+    exit;
+}
+
 function table_require_or_redirect(string $redirect = 'index.php'): void
 {
     if (!table_session()) {

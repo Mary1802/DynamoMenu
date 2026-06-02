@@ -11,7 +11,7 @@ function qr_generate_table_code(int $numTable): string
 }
 
 /**
- * URL scannée par le client (accueil avec table en session).
+ * URL imprimée sur le QR : accueil client, table mémorisée en session (scan unique).
  */
 function qr_table_entry_url(string $codeTable): string
 {

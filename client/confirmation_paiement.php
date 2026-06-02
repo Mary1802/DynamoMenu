@@ -12,6 +12,7 @@ $commande_id = $_GET['commande'] ?? $demande['commande_id'];
 
 // Configuration de la base de données
 $db_config = require '../config/db.php';
+require_once __DIR__ . '/../includes/money.php';
 try {
     $pdo = new PDO(
         "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
@@ -164,7 +165,7 @@ unset($_SESSION['demande_paiement']);
                 </div>
                 <div class="info-row">
                     <span>Montant à payer</span>
-                    <span><strong>€<?php echo number_format($demande['montant'], 2); ?></strong></span>
+                    <span><strong><?php echo format_money((float) $demande['montant']); ?></strong></span>
                 </div>
                 <div class="info-row">
                     <span>Mode de paiement choisi</span>

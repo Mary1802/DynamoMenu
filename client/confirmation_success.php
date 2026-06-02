@@ -9,6 +9,7 @@ if (!isset($_SESSION['commande_confirmee'])) {
 
 $commande = $_SESSION['commande_confirmee'];
 $num_commande = $_GET['commande'] ?? $commande['num_commande'];
+require_once __DIR__ . '/../includes/money.php';
 ?>
 <!doctype html>
 <html lang="fr">
@@ -262,7 +263,7 @@ $num_commande = $_GET['commande'] ?? $commande['num_commande'];
                 </div>
                 <div class="info-row">
                     <span>Total à payer</span>
-                    <strong>€<?php echo number_format($commande['total'], 2); ?></strong>
+                    <strong><?php echo format_money((float) $commande['total']); ?></strong>
                 </div>
             </div>
 

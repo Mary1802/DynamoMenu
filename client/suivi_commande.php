@@ -9,6 +9,7 @@ if ($num_commande <= 0) {
 
 $db_config = require __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/table_context.php';
+require_once __DIR__ . '/../includes/money.php';
 
 try {
     $pdo = new PDO(
@@ -21,8 +22,11 @@ try {
     die('Erreur de connexion');
 }
 
+bootstrap_table_context($pdo);
+
 $stmt = $pdo->prepare("
-    SELECT c.*, cl.nom_client, cl.prenom_client, cl.email_client, cl.telephone_client, t.num_table
+    SELECT c.*, cl.nom_client, cl.prenom_client, cl.email_client, cl.telephone_client,
+           t.num_table, t.libelle AS table_libelle
     FROM commande c
     LEFT JOIN client cl ON c.id_client = cl.id_client
     LEFT JOIN table_restaurant t ON c.num_table = t.num_table
@@ -37,16 +41,48 @@ if (!$commande) {
 }
 
 $stmt = $pdo->prepare("
-    SELECT COALESCE(p.nom_plat, b.nom_boisson) AS nom, d.quantite, d.sous_total
+    SELECT COALESCE(p.nom_plat, b.nom_boisson, d.personnalisation_boisson) AS nom,
+           d.quantite, d.prix, d.sous_total, d.personnalisation_boisson
     FROM contient d
     LEFT JOIN plat p ON d.id_plat = p.id_plat
     LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
     WHERE d.num_commande = ?
+    ORDER BY d.id_detail
 ");
 $stmt->execute([$num_commande]);
 $lignes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$confirm = $_SESSION['commande_confirmee'] ?? null;
+$facture = null;
+try {
+    $stmt = $pdo->prepare('SELECT * FROM facture WHERE num_commande = ? LIMIT 1');
+    $stmt->execute([$num_commande]);
+    $facture = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+} catch (PDOException $e) {
+    $facture = null;
+}
+
+$statuts = [
+    'en_attente' => 'En attente',
+    'en_preparation' => 'En préparation',
+    'prete' => 'Prête — en route vers votre table',
+    'livree' => 'Livrée',
+    'annulee' => 'Annulée',
+];
+$statutInitial = $statuts[$commande['statut']] ?? $commande['statut'];
+
+$tableLabel = $commande['table_libelle'] ?: ('Table ' . $commande['num_table']);
+$clientNom = trim(($commande['prenom_client'] ?? '') . ' ' . ($commande['nom_client'] ?? ''));
+$modePaiement = '';
+if (!empty($commande['mode_paiement_souhaite'])) {
+    $modePaiement = $commande['mode_paiement_souhaite'] === 'mobile_money' ? 'Mobile money' : 'Espèces (cash)';
+}
+if ($facture) {
+    $modesFacture = ['especes' => 'Espèces', 'mobile' => 'Mobile money', 'carte' => 'Carte'];
+    $modePaiement = $modesFacture[$facture['mode_paiement']] ?? $facture['mode_paiement'];
+}
+
+$remise = (float) ($commande['remise_montant'] ?? 0);
+$sousTotalLignes = array_sum(array_column($lignes, 'sous_total'));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -55,16 +91,39 @@ $confirm = $_SESSION['commande_confirmee'] ?? null;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suivi commande — DynamoMenu</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-        .suivi-card {
-            max-width: 640px;
-            margin: 2rem auto;
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 1rem;
-            padding: 1.5rem;
+        body {
+            background: radial-gradient(circle at top left, rgba(255,111,31,0.16), transparent 28%),
+                        linear-gradient(180deg, #071119 0%, #0b1521 40%, #0f172a 100%);
+            color: #f8fafc;
+            min-height: 100vh;
         }
+        body::before { opacity: 0.35; }
+        .suivi-wrap { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        .suivi-card {
+            background: rgba(7, 7, 12, 0.88);
+            border: 1px solid rgba(255,111,31,0.18);
+            border-radius: 24px;
+            padding: 1.75rem;
+            box-shadow: 0 20px 70px rgba(0,0,0,0.35);
+        }
+        .suivi-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem 1rem;
+            margin: 1.25rem 0;
+        }
+        @media (max-width: 575.98px) { .suivi-meta { grid-template-columns: 1fr; } }
+        .meta-box {
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .meta-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.5); }
+        .meta-value { font-weight: 600; color: #fff; margin-top: 0.2rem; }
         .status-pill {
             display: inline-block;
             padding: 0.5rem 1rem;
@@ -72,64 +131,120 @@ $confirm = $_SESSION['commande_confirmee'] ?? null;
             background: rgba(255,111,31,0.15);
             color: #ffb47f;
             font-weight: 600;
-            margin: 1rem 0;
+            margin: 0.5rem 0 1rem;
         }
         .status-pill.is-ready {
             background: rgba(40,167,69,0.2);
             color: #7dcea0;
             animation: pulse 1.5s ease infinite;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.75; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
+        .line-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.65rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.95rem;
+        }
+        .line-item small { color: rgba(255,255,255,0.55); display: block; }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #ff6f1f;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,111,31,0.25);
         }
         #notifyBanner { display: none; }
         #notifyBanner.show { display: block; }
     </style>
 </head>
 <body>
-    <header class="navbar navbar-dark px-4 py-3">
-        <a class="navbar-brand fw-bold text-white" href="index.php">DynamoMenu</a>
+    <header class="navbar navbar-dark px-3 py-3">
+        <a class="navbar-brand fw-bold text-white" href="<?php echo htmlspecialchars(table_link('index.php')); ?>">DynamoMenu</a>
     </header>
 
-    <main class="container px-3 pb-5">
-        <div class="suivi-card text-white">
-            <h1 class="h3 mb-2">Votre commande</h1>
-            <p class="text-secondary mb-0">N° <?php echo str_pad($num_commande, 5, '0', STR_PAD_LEFT); ?> — Table <?php echo htmlspecialchars((string) $commande['num_table']); ?></p>
+    <main class="suivi-wrap">
+        <div class="suivi-card">
+            <h1 class="h3 mb-1 text-white">Récapitulatif de commande</h1>
+            <p class="text-secondary mb-0">Merci pour votre commande</p>
 
-            <div id="notifyBanner" class="alert alert-success mt-3" role="alert">
+            <div id="notifyBanner" class="alert alert-success mt-3 mb-0 py-2" role="alert">
                 <strong>Votre commande est prête.</strong> Elle va vous être apportée à table.
             </div>
             <div id="notifList" class="mt-3" style="display:none;"></div>
 
-            <p class="status-pill" id="statusPill">Chargement du statut…</p>
+            <p class="status-pill" id="statusPill"><?php echo htmlspecialchars($statutInitial); ?></p>
 
-            <h2 class="h5 mt-4">Addition</h2>
-            <ul class="list-unstyled mb-3">
-                <?php foreach ($lignes as $l): ?>
-                <li class="d-flex justify-content-between border-bottom border-secondary py-2">
-                    <span><?php echo htmlspecialchars($l['nom']); ?> × <?php echo (int) $l['quantite']; ?></span>
-                    <span><?php echo number_format($l['sous_total'], 2, ',', ' '); ?> €</span>
-                </li>
-                <?php endforeach; ?>
-            </ul>
-            <div class="d-flex justify-content-between fw-bold fs-5 text-warning">
-                <span>Total TTC</span>
-                <span><?php echo number_format($commande['montant_total'], 2, ',', ' '); ?> €</span>
+            <div class="suivi-meta">
+                <div class="meta-box">
+                    <div class="meta-label">N° commande</div>
+                    <div class="meta-value">#<?php echo str_pad((string) $num_commande, 5, '0', STR_PAD_LEFT); ?></div>
+                </div>
+                <div class="meta-box">
+                    <div class="meta-label">Table</div>
+                    <div class="meta-value"><?php echo htmlspecialchars($tableLabel); ?></div>
+                </div>
+                <div class="meta-box">
+                    <div class="meta-label">Client</div>
+                    <div class="meta-value"><?php echo htmlspecialchars($clientNom ?: '—'); ?></div>
+                </div>
+                <div class="meta-box">
+                    <div class="meta-label">Moyen de paiement</div>
+                    <div class="meta-value"><?php echo htmlspecialchars($modePaiement ?: 'À régler en caisse'); ?></div>
+                </div>
+                <?php if ($facture): ?>
+                <div class="meta-box">
+                    <div class="meta-label">N° facture</div>
+                    <div class="meta-value">F-<?php echo str_pad((string) $facture['num_facture'], 4, '0', STR_PAD_LEFT); ?></div>
+                </div>
+                <div class="meta-box">
+                    <div class="meta-label">Montant payé</div>
+                    <div class="meta-value"><?php echo format_money((float) $facture['total_paye']); ?></div>
+                </div>
+                <?php endif; ?>
             </div>
 
-            <?php if (!empty($commande['mode_paiement_souhaite'])): ?>
-            <p class="mt-3 mb-0 small text-secondary">
-                Paiement prévu :
-                <strong><?php echo $commande['mode_paiement_souhaite'] === 'mobile_money' ? 'Mobile money' : 'Cash'; ?></strong>
-            </p>
+            <h2 class="h5 text-white mt-2 mb-3">Addition</h2>
+            <div class="mb-2">
+                <?php foreach ($lignes as $l): ?>
+                <div class="line-item">
+                    <span>
+                        <?php echo htmlspecialchars($l['nom']); ?>
+                        <small>× <?php echo (int) $l['quantite']; ?></small>
+                    </span>
+                    <span><?php echo format_money((float) $l['sous_total']); ?></span>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <?php if ($remise > 0): ?>
+            <div class="d-flex justify-content-between text-secondary small mb-1">
+                <span>Sous-total articles</span>
+                <span><?php echo format_money($sousTotalLignes); ?></span>
+            </div>
+            <div class="d-flex justify-content-between text-success small mb-2">
+                <span>Réduction fidélité</span>
+                <span>− <?php echo format_money($remise); ?></span>
+            </div>
             <?php endif; ?>
 
-            <p class="mt-4 small text-secondary">
-                Client : <?php echo htmlspecialchars(trim($commande['prenom_client'] . ' ' . $commande['nom_client'])); ?>
-            </p>
+            <div class="total-row">
+                <span>Total TTC</span>
+                <span><?php echo format_money((float) $commande['montant_total']); ?></span>
+            </div>
 
-            <a href="menu.php" class="btn btn-outline-light mt-3">Commander à nouveau</a>
+            <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+                <a href="<?php echo htmlspecialchars(table_link('index.php')); ?>" class="btn btn-outline-light flex-fill">
+                    <i class="bi bi-house-door"></i> Retour à l'accueil
+                </a>
+                <a href="nouvelle_commande.php" class="btn btn-primary flex-fill" style="background:#ff6f1f;border-color:#ff6f1f;">
+                    <i class="bi bi-plus-circle"></i> Commander à nouveau
+                </a>
+            </div>
         </div>
     </main>
 

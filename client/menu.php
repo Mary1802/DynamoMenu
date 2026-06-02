@@ -3,6 +3,7 @@ session_start();
 $db_config = require __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/table_context.php';
 require_once __DIR__ . '/../includes/menu_image_index.php';
+require_once __DIR__ . '/../includes/money.php';
 
 try {
     $pdo = new PDO(
@@ -15,6 +16,7 @@ try {
 } catch (PDOException $e) {
     die('Erreur de connexion');
 }
+require_once __DIR__ . '/../includes/client_header.php';
 $tableCtx = table_session();
 
 $menuImageIndex = build_menu_image_index(__DIR__ . '/../assets/images');
@@ -27,6 +29,7 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DynamoMenu - Menu</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         :root {
@@ -137,34 +140,41 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             font-weight: 700;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
         }
+        .add-cart.in-cart { opacity: 0.45; pointer-events: none; }
+        .drink-modal .modal-content {
+            background: #0f172a;
+            border: 1px solid rgba(255,111,31,0.25);
+            color: #f8fafc;
+        }
+        .flavor-pick {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+        }
+        .flavor-pick label {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 999px;
+            padding: 0.35rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .flavor-pick input { display: none; }
+        .flavor-pick input:checked + span { color: #ff6f1f; font-weight: 600; }
+        .flavor-pick label:has(input:checked) {
+            border-color: rgba(255,111,31,0.5);
+            background: rgba(255,111,31,0.12);
+        }
+        .soda-unit-row { margin-bottom: 0.5rem; }
     </style>
 </head>
 <body>
-    <header class="navbar navbar-expand-lg navbar-dark px-4 py-3">
-        <a class="navbar-brand fw-bold text-white" href="index.php">DynamoMenu</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navMenu">
-            <ul class="navbar-nav ms-auto align-items-lg-center">
-                <li class="nav-item"><a class="nav-link text-white" href="index.php">Accueil</a></li>
-                <li class="nav-item"><a class="nav-link text-white active" aria-current="page" href="menu.php">Menu</a></li>
-                <li class="nav-item">
-                    <a class="nav-link text-white position-relative" href="panier.php">
-                        Panier
-                        <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">0</span>
-                    </a>
-                </li>
-                <li class="nav-item"><a class="nav-link text-white" href="#contact.php">Contact</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="../login.php">Employé</a></li>
-            </ul>
-            <a class="btn btn-primary ms-lg-4" href="#contact.php">Contact Now</a>
-        </div>
-    </header>
+    <?php render_client_nav('menu'); ?>
 
-    <main class="container-fluid px-4 py-5">
-        <?php if ($tableCtx): ?>
-        <p class="text-center text-warning mb-3"><small>Table : <strong><?php echo htmlspecialchars($tableCtx['label']); ?></strong></small></p>
+    <main class="container-fluid px-3 px-md-4 py-4 py-md-5">
+        <?php if (!$tableCtx): ?>
+        <div class="alert alert-warning mb-3 py-2 text-center" role="alert">
+            Pour commander, scannez d'abord le <strong>QR code sur votre table</strong>.
+            <a href="index.php" class="alert-link">Retour accueil</a>
+        </div>
         <?php endif; ?>
         <section class="text-center mb-4">
             <p class="text-uppercase text-warning mb-2">Notre Carte</p>
@@ -185,7 +195,7 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
         </div>
 
         <!-- Floating quick cart -->
-                <a href="panier.php" class="position-fixed d-flex align-items-center justify-content-center bg-warning text-dark rounded-circle" style="width:56px;height:56px;right:20px;bottom:20px;z-index:1070;box-shadow:0 6px 18px rgba(0,0,0,0.2);">
+                <a href="<?php echo htmlspecialchars(table_link('panier.php')); ?>" class="position-fixed d-flex align-items-center justify-content-center bg-warning text-dark rounded-circle" style="width:56px;height:56px;right:20px;bottom:20px;z-index:1070;box-shadow:0 6px 18px rgba(0,0,0,0.2);">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16">
               <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .49.598l-1.5 6A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L1.01 1.607 1 1.5H.5zM5 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
             </svg>
@@ -193,12 +203,78 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
         </a>
 
         <div class="text-center">
-            <a class="btn btn-primary btn-lg px-5" href="panier.php">Voir mon panier</a>
+            <a class="btn btn-primary btn-lg px-5" href="<?php echo htmlspecialchars(table_link('panier.php')); ?>">Voir mon panier</a>
         </div>
     </main>
 
+    <!-- Modal boisson fruit -->
+    <div class="modal fade drink-modal" id="fruitDrinkModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="fruitDrinkTitle">Personnaliser</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-secondary small mb-3">Choisissez la saveur (fruit) :</p>
+                    <div class="flavor-pick mb-3" id="fruitFlavorList"></div>
+                    <label class="form-label">Quantité</label>
+                    <input type="number" class="form-control" id="fruitQty" min="1" max="20" value="1">
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="fruitDrinkConfirm" style="background:#ff6f1f;border:none;">Ajouter au panier</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal sodas -->
+    <div class="modal fade drink-modal" id="sodaDrinkModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Coca-Cola, Fanta ou Sprite</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Quantité</label>
+                    <input type="number" class="form-control mb-3" id="sodaQty" min="1" max="12" value="1">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="sodaSameFlavor" checked>
+                        <label class="form-check-label" for="sodaSameFlavor">Même saveur pour toutes les unités</label>
+                    </div>
+                    <div id="sodaSameBlock">
+                        <label class="form-label">Saveur</label>
+                        <select class="form-select" id="sodaSingleFlavor">
+                            <option value="Coca-Cola">Coca-Cola</option>
+                            <option value="Fanta">Fanta</option>
+                            <option value="Sprite">Sprite</option>
+                        </select>
+                    </div>
+                    <div id="sodaMultiBlock" style="display:none;">
+                        <label class="form-label">Saveur par unité</label>
+                        <div id="sodaUnitsContainer"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="sodaDrinkConfirm" style="background:#ff6f1f;border:none;">Ajouter au panier</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const MONEY = <?php echo json_encode(money_js_config(), JSON_UNESCAPED_UNICODE); ?>;
+        function menuUnitToCdf(unit) {
+            return Math.round(Number(unit) * MONEY.multiplier);
+        }
+        function fmtMoney(cdf) {
+            return new Intl.NumberFormat('fr-CD', { maximumFractionDigits: MONEY.decimals }).format(cdf) + ' ' + MONEY.symbol;
+        }
+
         const categories = ['All','Plats principaux','Apéritifs','Entrées','Kombo','Boissons','Desserts','Accompagnements'];
         const imageIndex = <?php echo json_encode($menuImageIndex, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
         const IMAGE_PLACEHOLDER = <?php echo json_encode($menuImagePlaceholder, JSON_UNESCAPED_SLASHES); ?>;
@@ -214,9 +290,54 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             return resolved ? encodeImagePath(resolved) : IMAGE_PLACEHOLDER;
         }
 
+        const FRUITS = ['Orange', 'Banane', 'Pomme', 'Ananas', 'Mangue', 'Fraise'];
+        const SODA_BRANDS = ['Coca-Cola', 'Fanta', 'Sprite'];
+        const DRINK_FRUIT_NAMES = ['jus de fruit', 'milkshake', 'cocktail de fruits'];
+        const DRINK_SODA_NAME = 'coca-cola, fanta, sprite';
+
+        let cartKeys = new Set();
+        let pendingDrinkItem = null;
+        const fruitModal = new bootstrap.Modal(document.getElementById('fruitDrinkModal'));
+        const sodaModal = new bootstrap.Modal(document.getElementById('sodaDrinkModal'));
+
         const items = [];
         function add(cat,name,desc,price,img,rating=4.3,reviews=50){
             items.push({category:cat,name,desc,price,img:localImg(img),rating,reviews});
+        }
+
+        function drinkKind(name) {
+            const n = name.toLowerCase().trim();
+            if (DRINK_FRUIT_NAMES.some(d => n === d)) return 'fruit';
+            if (n === DRINK_SODA_NAME) return 'soda';
+            return null;
+        }
+
+        async function fetchCartKey(item, perso = '') {
+            const params = new URLSearchParams({
+                type: 'menu_item',
+                name: item.name,
+                category: item.category,
+                personnalisation: perso
+            });
+            const r = await fetch('cart_key.php?' + params.toString());
+            const data = await r.json();
+            return data.key || '';
+        }
+
+        async function loadCartKeys() {
+            const data = await fetch('get_cart_count.php').then(r => r.json());
+            cartKeys = new Set(data.keys || []);
+            updateCartCountFromData(data);
+        }
+
+        function updateCartCountFromData(data) {
+            const count = data.count || 0;
+            ['cartCount', 'floatingCartCount'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = count;
+                el.style.display = count === 0 ? 'none' : 'block';
+            });
         }
 
         // --- Plats principaux (20)
@@ -325,92 +446,181 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
                             <p class="text-muted mb-3 menu-desc">${i.desc}</p>
                             <div class="d-flex align-items-center justify-content-between text-warning fw-bold mt-auto">
                                 <span class="small">★ ${i.rating} (${i.reviews} avis)</span>
-                                <span class="price">${i.price} €</span>
+                                <span class="price">${fmtMoney(menuUnitToCdf(i.price))}</span>
                             </div>
                         </div>
                     </div>`;
                 menuList.appendChild(card);
             });
 
-            // attach add-to-cart listeners
-            document.querySelectorAll('.add-cart').forEach(btn=>{
-                btn.addEventListener('click', ()=>{
-                    const idx = parseInt(btn.getAttribute('data-idx'),10);
-                    addToCart(idx);
+            document.querySelectorAll('.add-cart').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    addToCart(parseInt(btn.getAttribute('data-idx'), 10));
                 });
             });
+            syncCartButtons();
         }
 
-        // Cart functions using AJAX to PHP session
-        function updateCartCount(){ 
-            fetch('get_cart_count.php')
-                .then(response => response.json())
-                .then(data => {
-                    const cartBadge = document.getElementById('cartCount');
-                    const floatingBadge = document.getElementById('floatingCartCount');
-                    
-                    if (cartBadge) {
-                        cartBadge.textContent = data.count;
-                        // Cacher le badge si 0
-                        if (data.count === 0) {
-                            cartBadge.style.display = 'none';
-                        } else {
-                            cartBadge.style.display = 'block';
-                        }
-                    }
-                    
-                    if (floatingBadge) {
-                        floatingBadge.textContent = data.count;
-                        // Cacher le badge flottant si 0
-                        if (data.count === 0) {
-                            floatingBadge.style.display = 'none';
-                        } else {
-                            floatingBadge.style.display = 'block';
-                        }
-                    }
-                });
+        async function syncCartButtons() {
+            await loadCartKeys();
+            const buttons = document.querySelectorAll('.add-cart');
+            for (const btn of buttons) {
+                const idx = parseInt(btn.getAttribute('data-idx'), 10);
+                const item = currentList[idx];
+                if (!item) continue;
+                const key = await fetchCartKey(item, '');
+                if (cartKeys.has(key)) {
+                    btn.classList.add('in-cart');
+                    btn.title = 'Déjà au panier — modifiez la quantité dans le panier';
+                } else {
+                    btn.classList.remove('in-cart');
+                    btn.title = 'Ajouter au panier';
+                }
+            }
         }
-        
-        function addToCart(idx){ 
-            const item = currentList[idx]; 
-            if(!item) return; 
-            
-            // Envoyer l'item au serveur via AJAX
+
+        function submitToCart(item, quantite, personnalisation) {
             const formData = new FormData();
             formData.append('type', 'menu_item');
             formData.append('name', item.name);
-            formData.append('price', item.price);
-            formData.append('quantite', 1);
+            formData.append('price', menuUnitToCdf(item.price));
+            formData.append('quantite', quantite);
             formData.append('img', item.img);
             formData.append('category', item.category);
-            
-            fetch('panier.php?action=add', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.success) {
-                    updateCartCount();
-                    showToast(item.name + ' ajouté au panier');
-                } else {
-                    showToast('Erreur: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('Erreur lors de l\'ajout au panier');
-            });
+            formData.append('personnalisation', personnalisation);
+
+            return fetch('panier.php?action=add', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.cart_key) cartKeys.add(data.cart_key);
+                        if (data.keys) cartKeys = new Set(data.keys);
+                        updateCartCountFromData(data);
+                        showToast(item.name + ' ajouté au panier');
+                        syncCartButtons();
+                    } else if (data.duplicate) {
+                        showToast(data.message || 'Déjà dans le panier');
+                        syncCartButtons();
+                    } else {
+                        showToast('Erreur: ' + (data.message || 'inconnue'));
+                    }
+                    return data;
+                });
         }
 
-        function showToast(message){ const toastEl = document.getElementById('cartToast'); document.getElementById('cartToastBody').textContent = message; const toast = new bootstrap.Toast(toastEl); toast.show(); }
+        async function addToCart(idx) {
+            const item = currentList[idx];
+            if (!item) return;
 
-        // initial
-        updateCartCount(); 
+            const key = await fetchCartKey(item, '');
+            if (cartKeys.has(key)) {
+                showToast('Cet article est déjà dans votre panier. Ajustez la quantité depuis le panier.');
+                return;
+            }
+
+            const kind = drinkKind(item.name);
+            if (kind === 'fruit') {
+                openFruitModal(item);
+                return;
+            }
+            if (kind === 'soda') {
+                openSodaModal(item);
+                return;
+            }
+
+            submitToCart(item, 1, '');
+        }
+
+        function openFruitModal(item) {
+            pendingDrinkItem = item;
+            document.getElementById('fruitDrinkTitle').textContent = item.name;
+            const list = document.getElementById('fruitFlavorList');
+            list.innerHTML = FRUITS.map((f, i) =>
+                `<label><input type="radio" name="fruitFlavor" value="${f}" ${i === 0 ? 'checked' : ''}><span>${f}</span></label>`
+            ).join('');
+            document.getElementById('fruitQty').value = 1;
+            fruitModal.show();
+        }
+
+        function openSodaModal(item) {
+            pendingDrinkItem = item;
+            document.getElementById('sodaQty').value = 1;
+            document.getElementById('sodaSameFlavor').checked = true;
+            document.getElementById('sodaSameBlock').style.display = 'block';
+            document.getElementById('sodaMultiBlock').style.display = 'none';
+            buildSodaUnitRows(1);
+            sodaModal.show();
+        }
+
+        function buildSodaUnitRows(qty) {
+            const container = document.getElementById('sodaUnitsContainer');
+            container.innerHTML = '';
+            for (let i = 1; i <= qty; i++) {
+                const row = document.createElement('div');
+                row.className = 'soda-unit-row';
+                row.innerHTML = `<label class="form-label small mb-1">Unité ${i}</label>
+                    <select class="form-select form-select-sm soda-unit-flavor">
+                        ${SODA_BRANDS.map(b => `<option value="${b}">${b}</option>`).join('')}
+                    </select>`;
+                container.appendChild(row);
+            }
+        }
+
+        document.getElementById('sodaQty').addEventListener('change', function() {
+            const q = Math.min(12, Math.max(1, parseInt(this.value, 10) || 1));
+            this.value = q;
+            if (!document.getElementById('sodaSameFlavor').checked) {
+                buildSodaUnitRows(q);
+            }
+        });
+
+        document.getElementById('sodaSameFlavor').addEventListener('change', function() {
+            document.getElementById('sodaSameBlock').style.display = this.checked ? 'block' : 'none';
+            document.getElementById('sodaMultiBlock').style.display = this.checked ? 'none' : 'block';
+            if (!this.checked) {
+                buildSodaUnitRows(Math.min(12, Math.max(1, parseInt(document.getElementById('sodaQty').value, 10) || 1)));
+            }
+        });
+
+        document.getElementById('fruitDrinkConfirm').addEventListener('click', function() {
+            const item = pendingDrinkItem;
+            const flavor = document.querySelector('input[name="fruitFlavor"]:checked');
+            const qty = Math.max(1, parseInt(document.getElementById('fruitQty').value, 10) || 1);
+            if (!item || !flavor) return;
+            const perso = 'Saveur : ' + flavor.value;
+            fruitModal.hide();
+            submitToCart(item, qty, perso);
+            pendingDrinkItem = null;
+        });
+
+        document.getElementById('sodaDrinkConfirm').addEventListener('click', function() {
+            const item = pendingDrinkItem;
+            const qty = Math.min(12, Math.max(1, parseInt(document.getElementById('sodaQty').value, 10) || 1));
+            if (!item) return;
+            let perso = '';
+            if (document.getElementById('sodaSameFlavor').checked) {
+                const brand = document.getElementById('sodaSingleFlavor').value;
+                perso = brand + (qty > 1 ? ' ×' + qty : '');
+            } else {
+                const picks = Array.from(document.querySelectorAll('.soda-unit-flavor')).map(s => s.value);
+                const counts = {};
+                picks.forEach(b => { counts[b] = (counts[b] || 0) + 1; });
+                perso = Object.entries(counts).map(([b, n]) => b + ' ×' + n).join(', ');
+            }
+            sodaModal.hide();
+            submitToCart(item, qty, perso);
+            pendingDrinkItem = null;
+        });
+
+        function showToast(message) {
+            const toastEl = document.getElementById('cartToast');
+            document.getElementById('cartToastBody').textContent = message;
+            bootstrap.Toast.getOrCreateInstance(toastEl).show();
+        }
+
+        loadCartKeys();
         render('All');
-        
-        // Vérifier le panier toutes les 5 secondes
-        setInterval(updateCartCount, 5000);
+        setInterval(loadCartKeys, 5000);
     </script>
 </body>
 </html>

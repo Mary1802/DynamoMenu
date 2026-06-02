@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/schema_upgrade.php';
+require_once __DIR__ . '/../includes/money.php';
 
 $pdo = admin_pdo();
 schema_upgrade($pdo);
@@ -33,11 +34,11 @@ admin_shell_start('Admin — Statistiques', 'stats', 'Analyse', 'Statistiques', 
 <div class="stats-grid mb-4">
     <div class="stat-card">
         <div class="stat-label">CA aujourd'hui</div>
-        <div class="stat-value"><?php echo number_format($caJour, 2); ?> €</div>
+        <div class="stat-value"><?php echo format_money($caJour); ?></div>
     </div>
     <div class="stat-card">
         <div class="stat-label">CA ce mois</div>
-        <div class="stat-value"><?php echo number_format($caMois, 2); ?> €</div>
+        <div class="stat-value"><?php echo format_money($caMois); ?></div>
     </div>
     <div class="stat-card">
         <div class="stat-label">Commandes du jour</div>
@@ -74,7 +75,7 @@ admin_shell_start('Admin — Statistiques', 'stats', 'Analyse', 'Statistiques', 
                         <tr>
                             <td><?php echo htmlspecialchars($p['nom_plat']); ?></td>
                             <td><?php echo (int) $p['qte']; ?></td>
-                            <td><?php echo number_format((float) $p['ca'], 2); ?> €</td>
+                            <td><?php echo format_money((float) $p['ca']); ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

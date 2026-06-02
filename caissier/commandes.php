@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../includes/staff_auth.php';
-staff_require(['cuisinier']);
+staff_require(['caissier']);
 
 $db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/money.php';
@@ -14,29 +14,22 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
-$filtre = $_GET['filtre'] ?? 'actives';
-$where = "c.statut IN ('en_attente', 'en_preparation')";
-if ($filtre === 'prete') {
-    $where = "c.statut = 'prete'";
-} elseif ($filtre === 'toutes') {
-    $where = "c.statut NOT IN ('annulee')";
-}
-
 $stmt = $pdo->query("
     SELECT c.num_commande, c.date_commande, c.montant_total, c.statut, c.num_table,
-           cl.nom_client, cl.prenom_client, cl.telephone_client
+           cl.nom_client, cl.prenom_client, cl.telephone_client,
+           (SELECT COUNT(*) FROM facture f WHERE f.num_commande = c.num_commande) AS payee
     FROM commande c
     LEFT JOIN client cl ON c.id_client = cl.id_client
-    WHERE {$where}
+    WHERE c.statut IN ('livree', 'prete')
     ORDER BY c.date_commande DESC
-    LIMIT 80
+    LIMIT 100
 ");
 $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
-    <?php dashboard_asset_links('Cuisine — Commandes'); ?>
+    <?php dashboard_asset_links('Caisse — Commandes'); ?>
 </head>
 <body class="dashboard-body">
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -50,20 +43,21 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="sidebar-brand">
                 <div class="brand-logo">DM</div>
                 <div class="brand-title">DynamoMenu</div>
-                <div class="brand-subtitle">Cuisine</div>
+                <div class="brand-subtitle">Caisse</div>
             </div>
             <nav class="sidebar-nav">
-                <div class="nav-item"><a class="nav-link" href="dashboard.php"><span class="nav-icon"><i class="bi bi-speedometer2"></i></span><span>Dashboard</span></a></div>
+                <div class="nav-item"><a class="nav-link" href="paiement.php"><span class="nav-icon"><i class="bi bi-credit-card"></i></span><span>Paiements</span></a></div>
                 <div class="nav-item"><a class="nav-link active" href="commandes.php"><span class="nav-icon"><i class="bi bi-receipt"></i></span><span>Commandes</span></a></div>
+                <div class="nav-item"><a class="nav-link" href="rapports.php"><span class="nav-icon"><i class="bi bi-file-earmark-bar-graph"></i></span><span>Rapports</span></a></div>
                 <div class="nav-item"><a class="nav-link" href="parametres.php"><span class="nav-icon"><i class="bi bi-gear"></i></span><span>Paramètres</span></a></div>
             </nav>
-            <div class="sidebar-footer"><?php dashboard_sidebar_user_footer('cuisinier'); ?></div>
+            <div class="sidebar-footer"><?php dashboard_sidebar_user_footer('caissier'); ?></div>
         </aside>
         <main class="dashboard-main">
             <header class="dashboard-header">
                 <div class="header-title">
-                    <span class="header-eyebrow">Cuisine</span>
-                    <h1>Toutes les commandes</h1>
+                    <span class="header-eyebrow">Caisse</span>
+                    <h1>Commandes</h1>
                 </div>
                 <div class="header-actions">
                     <div class="search-box">
@@ -72,15 +66,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
             </header>
-            <div class="mb-3 d-flex flex-wrap gap-2">
-                <a href="commandes.php" class="btn-details btn-sm<?php echo $filtre === 'actives' ? ' active' : ''; ?>">En cours</a>
-                <a href="commandes.php?filtre=prete" class="btn-details btn-sm<?php echo $filtre === 'prete' ? ' active' : ''; ?>">À servir</a>
-                <a href="commandes.php?filtre=toutes" class="btn-details btn-sm<?php echo $filtre === 'toutes' ? ' active' : ''; ?>">Toutes</a>
-            </div>
-            <div class="dashboard-card">
-                <?php if (empty($commandes)): ?>
-                <div class="empty-state"><p>Aucune commande.</p></div>
-                <?php else: ?>
+            <div class="commandes-section">
                 <?php foreach ($commandes as $c): ?>
                 <div class="commande-item" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($c)); ?>">
                     <div class="commande-header">
@@ -89,13 +75,13 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                     <div class="commande-details">
                         <span><?php echo htmlspecialchars(trim(($c['prenom_client'] ?? '') . ' ' . ($c['nom_client'] ?? ''))); ?></span>
-                        <span><?php echo htmlspecialchars($c['statut']); ?></span>
-                        <span><?php echo date('d/m H:i', strtotime($c['date_commande'])); ?></span>
+                        <span><?php echo (int) $c['payee'] ? 'Payée' : 'À encaisser'; ?></span>
                     </div>
-                    <a href="dashboard.php#cmd-<?php echo (int) $c['num_commande']; ?>" class="btn-details btn-sm mt-2">Ouvrir sur le dashboard</a>
+                    <?php if (!(int) $c['payee']): ?>
+                    <a href="paiement.php?voir_commande=<?php echo (int) $c['num_commande']; ?>" class="btn-payer btn-sm mt-2 d-inline-block">Encaisser</a>
+                    <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
-                <?php endif; ?>
             </div>
         </main>
     </div>

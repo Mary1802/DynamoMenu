@@ -1,14 +1,12 @@
 <?php
-session_start();
 
-// Vérifier l'authentification
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'caissier') {
-    header('Location: ../client/index.php');
-    exit;
-}
+require_once __DIR__ . '/../includes/staff_auth.php';
+staff_require(['caissier']);
 
 // Configuration de la base de données
 $db_config = require '../config/db.php';
+require_once __DIR__ . '/../includes/money.php';
+require_once __DIR__ . '/../includes/dashboard_helpers.php';
 try {
     $pdo = new PDO(
         "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
@@ -387,8 +385,8 @@ $ht = $facture['total_paye'] - $tva;
                         ?>
                     </td>
                     <td class="text-center"><?php echo $article['quantite']; ?></td>
-                    <td class="text-right">€<?php echo number_format($article['prix'], 2); ?></td>
-                    <td class="text-right">€<?php echo number_format($article['sous_total'], 2); ?></td>
+                    <td class="text-right"><?php echo format_money((float) $article['prix']); ?></td>
+                    <td class="text-right"><?php echo format_money((float) $article['sous_total']); ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -398,15 +396,15 @@ $ht = $facture['total_paye'] - $tva;
         <div class="total-section">
             <div class="total-row">
                 <span>Total HT</span>
-                <span>€<?php echo number_format($ht, 2); ?></span>
+                <span><?php echo format_money((float) $ht); ?></span>
             </div>
             <div class="total-row">
                 <span>TVA (20%)</span>
-                <span>€<?php echo number_format($tva, 2); ?></span>
+                <span><?php echo format_money((float) $tva); ?></span>
             </div>
             <div class="total-row total">
                 <span>TOTAL TTC</span>
-                <span>€<?php echo number_format($facture['total_paye'], 2); ?></span>
+                <span><?php echo format_money((float) $facture['total_paye']); ?></span>
             </div>
         </div>
         
@@ -415,12 +413,7 @@ $ht = $facture['total_paye'] - $tva;
             <div class="section-title">MODE DE PAIEMENT</div>
             <div style="font-size: 14px;">
                 <?php 
-                $mode_labels = [
-                    'carte' => '💳 Carte bancaire',
-                    'especes' => '💵 Espèces',
-                    'mobile' => '📱 Paiement mobile'
-                ];
-                echo $mode_labels[$facture['mode_paiement']] ?? ucfirst($facture['mode_paiement']);
+                echo htmlspecialchars(dashboard_mode_paiement_label((string) ($facture['mode_paiement'] ?? 'especes')));
                 ?>
             </div>
         </div>

@@ -1,16 +1,11 @@
 <?php
 
 require_once __DIR__ . '/dashboard_helpers.php';
+require_once __DIR__ . '/staff_auth.php';
 
-function admin_require_auth(): void
+function admin_require_auth(): array
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
-        header('Location: ../login.php');
-        exit;
-    }
+    return staff_require(['admin'], '../login.php');
 }
 
 function admin_pdo(): PDO
@@ -38,7 +33,9 @@ function admin_sidebar(string $active, array $items = []): void
             'fidelite' => ['url' => 'fidelite.php', 'icon' => 'bi-gift', 'label' => 'Fidélité'],
             'notifications' => ['url' => 'notifications.php', 'icon' => 'bi-bell', 'label' => 'Notifications'],
             'employes' => ['url' => 'employes.php', 'icon' => 'bi-person-badge', 'label' => 'Employés'],
+            'rapports' => ['url' => 'rapports.php', 'icon' => 'bi-file-earmark-bar-graph', 'label' => 'Rapports ventes'],
             'stats' => ['url' => 'stats.php', 'icon' => 'bi-graph-up', 'label' => 'Statistiques'],
+            'contact' => ['url' => 'contact.php', 'icon' => 'bi-telephone', 'label' => 'Contact'],
             'logs' => ['url' => 'logs.php', 'icon' => 'bi-journal-text', 'label' => 'Journaux'],
         ];
     }
@@ -60,13 +57,7 @@ function admin_sidebar(string $active, array $items = []): void
             <?php endforeach; ?>
         </nav>
         <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar"><?php echo strtoupper(substr($_SESSION['nom'] ?? 'A', 0, 1)); ?></div>
-                <div class="user-details">
-                    <div class="user-name"><?php echo htmlspecialchars($_SESSION['nom'] ?? 'Admin'); ?></div>
-                    <div class="user-role">Administrateur</div>
-                </div>
-            </div>
+            <?php dashboard_sidebar_user_footer('admin'); ?>
         </div>
     </aside>
     <?php
