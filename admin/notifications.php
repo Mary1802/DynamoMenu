@@ -3,8 +3,12 @@
 require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/notification_service.php';
 
-$pdo = admin_pdo();
+$pdo = admin_init();
 notification_ensure($pdo);
+
+$annee = trim($_GET['annee'] ?? '');
+$mois = trim($_GET['mois'] ?? '');
+$recherche = trim($_GET['search'] ?? '');
 
 $message = '';
 
@@ -23,7 +27,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_promo'])) {
     }
 }
 
-$notifications = notification_admin_list($pdo, 150);
+$sql = '
+        SELECT n.*, cl.nom_client, cl.prenom_client, cl.email_client
+        FROM notification n
+        LEFT JOIN client cl ON n.id_client = cl.id_client
+        WHERE 1=1
+    ';
+$params = [];
+if ($annee !== '' && ctype_digit($annee)) {
+    $sql .= ' AND YEAR(n.date_creation) = ?';
+    $params[] = $annee;
+}
+if ($mois !== '' && preg_match('/^\d{1,2}$/', $mois)) {
+    $sql .= ' AND MONTH(n.date_creation) = ?';
+    $params[] = (int) $mois;
+}
+if ($recherche !== '') {
+    $sql .= ' AND (cl.nom_client LIKE ? OR cl.prenom_client LIKE ?)';
+    $params[] = '%' . $recherche . '%';
+    $params[] = '%' . $recherche . '%';
+}
+$sql .= ' ORDER BY n.date_creation DESC LIMIT 150';
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 admin_shell_start('Admin — Notifications', 'notifications', 'Communication', 'Notifications', 'Historique et envoi de messages promotionnels.');
 ?>
@@ -42,6 +69,32 @@ admin_shell_start('Admin — Notifications', 'notifications', 'Communication', '
         </div>
         <div class="col-12">
             <button type="submit" name="send_promo" class="btn-primary" onclick="return confirm('Envoyer à tous les clients ?');">Envoyer à tous</button>
+        </div>
+    </form>
+</div>
+
+<div class="chart-container mb-4">
+    <div class="chart-title">Recherche notifications</div>
+    <form method="get" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label text-secondary">Année</label>
+            <input type="text" name="annee" class="form-control" value="<?php echo htmlspecialchars($annee); ?>" placeholder="2025">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-secondary">Mois</label>
+            <select name="mois" class="form-select">
+                <option value="">Tous</option>
+                <?php for ($m = 1; $m <= 12; $m++): ?>
+                    <option value="<?php echo $m; ?>"<?php echo ((string) $m === $mois) ? ' selected' : ''; ?>><?php echo str_pad((string) $m, 2, '0', STR_PAD_LEFT); ?></option>
+                <?php endfor; ?>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-secondary">Nom ou prénom</label>
+            <input type="text" name="search" class="form-control" value="<?php echo htmlspecialchars($recherche); ?>" placeholder="Client">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn-primary w-100">Rechercher</button>
         </div>
     </form>
 </div>

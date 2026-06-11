@@ -1,10 +1,14 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
+require_once dirname(__DIR__, 2) . '/includes/client_session.php';
+client_session_start();
+
 $db_config = require dirname(__DIR__, 2) . '/config/db.php';
 require_once dirname(__DIR__, 2) . '/includes/notification_service.php';
 
 $commande = isset($_GET['commande']) ? (int) $_GET['commande'] : 0;
+$token = trim((string) ($_GET['token'] ?? ''));
 $markRead = isset($_GET['mark_read']) && $_GET['mark_read'] === '1';
 
 try {
@@ -21,9 +25,22 @@ try {
         exit;
     }
 
-    $stmt = $pdo->prepare('SELECT id_client FROM commande WHERE num_commande = ?');
+    $stmt = $pdo->prepare('SELECT num_commande, num_table, id_client FROM commande WHERE num_commande = ?');
     $stmt->execute([$commande]);
-    $idClient = (int) $stmt->fetchColumn();
+    $orderRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$orderRow) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Commande introuvable']);
+        exit;
+    }
+
+    if (!client_can_access_order($orderRow, $token !== '' ? $token : null)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Accès refusé']);
+        exit;
+    }
+
+    $idClient = (int) ($orderRow['id_client'] ?? 0);
     if ($idClient <= 0) {
         http_response_code(404);
         echo json_encode(['error' => 'Client introuvable']);

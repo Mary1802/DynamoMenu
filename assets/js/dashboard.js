@@ -37,13 +37,36 @@
 
         backdrop.addEventListener('click', closeSidebar);
 
-        sidebar.querySelectorAll('.nav-link').forEach(function (link) {
-            link.addEventListener('click', function () {
-                if (window.matchMedia('(max-width: 991.98px)').matches) {
-                    closeSidebar();
-                }
-            });
-        });
+        function isMobileNav() {
+            return window.matchMedia('(max-width: 991.98px)').matches;
+        }
+
+        function followSidebarLink(link, e) {
+            if (!link || !isMobileNav()) {
+                return;
+            }
+            var href = link.getAttribute('href');
+            if (!href || href === '#' || href.indexOf('javascript:') === 0) {
+                return;
+            }
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            closeSidebar();
+            window.setTimeout(function () {
+                window.location.href = href;
+            }, 0);
+        }
+
+        sidebar.addEventListener('click', function (e) {
+            var link = e.target.closest('a.nav-link, a.sidebar-logout-btn');
+            if (link) {
+                followSidebarLink(link, e);
+            }
+        }, true);
+
+        sidebar.style.pointerEvents = 'auto';
 
         window.addEventListener('resize', function () {
             if (window.matchMedia('(min-width: 992px)').matches) {
@@ -86,6 +109,7 @@
         }
 
         toggle.addEventListener('click', function (e) {
+            e.preventDefault();
             e.stopPropagation();
             var open = panel.hidden;
             panel.hidden = !open;
@@ -109,6 +133,9 @@
         initDashboardNav();
         initDashboardSearch();
         initNotificationPanel();
+        if (window.DynamoTheme && typeof window.DynamoTheme.init === 'function') {
+            window.DynamoTheme.init();
+        }
     }
 
     if (document.readyState === 'loading') {

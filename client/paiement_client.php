@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/client_session.php';
+client_session_start();
 
 // Configuration de la base de données
 $db_config = require '../config/db.php';
@@ -17,6 +18,7 @@ try {
 
 // Récupérer le numéro de commande
 $num_commande = $_GET['commande'] ?? null;
+$accessToken = trim((string) ($_GET['token'] ?? ''));
 if (!$num_commande) {
     header('Location: index.php');
     exit;
@@ -56,6 +58,8 @@ if (!$commande) {
     exit;
 }
 
+client_require_order_access($commande, $accessToken !== '' ? $accessToken : null);
+
 // Récupérer les colonnes disponibles dans la table boisson
 $boissonColumns = array_column($pdo->query("SHOW COLUMNS FROM boisson")->fetchAll(PDO::FETCH_ASSOC), 'Field');
 $typeBoissonTableExists = count($pdo->query("SHOW TABLES LIKE 'type_boisson'")->fetchAll(PDO::FETCH_ASSOC)) > 0;
@@ -63,9 +67,9 @@ $boissonSelect = "b.nom_boisson";
 $boissonJoin = "";
 if (in_array('type_boisson', $boissonColumns, true)) {
     $boissonSelect .= ", b.type_boisson";
-} elseif ($typeBoissonTableExists && in_array('id_boisson', $boissonColumns, true)) {
+} elseif ($typeBoissonTableExists && in_array('id_type', $boissonColumns, true)) {
     $boissonSelect .= ", tb.nom_type AS type_boisson";
-    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_boisson = tb.id_boisson";
+    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_type = tb.id_type";
 }
 
 // Récupérer les détails des articles
@@ -95,6 +99,7 @@ $est_payee = !empty($commande['num_facture']);
     <title>Paiement - Commande #<?php echo str_pad($num_commande, 5, '0', STR_PAD_LEFT); ?> - DynamoMenu</title>
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
+    <?php csrf_meta_tag(); ?>
     <style>
         .paiement-container {
             max-width: 1000px;
@@ -507,6 +512,7 @@ $est_payee = !empty($commande['num_facture']);
             </div>
             
             <form id="paiementForm" method="POST" action="traitement_paiement.php">
+                <?php csrf_field(); ?>
                 <input type="hidden" name="commande_id" value="<?php echo $num_commande; ?>">
                 <input type="hidden" name="mode_paiement" id="selectedMode" value="">
                 <input type="hidden" name="montant" value="<?php echo $commande['montant_total']; ?>">
@@ -533,6 +539,7 @@ $est_payee = !empty($commande['num_facture']);
         </div>
     </div>
 
+    <script src="../assets/js/csrf.js?v=1"></script>
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
     <script>
         // Gestion de la sélection du mode de paiement

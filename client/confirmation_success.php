@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/client_session.php';
+client_session_start();
 
 // Vérifier qu'une commande a été confirmée
 if (!isset($_SESSION['commande_confirmee'])) {
@@ -49,7 +50,7 @@ require_once __DIR__ . '/../includes/money.php';
             margin: 0 auto 1.5rem;
             border-radius: 50%;
             background: rgba(255, 111, 31, 0.16);
-            color: #ffb47f;
+            color: #f4c95a;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -91,7 +92,7 @@ require_once __DIR__ . '/../includes/money.php';
         .info-row:last-child {
             border-bottom: none;
             font-weight: 700;
-            color: #ffb47f;
+            color: #f4c95a;
             font-size: 1.1rem;
         }
 
@@ -151,7 +152,7 @@ require_once __DIR__ . '/../includes/money.php';
         }
 
         .step-label.active {
-            color: #ffb47f;
+            color: #f4c95a;
             font-weight: 600;
         }
 

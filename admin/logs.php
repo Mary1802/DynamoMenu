@@ -2,17 +2,42 @@
 
 require_once __DIR__ . '/../includes/admin_layout.php';
 
-$pdo = admin_pdo();
+$pdo = admin_init();
 
+$q = $_GET['q'] ?? '';
 $logs = [];
 try {
-    $logs = $pdo->query('SELECT * FROM log_activite ORDER BY date_action DESC LIMIT 200')->fetchAll(PDO::FETCH_ASSOC);
+    if ($q !== '') {
+        $stmt = $pdo->prepare('SELECT * FROM log_activite WHERE action LIKE ? OR module_concerne LIKE ? OR description LIKE ? ORDER BY date_action DESC LIMIT 200');
+        $qpattern = '%' . $q . '%';
+        $stmt->execute([$qpattern, $qpattern, $qpattern]);
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $logs = $pdo->query('SELECT * FROM log_activite ORDER BY date_action DESC LIMIT 200')->fetchAll(PDO::FETCH_ASSOC);
+    }
 } catch (PDOException $e) {
     $logs = [];
 }
 
 admin_shell_start('Admin — Journaux', 'logs', 'Audit', 'Journaux d\'activité', 'Historique des actions enregistrées.');
 ?>
+
+<div class="chart-container mb-4">
+    <div class="chart-title">Rechercher</div>
+    <form method="get" class="row g-3">
+        <div class="col-md-8">
+            <input type="text" name="q" class="form-control" placeholder="Rechercher dans les actions, modules ou descriptions..." value="<?php echo htmlspecialchars($q); ?>">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn-primary w-100">Rechercher</button>
+        </div>
+        <?php if ($q !== ''): ?>
+        <div class="col-md-2">
+            <a href="logs.php" class="btn btn-outline-secondary w-100">Réinitialiser</a>
+        </div>
+        <?php endif; ?>
+    </form>
+</div>
 
 <div class="chart-container">
     <div class="chart-title">Derniers événements (<?php echo count($logs); ?>)</div>

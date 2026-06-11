@@ -22,6 +22,9 @@ function table_ensure_schema(PDO $pdo): void
     if (!in_array('mode_paiement_souhaite', $commandeCols, true)) {
         $pdo->exec("ALTER TABLE commande ADD COLUMN mode_paiement_souhaite ENUM('especes','mobile_money') NULL AFTER montant_total");
     }
+    if (!in_array('instructions_speciales', $commandeCols, true)) {
+        $pdo->exec('ALTER TABLE commande ADD COLUMN instructions_speciales TEXT NULL AFTER mode_paiement_souhaite');
+    }
 }
 
 function table_assign_missing_codes(PDO $pdo): void

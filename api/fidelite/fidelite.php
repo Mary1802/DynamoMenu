@@ -1,6 +1,16 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
+require_once dirname(__DIR__, 2) . '/includes/client_session.php';
+require_once dirname(__DIR__, 2) . '/includes/table_context.php';
+client_session_start();
+
+if (!table_session()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Session table requise'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 $db_config = require dirname(__DIR__, 2) . '/config/db.php';
 require_once dirname(__DIR__, 2) . '/includes/fidelity_service.php';
 

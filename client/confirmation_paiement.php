@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/client_session.php';
+client_session_start();
 
 // Vérifier qu'une demande de paiement existe
 if (!isset($_SESSION['demande_paiement'])) {

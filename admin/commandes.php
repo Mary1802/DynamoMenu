@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/schema_upgrade.php';
 require_once __DIR__ . '/../includes/money.php';
 
-$pdo = admin_pdo();
+$pdo = admin_init();
 schema_upgrade($pdo);
 
 $message = '';
@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_statut'])) {
 }
 
 $filter = $_GET['statut'] ?? '';
+$q = $_GET['q'] ?? '';
 $sql = "
     SELECT c.*, cl.nom_client, cl.prenom_client, cl.email_client
     FROM commande c
@@ -42,6 +43,13 @@ if ($filter !== '' && isset($statuts[$filter])) {
     $sql .= ' AND c.statut = ?';
     $params[] = $filter;
 }
+if ($q !== '') {
+    $sql .= ' AND (c.num_commande LIKE ? OR c.num_table LIKE ? OR CONCAT(cl.prenom_client, " ", cl.nom_client) LIKE ?)';
+    $qpattern = '%' . $q . '%';
+    $params[] = $qpattern;
+    $params[] = $qpattern;
+    $params[] = $qpattern;
+}
 $sql .= ' ORDER BY c.date_commande DESC LIMIT 200';
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -52,16 +60,35 @@ admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes
 <?php if ($message): ?><div class="success-message"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
 
 <div class="chart-container mb-4">
+    <div class="chart-title">Rechercher</div>
+    <form method="get" class="row g-3">
+        <div class="col-md-6">
+            <input type="text" name="q" class="form-control" placeholder="Rechercher par numéro de commande, client, ou table..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
+        </div>
+        <div class="col-md-4">
+            <select name="statut" class="form-select" style="max-width:220px; min-width:220px;">
+                <option value="">Tous les statuts</option>
+                <?php foreach ($statuts as $k => $label): ?>
+                <option value="<?php echo $k; ?>"<?php echo $filter === $k ? ' selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn-primary w-100">Rechercher</button>
+        </div>
+    </form>
+</div>
+
+<div class="chart-container mb-4">
     <div class="chart-title">Filtrer</div>
     <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
-        <select name="statut" class="form-select" style="max-width:220px;">
+        <select name="statut" class="form-select" style="max-width:220px; min-width:220px;">
             <option value="">Tous les statuts</option>
             <?php foreach ($statuts as $k => $label): ?>
             <option value="<?php echo $k; ?>"<?php echo $filter === $k ? ' selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
             <?php endforeach; ?>
         </select>
         <button type="submit" class="btn-primary">Appliquer</button>
-        <a href="commandes.php" class="btn-details">Réinitialiser</a>
     </form>
 </div>
 
@@ -92,14 +119,14 @@ admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes
                     <td><?php echo format_money((float) ($c['remise_montant'] ?? 0)); ?></td>
                     <td><span class="status-badge"><?php echo htmlspecialchars($statuts[$c['statut']] ?? $c['statut']); ?></span></td>
                     <td>
-                        <form method="post" class="d-flex gap-1 flex-wrap">
+                        <form method="post" class="d-flex gap-1 flex-wrap" style="align-items:flex-end;">
                             <input type="hidden" name="num_commande" value="<?php echo (int) $c['num_commande']; ?>">
-                            <select name="statut" class="form-select form-select-sm" style="max-width:140px;">
+                            <select name="statut" class="form-select form-select-sm" style="width:140px; min-width:140px;">
                                 <?php foreach ($statuts as $k => $label): ?>
                                 <option value="<?php echo $k; ?>"<?php echo $c['statut'] === $k ? ' selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <button type="submit" name="update_statut" class="btn-details btn-sm">OK</button>
+                            <button type="submit" name="update_statut" class="btn-details btn-sm" style="width:60px; min-width:60px;">OK</button>
                         </form>
                     </td>
                 </tr>

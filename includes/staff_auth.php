@@ -4,51 +4,41 @@
  * Sessions employés (admin, cuisinier, caissier).
  */
 
+require_once __DIR__ . '/session_security.php';
+
 const STAFF_SESSION_KEY = 'staff_user';
-const STAFF_SESSION_LIFETIME = 28800; // 8 h
+const STAFF_SESSION_NAME = 'DM_STAFF';
+
+function staff_session_lifetime(): int
+{
+    $config = app_config();
+
+    return (int) ($config['staff_session_lifetime'] ?? 28800);
+}
 
 function staff_session_cookie_path(): string
 {
-    static $path = null;
-    if ($path !== null) {
-        return $path;
-    }
-
-    $appFile = dirname(__DIR__) . '/config/app.php';
-    if (is_file($appFile)) {
-        $app = require $appFile;
-        $basePath = parse_url($app['base_url'] ?? '', PHP_URL_PATH);
-        if (is_string($basePath) && $basePath !== '' && $basePath !== '/') {
-            $path = rtrim($basePath, '/') . '/';
-
-            return $path;
-        }
-    }
-
-    $path = '/';
-
-    return $path;
+    return app_cookie_path();
 }
 
 function staff_session_start(): void
 {
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        return;
+    if (session_status() === PHP_SESSION_ACTIVE && session_name() !== STAFF_SESSION_NAME) {
+        session_write_close();
     }
 
-    session_set_cookie_params([
-        'lifetime' => 0,
-        'path' => staff_session_cookie_path(),
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
-    session_start();
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_name(STAFF_SESSION_NAME);
+        session_set_cookie_params(session_cookie_params());
+        session_start();
+    }
 }
 
 function staff_login(array $employe, string $role): void
 {
     staff_session_start();
     session_regenerate_id(true);
+    csrf_rotate();
 
     $_SESSION[STAFF_SESSION_KEY] = [
         'user_id' => (int) $employe['id_employe'],
@@ -58,7 +48,6 @@ function staff_login(array $employe, string $role): void
         'login_at' => time(),
     ];
 
-    // Compatibilité avec l'existant
     $_SESSION['user_id'] = (int) $employe['id_employe'];
     $_SESSION['nom'] = $_SESSION[STAFF_SESSION_KEY]['nom'];
     $_SESSION['email'] = $employe['email_employe'];
@@ -88,7 +77,7 @@ function staff_user(): ?array
                 'nom' => (string) ($_SESSION['nom'] ?? 'Utilisateur'),
                 'email' => (string) $_SESSION['email'],
                 'role' => (string) $_SESSION['role'],
-                'login_at' => time(),
+                'login_at' => (int) ($_SESSION[STAFF_SESSION_KEY]['login_at'] ?? time()),
             ];
             $data = $_SESSION[STAFF_SESSION_KEY];
         } else {
@@ -96,7 +85,7 @@ function staff_user(): ?array
         }
     }
 
-    if (time() - (int) ($data['login_at'] ?? 0) > STAFF_SESSION_LIFETIME) {
+    if (time() - (int) ($data['login_at'] ?? 0) > staff_session_lifetime()) {
         staff_logout();
 
         return null;
@@ -120,6 +109,10 @@ function staff_require(array $allowedRoles, string $loginRedirect = '../login.ph
         staff_logout();
         header('Location: ' . $loginRedirect . '?err=role');
         exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        csrf_verify_or_abort();
     }
 
     $db_config = require dirname(__DIR__) . '/config/db.php';

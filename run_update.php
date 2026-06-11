@@ -3,7 +3,10 @@
  * Script pour exécuter les mises à jour de la base de données
  */
 
-session_start();
+require_once __DIR__ . '/includes/setup_guard.php';
+require_once __DIR__ . '/includes/staff_auth.php';
+setup_require_access();
+staff_session_start();
 
 // Configuration
 $db_config = require 'config/db.php';
@@ -121,6 +124,7 @@ try {
         "ALTER TABLE table_restaurant ADD COLUMN actif TINYINT(1) NOT NULL DEFAULT 1" => "Colonne table 'actif'",
         "ALTER TABLE table_restaurant ADD COLUMN libelle VARCHAR(100) NULL AFTER nombre_place" => "Colonne table 'libelle'",
         "ALTER TABLE commande ADD COLUMN mode_paiement_souhaite ENUM('especes','mobile_money') NULL AFTER montant_total" => "Colonne commande 'mode_paiement_souhaite'",
+        "ALTER TABLE commande ADD COLUMN instructions_speciales TEXT NULL AFTER mode_paiement_souhaite" => "Colonne commande 'instructions_speciales'",
 
         // 5. Table demande_paiement
         "CREATE TABLE IF NOT EXISTS demande_paiement (

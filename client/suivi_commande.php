@@ -1,7 +1,9 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/client_session.php';
+client_session_start();
 
 $num_commande = (int) ($_GET['commande'] ?? $_SESSION['suivi_commande_id'] ?? 0);
+$accessToken = trim((string) ($_GET['token'] ?? ''));
 if ($num_commande <= 0) {
     header('Location: index.php');
     exit;
@@ -39,6 +41,8 @@ if (!$commande) {
     header('Location: index.php');
     exit;
 }
+
+client_require_order_access($commande, $accessToken !== '' ? $accessToken : null);
 
 $stmt = $pdo->prepare("
     SELECT COALESCE(p.nom_plat, b.nom_boisson, d.personnalisation_boisson) AS nom,
@@ -129,7 +133,7 @@ $sousTotalLignes = array_sum(array_column($lignes, 'sous_total'));
             padding: 0.5rem 1rem;
             border-radius: 999px;
             background: rgba(255,111,31,0.15);
-            color: #ffb47f;
+            color: #f4c95a;
             font-weight: 600;
             margin: 0.5rem 0 1rem;
         }

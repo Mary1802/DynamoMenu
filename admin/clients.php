@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/fidelity_service.php';
 
-$pdo = admin_pdo();
+$pdo = admin_init();
 fidelity_ensure($pdo);
 
 $message = '';
@@ -19,16 +19,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['adjust_points'])) {
     }
 }
 
-$clients = $pdo->query('
+$q = $_GET['q'] ?? '';
+$sql = '
     SELECT id_client, nom_client, prenom_client, email_client, telephone_client, points, niveau_fidelite, date_inscription
     FROM client
-    ORDER BY points DESC, nom_client
-    LIMIT 300
-')->fetchAll(PDO::FETCH_ASSOC);
+    WHERE 1=1
+';
+$params = [];
+if ($q !== '') {
+    $sql .= ' AND (nom_client LIKE ? OR prenom_client LIKE ? OR email_client LIKE ?)';
+    $qpattern = '%' . $q . '%';
+    $params[] = $qpattern;
+    $params[] = $qpattern;
+    $params[] = $qpattern;
+}
+$sql .= ' ORDER BY points DESC, nom_client LIMIT 300';
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 admin_shell_start('Admin — Clients', 'clients', 'CRM', 'Clients & points', 'Consultez les profils et ajustez les points fidélité.');
 ?>
 <?php if ($message): ?><div class="success-message"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
+
+<div class="chart-container mb-4">
+    <div class="chart-title">Rechercher</div>
+    <form method="get" class="row g-3">
+        <div class="col-md-8">
+            <input type="text" name="q" class="form-control" placeholder="Rechercher par nom ou email..." value="<?php echo htmlspecialchars($q); ?>">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn-primary w-100">Rechercher</button>
+        </div>
+        <?php if ($q !== ''): ?>
+        <div class="col-md-2">
+            <a href="clients.php" class="btn btn-outline-secondary w-100">Réinitialiser</a>
+        </div>
+        <?php endif; ?>
+    </form>
+</div>
 
 <div class="chart-container">
     <div class="chart-title">Clients (<?php echo count($clients); ?>)</div>

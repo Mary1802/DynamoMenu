@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/fidelity_service.php';
 
-$pdo = admin_pdo();
+$pdo = admin_init();
 fidelity_ensure($pdo);
 
 $message = '';

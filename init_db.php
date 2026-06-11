@@ -1,10 +1,14 @@
-﻿<?php
+<?php
 /**
  * Script d'initialisation de la base de données DynamoMenu
  * À exécuter une seule fois pour configurer les tables et les données de test
  */
 
-session_start();
+require_once __DIR__ . '/includes/setup_guard.php';
+require_once __DIR__ . '/includes/session_security.php';
+setup_require_access();
+
+staff_session_start();
 
 // Configuration
 $db_config = require __DIR__ . '/config/db.php';
@@ -64,6 +68,7 @@ try {
         statut ENUM('en_attente', 'en_preparation', 'prete', 'livree', 'annulee') DEFAULT 'en_attente',
         montant_total DECIMAL(10, 2) DEFAULT 0.00,
         mode_paiement_souhaite ENUM('especes', 'mobile_money') NULL,
+        instructions_speciales TEXT NULL,
         FOREIGN KEY (id_client) REFERENCES client(id_client) ON DELETE SET NULL,
         FOREIGN KEY (num_table) REFERENCES table_restaurant(num_table) ON DELETE SET NULL
     )");
@@ -133,16 +138,18 @@ try {
         module_concerne VARCHAR(100)
     )");
 
-    // Insérer des employés de test
-    $stmt = $pdo->prepare("INSERT IGNORE INTO employe (nom_employe, prenom_employe, email_employe, mot_de_passe, role, telephone_employe) VALUES (?, ?, ?, ?, ?, ?)");
-    $employes = [
-        ['Pierre', 'Dupont', 'pierre@dynamomenu.fr', 'chef123', 'cuisinier', '0612345678'],
-        ['Marie', 'Curie', 'marie@dynamomenu.fr', 'chef123', 'cuisinier', '0612345679'],
-        ['Jean', 'Martin', 'jean@dynamomenu.fr', 'caisse123', 'caissier', '0623456789'],
-        ['Bob', 'Admin', 'admin@dynamomenu.fr', 'admin123', 'admin', '0634567890'],
-    ];
-    foreach ($employes as $emp) {
-        $stmt->execute($emp);
+    // Premier administrateur uniquement si aucun compte n'existe (installation initiale)
+    $employeCount = (int) $pdo->query('SELECT COUNT(*) FROM employe')->fetchColumn();
+    if ($employeCount === 0) {
+        $stmt = $pdo->prepare('INSERT INTO employe (nom_employe, prenom_employe, email_employe, mot_de_passe, role, telephone_employe) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt->execute([
+            'Admin',
+            'Principal',
+            'admin@dynamomenu.fr',
+            password_hash_employe('admin123'),
+            'admin',
+            '',
+        ]);
     }
 
     // Insérer des clients de test

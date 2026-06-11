@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/client_session.php';
+client_session_start();
 
 if (empty($_SESSION['panier'])) {
     header('Location: panier.php');
@@ -58,6 +59,7 @@ $selected_table = (string) $tableCtx['num_table'];
 
 // Traiter la confirmation de commande
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])) {
+    client_verify_post_csrf();
     // Récupérer les données du formulaire
     $nom = trim($_POST['nom'] ?? '');
     $prenom = trim($_POST['prenom'] ?? '');
@@ -65,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
     $telephone = trim($_POST['telephone'] ?? '');
     $num_table = $selected_table;
     $mode_paiement = $_POST['mode_paiement_souhaite'] ?? '';
+    $instructions = mb_substr(trim((string) ($_POST['instructions'] ?? '')), 0, 1000);
     
     if (empty($nom) || empty($prenom) || empty($email) || empty($telephone) || empty($num_table)) {
         $error = 'Veuillez remplir tous les champs obligatoires (nom, prénom, email, téléphone).';
@@ -110,10 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
 
             table_ensure_schema($pdo);
             $stmt = $pdo->prepare("
-                INSERT INTO commande (id_client, num_table, montant_total, remise_montant, id_recompense, mode_paiement_souhaite, statut) 
-                VALUES (?, ?, ?, ?, ?, ?, 'en_attente')
+                INSERT INTO commande (id_client, num_table, montant_total, remise_montant, id_recompense, mode_paiement_souhaite, instructions_speciales, statut) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')
             ");
-            $stmt->execute([$id_client, $num_table, $total_ttc, $remise, $id_recompense, $mode_paiement]);
+            $stmt->execute([$id_client, $num_table, $total_ttc, $remise, $id_recompense, $mode_paiement, $instructions !== '' ? $instructions : null]);
             $num_commande = $pdo->lastInsertId();
 
             if ($id_recompense && $points_utilises > 0) {
@@ -178,6 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
                 'remise' => $remise,
             ];
             $_SESSION['suivi_commande_id'] = $num_commande;
+            client_order_grant_access((int) $num_commande);
             unset($_SESSION['panier']);
             
             header('Location: suivi_commande.php?commande=' . $num_commande);
@@ -198,6 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
     <title>Confirmation de Commande - DynamoMenu</title>
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
+    <?php csrf_meta_tag(); ?>
     <style>
         body {
             background: radial-gradient(circle at top left, rgba(255,111,31,0.14), transparent 22%),
@@ -404,6 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
                     <h3 class="section-title">Informations personnelles</h3>
                     
                     <form method="POST">
+                        <?php csrf_field(); ?>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -536,6 +542,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
         </div>
     </div>
 
+    <script src="../assets/js/csrf.js?v=1"></script>
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
     <script>
         // Gestion de la sélection des tables

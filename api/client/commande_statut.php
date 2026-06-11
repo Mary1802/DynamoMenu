@@ -1,7 +1,11 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
+require_once dirname(__DIR__, 2) . '/includes/client_session.php';
+client_session_start();
+
 $num = isset($_GET['commande']) ? (int) $_GET['commande'] : 0;
+$token = trim((string) ($_GET['token'] ?? ''));
 if ($num <= 0) {
     http_response_code(400);
     echo json_encode(['error' => 'Commande invalide']);
@@ -20,7 +24,7 @@ try {
 
     $stmt = $pdo->prepare('
         SELECT c.num_commande, c.statut, c.montant_total, c.date_commande, c.mode_paiement_souhaite,
-               t.num_table, cl.nom_client, cl.prenom_client
+               c.num_table, cl.nom_client, cl.prenom_client
         FROM commande c
         LEFT JOIN table_restaurant t ON c.num_table = t.num_table
         LEFT JOIN client cl ON c.id_client = cl.id_client
@@ -32,6 +36,12 @@ try {
     if (!$row) {
         http_response_code(404);
         echo json_encode(['error' => 'Commande introuvable']);
+        exit;
+    }
+
+    if (!client_can_access_order($row, $token !== '' ? $token : null)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Accès refusé']);
         exit;
     }
 

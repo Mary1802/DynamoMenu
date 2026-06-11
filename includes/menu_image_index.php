@@ -44,6 +44,20 @@ function build_menu_image_index(string $imagesRoot, string $webPrefix = '../asse
 }
 
 /**
+ * Corrige les anciens chemins assets/images/kombo/ → assets/images/combo/.
+ */
+function normalize_menu_image_path(?string $path): ?string
+{
+    if ($path === null || trim($path) === '') {
+        return $path;
+    }
+
+    $path = str_replace('\\', '/', trim($path));
+
+    return (string) preg_replace('#assets/images/kombo/#i', 'assets/images/combo/', $path);
+}
+
+/**
  * Encode chaque segment d'un chemin relatif pour l'attribut src (espaces, accents).
  */
 function encode_menu_image_path(string $path): string

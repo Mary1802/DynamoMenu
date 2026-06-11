@@ -18,22 +18,29 @@ try {
     die('Erreur de connexion');
 }
 
-$jour = $_GET['date'] ?? date('Y-m-d');
-$mois = $_GET['mois'] ?? date('Y-m');
+$period = dashboard_report_parse_period(
+    isset($_GET['annee']) ? (int) $_GET['annee'] : null,
+    isset($_GET['mois']) ? (int) $_GET['mois'] : null
+);
+$annee = $period['annee'];
+$moisNum = $period['mois'];
+$moisKey = $period['mois_key'];
 
-$rapport_jour = dashboard_sales_totals($pdo, 'day', $jour);
-$rapport_mois = dashboard_sales_totals($pdo, 'month', $mois);
+$daysInMonth = (int) date('t', strtotime($moisKey . '-01'));
+$jourExport = isset($_GET['jour']) ? (int) $_GET['jour'] : min((int) date('j'), $daysInMonth);
+if ($moisKey !== date('Y-m')) {
+    $jourExport = min($jourExport, $daysInMonth);
+}
+$jourExport = max(1, min($daysInMonth, $jourExport));
 
-$stmt = $pdo->prepare("
-    SELECT f.*, c.num_table, cl.nom_client, cl.prenom_client
-    FROM facture f
-    JOIN commande c ON f.num_commande = c.num_commande
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    WHERE DATE(date_facture) = ?
-    ORDER BY f.date_facture DESC
-");
-$stmt->execute([$jour]);
-$lignes_jour = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$rapport_mois = dashboard_sales_totals($pdo, 'month', $moisKey);
+$lignes_mois = dashboard_fetch_factures_lignes($pdo, $moisKey);
+
+$exportBase = 'annee=' . $annee . '&mois=' . $moisNum;
+$moisLabel = dashboard_report_month_label($annee, $moisNum);
+
+$anneeCourante = (int) date('Y');
+$annees = range($anneeCourante - 2, $anneeCourante + 1);
 ?>
 <!doctype html>
 <html lang="fr">
@@ -41,7 +48,7 @@ $lignes_jour = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php dashboard_asset_links('Caissier — Rapports'); ?>
 </head>
 <body class="dashboard-body">
-    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
     <header class="dashboard-topbar">
         <button type="button" class="dashboard-menu-toggle" id="sidebarToggle" aria-label="Menu"><i class="bi bi-list"></i></button>
         <div class="dashboard-topbar-brand">Dynamo<span>Menu</span></div>
@@ -68,76 +75,125 @@ $lignes_jour = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <header class="dashboard-header">
                 <div class="header-title">
                     <span class="header-eyebrow">Caisse</span>
-                    <h1>Rapports journalier & mensuel</h1>
+                    <h1>Rapports de ventes</h1>
+                    <p class="mb-0">Filtre par mois et année — export PDF en fin de mois</p>
                 </div>
             </header>
 
-            <div class="stats-row mb-4">
-                <div class="stat-box">
-                    <div class="stat-value"><?php echo format_money((float) $rapport_jour['ca']); ?></div>
-                    <div class="stat-label">CA jour <?php echo htmlspecialchars($jour); ?></div>
-                    <div class="small text-secondary mt-1"><?php echo (int) $rapport_jour['nb']; ?> paiements</div>
-                    <div class="payment-split-row">
-                        <div class="payment-split-box">
-                            <div class="label">Cash</div>
-                            <div class="value"><?php echo format_money((float) $rapport_jour['ca_especes']); ?></div>
-                        </div>
-                        <div class="payment-split-box">
-                            <div class="label">Mobile money</div>
-                            <div class="value"><?php echo format_money((float) $rapport_jour['ca_mobile']); ?></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value"><?php echo format_money((float) $rapport_mois['ca']); ?></div>
-                    <div class="stat-label">CA mois <?php echo htmlspecialchars($mois); ?></div>
-                    <div class="small text-secondary mt-1"><?php echo (int) $rapport_mois['nb']; ?> paiements</div>
-                    <div class="payment-split-row">
-                        <div class="payment-split-box">
-                            <div class="label">Cash</div>
-                            <div class="value"><?php echo format_money((float) $rapport_mois['ca_especes']); ?></div>
-                        </div>
-                        <div class="payment-split-box">
-                            <div class="label">Mobile money</div>
-                            <div class="value"><?php echo format_money((float) $rapport_mois['ca_mobile']); ?></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <form class="chart-container mb-4 row g-3" method="get">
+            <form class="chart-container mb-4 row g-3 align-items-end" method="get" id="rapportFilterForm">
                 <div class="col-md-4">
-                    <label class="form-label text-secondary">Jour</label>
-                    <input type="date" name="date" class="form-control" value="<?php echo htmlspecialchars($jour); ?>">
+                    <label class="form-label text-secondary" for="filtreAnnee">Année</label>
+                    <select name="annee" id="filtreAnnee" class="form-select">
+                        <?php foreach ($annees as $a): ?>
+                        <option value="<?php echo $a; ?>"<?php echo $a === $annee ? ' selected' : ''; ?>><?php echo $a; ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label text-secondary">Mois</label>
-                    <input type="month" name="mois" class="form-control" value="<?php echo htmlspecialchars($mois); ?>">
+                    <label class="form-label text-secondary" for="filtreMois">Mois</label>
+                    <select name="mois" id="filtreMois" class="form-select">
+                        <?php
+                        $nomsMois = [
+                            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+                            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+                            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
+                        ];
+                        foreach ($nomsMois as $num => $nom):
+                        ?>
+                        <option value="<?php echo $num; ?>"<?php echo $num === $moisNum ? ' selected' : ''; ?>><?php echo $nom; ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button type="submit" class="btn-primary w-100">Actualiser</button>
+                <div class="col-md-4">
+                    <button type="submit" class="btn-primary w-100">Afficher le rapport</button>
                 </div>
             </form>
 
-            <div class="chart-container">
-                <div class="chart-title">Détail du jour</div>
-                <div class="table-responsive-wrap">
+            <div class="stats-row stats-row--3 mb-4">
+                <div class="stat-box">
+                    <div class="stat-value"><?php echo format_money((float) $rapport_mois['ca']); ?></div>
+                    <div class="stat-label">CA — <?php echo htmlspecialchars($moisLabel); ?></div>
+                    <div class="small text-secondary mt-1"><?php echo (int) $rapport_mois['nb']; ?> paiements</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Cash</div>
+                    <div class="stat-value" style="font-size:1.35rem;"><?php echo format_money((float) $rapport_mois['ca_especes']); ?></div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Mobile money</div>
+                    <div class="stat-value" style="font-size:1.35rem;"><?php echo format_money((float) $rapport_mois['ca_mobile']); ?></div>
+                </div>
+            </div>
+
+            <div class="chart-container mb-4 rapport-export-actions">
+                <div class="chart-title mb-3">Imprimer ou télécharger</div>
+                <div class="rapport-export-grid">
+                    <section class="rapport-export-card" aria-labelledby="rapportMensuelTitle">
+                        <h3 class="rapport-export-card-title" id="rapportMensuelTitle">Rapport mensuel</h3>
+                        <p class="rapport-export-card-desc">Tout le mois affiché (<?php echo htmlspecialchars($moisLabel); ?>)</p>
+                        <div class="rapport-export-buttons">
+                            <a href="rapport_imprimer.php?type=mensuel&amp;<?php echo $exportBase; ?>" class="rapport-export-btn rapport-export-btn--print" target="_blank" rel="noopener">
+                                <i class="bi bi-printer" aria-hidden="true"></i>
+                                <span>Imprimer</span>
+                            </a>
+                            <a href="rapport_export.php?type=mensuel&amp;<?php echo $exportBase; ?>" class="rapport-export-btn rapport-export-btn--download">
+                                <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+                                <span>Télécharger</span>
+                            </a>
+                        </div>
+                    </section>
+                    <section class="rapport-export-card" aria-labelledby="rapportJournalierTitle">
+                        <h3 class="rapport-export-card-title" id="rapportJournalierTitle">Rapport journalier</h3>
+                        <p class="rapport-export-card-desc">Un jour précis du mois sélectionné</p>
+                        <div class="rapport-export-day">
+                            <label class="rapport-export-day-label" for="jourExport">Jour</label>
+                            <select id="jourExport" class="form-select rapport-export-day-select" aria-label="Jour du rapport journalier">
+                                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
+                                <option value="<?php echo $d; ?>"<?php echo $d === $jourExport ? ' selected' : ''; ?>><?php echo $d; ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                        <div class="rapport-export-buttons">
+                            <a href="rapport_imprimer.php?type=journalier&amp;<?php echo $exportBase; ?>&amp;jour=<?php echo $jourExport; ?>" class="rapport-export-btn rapport-export-btn--print rapport-jour-link" target="_blank" rel="noopener" data-base="rapport_imprimer.php?type=journalier&amp;<?php echo $exportBase; ?>">
+                                <i class="bi bi-printer" aria-hidden="true"></i>
+                                <span>Imprimer</span>
+                            </a>
+                            <a href="rapport_export.php?type=journalier&amp;<?php echo $exportBase; ?>&amp;jour=<?php echo $jourExport; ?>" class="rapport-export-btn rapport-export-btn--download rapport-jour-link" data-base="rapport_export.php?type=journalier&amp;<?php echo $exportBase; ?>">
+                                <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+                                <span>Télécharger</span>
+                            </a>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <div class="chart-container" id="rapport-print-area">
+                <div class="chart-title">Détail du mois — <?php echo htmlspecialchars($moisLabel); ?></div>
+                <div class="table-responsive-wrap caisse-section-scroll order-scroll-panel">
                     <table class="data-table">
                         <thead>
-                            <tr><th>Facture</th><th>Commande</th><th>Client</th><th>Table</th><th>Mode</th><th>Montant</th><th>Heure</th></tr>
+                            <tr>
+                                <th>Date et heure</th>
+                                <th>Facture</th>
+                                <th>Commande</th>
+                                <th>Client</th>
+                                <th>Table</th>
+                                <th>Mode</th>
+                                <th>Montant</th>
+                            </tr>
                         </thead>
                         <tbody>
-                        <?php if (empty($lignes_jour)): ?>
-                            <tr><td colspan="7">Aucun paiement ce jour</td></tr>
-                        <?php else: foreach ($lignes_jour as $l): ?>
+                        <?php if (empty($lignes_mois)): ?>
+                            <tr><td colspan="7">Aucun paiement pour cette période</td></tr>
+                        <?php else: foreach ($lignes_mois as $l): ?>
                             <tr>
+                                <td><?php echo date('d/m/Y H:i', strtotime($l['date_facture'])); ?></td>
                                 <td>#<?php echo (int) $l['num_facture']; ?></td>
-                                <td>#<?php echo str_pad($l['num_commande'], 5, '0', STR_PAD_LEFT); ?></td>
+                                <td>#<?php echo str_pad((string) $l['num_commande'], 5, '0', STR_PAD_LEFT); ?></td>
                                 <td><?php echo htmlspecialchars(trim(($l['prenom_client'] ?? '') . ' ' . ($l['nom_client'] ?? ''))); ?></td>
-                                <td><?php echo htmlspecialchars((string) $l['num_table']); ?></td>
+                                <td><?php echo htmlspecialchars((string) ($l['num_table'] ?? '')); ?></td>
                                 <td><?php echo htmlspecialchars(dashboard_mode_paiement_label((string) $l['mode_paiement'])); ?></td>
                                 <td><?php echo format_money((float) $l['total_paye']); ?></td>
-                                <td><?php echo date('H:i', strtotime($l['date_facture'])); ?></td>
                             </tr>
                         <?php endforeach; endif; ?>
                         </tbody>
@@ -147,5 +203,21 @@ $lignes_jour = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </main>
     </div>
     <?php dashboard_scripts(); ?>
+    <script>
+    (function () {
+        var jourSelect = document.getElementById('jourExport');
+        if (!jourSelect) return;
+        document.querySelectorAll('.rapport-jour-link').forEach(function (link) {
+            function updateHref() {
+                var base = link.getAttribute('data-base');
+                if (base) {
+                    link.href = base + '&jour=' + encodeURIComponent(jourSelect.value);
+                }
+            }
+            updateHref();
+            jourSelect.addEventListener('change', updateHref);
+        });
+    })();
+    </script>
 </body>
 </html>

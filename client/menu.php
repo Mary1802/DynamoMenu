@@ -1,9 +1,11 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/client_session.php';
+client_session_start();
 $db_config = require __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/table_context.php';
 require_once __DIR__ . '/../includes/menu_image_index.php';
 require_once __DIR__ . '/../includes/money.php';
+require_once __DIR__ . '/../includes/schema_upgrade.php';
 
 try {
     $pdo = new PDO(
@@ -13,14 +15,163 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
     bootstrap_table_context($pdo);
+    schema_upgrade($pdo);
 } catch (PDOException $e) {
     die('Erreur de connexion');
 }
 require_once __DIR__ . '/../includes/client_header.php';
+require_once __DIR__ . '/../includes/client_footer.php';
 $tableCtx = table_session();
 
 $menuImageIndex = build_menu_image_index(__DIR__ . '/../assets/images');
 $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80';
+
+// Build menu items from database so admin changes appear immediately on client menu
+$menuItems = [];
+// Idempotent import of static menu items into DB: ensures all static entries are present in plat/boisson
+function find_image_path_in_assets(string $name): ?string {
+    $base = __DIR__ . '/../assets/images';
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base));
+    foreach ($it as $f) {
+        if (!$f->isFile()) continue;
+        if (strcasecmp($f->getFilename(), $name) === 0) {
+            $rel = str_replace('\\', '/', substr($f->getPathname(), strlen(dirname(__DIR__)) + 1));
+            return $rel;
+        }
+    }
+    return null;
+}
+
+// Static seed list (name, category, price, image filename)
+$staticSeed = [
+    ['Pizza Margherita','Plats principaux',24,'Pizza.jpg','plat'],
+    ['Tacos Maison','Plats principaux',27,'Tacos.jpg','plat'],
+    ['Poulet Mayo','Plats principaux',22,'Poulet mayo.jpg','plat'],
+    ['Spaghetti Bolognaise','Plats principaux',19,'spaghetti bolognaise.jpg','plat'],
+    ['Fried Rice','Plats principaux',18,'Fried rice.jpg','plat'],
+    ['Crevettes Sautées','Plats principaux',34,'Crevetes.jpg','plat'],
+    ['Poisson Grillé','Plats principaux',36,'poisson ambassade.jpg','plat'],
+    ['Poisson Fumé','Plats principaux',28,'Poisson fumé.jpg','plat'],
+    ['Ntaba','Plats principaux',30,'Ntaba.jpg','plat'],
+    ['Poisson Salé','Plats principaux',26,'Poisson salé.jpg','plat'],
+    ['Poulet Rôti','Plats principaux',23,'poulet.jpg','plat'],
+    ['Macaroni Saucisse','Plats principaux',20,'pates aux saucisses.png','plat'],
+    ['Saucisses Grillées','Plats principaux',17,'Saucisses.jpg','plat'],
+    ['Combo Burger Poulet','Plats principaux',29,'combo burger frites poulet.jpg','plat'],
+    ['Fufu et Sauce','Plats principaux',16,'Fufu.jpg','plat'],
+    ['Burger Maison','Plats principaux',21,'KFC.jpg','plat'],
+    ['Saucisses & Frites','Plats principaux',26,'Saucisses frites.jpg','plat'],
+    ['Makoso','Plats principaux',25,'makoso.jpg','plat'],
+    ['Samoussa','Apéritifs',6,'Samoussa.jpg','plat'],
+    ['Croquettes au fromage','Apéritifs',5,'croque monsieur.png','plat'],
+    ['Croquettes aux pommes de terre','Apéritifs',5,'croquettes aux pommes de terre.png','plat'],
+    ['4 Petits pains','Apéritifs',6,'petits pains.png','plat'],
+    ['3 Croissants au beurre','Apéritifs',6,'pancakes.png','plat'],
+    ['Salade Verte','Entrées',8,'salade aux légumes.png','plat'],
+    ['Soupe du Jour','Entrées',9,'soupes aux légumes.png','plat'],
+    ['Salade Avocat','Entrées',8,'salade avocat.png','plat'],
+    ['Carpaccio de Boeuf','Entrées',12,'bouillon à la viande de boeuf.png','plat'],
+    ['Combo 2 Burger + frites + coca','Combo',55,'combo 2burgers frites et coca.png','plat'],
+    ['Combo Burger','Combo',28,'combo burger frites poulet.jpg','plat'],
+    ['Combo Sandwich','Combo',30,'combo sandwich frites.png','plat'],
+    ['Combo Croque monsieur','Combo',32,'combo 3croques monsieur frites et mojito.png','plat'],
+    ['Gâteau au Chocolat','Desserts',7,'Gateau au chocolat.jpg','plat'],
+    ['Glace à la Banane','Desserts',6,'glace a la banane.jpg','plat'],
+    ['Churros','Desserts',6,'spring au chocolat.png','plat'],
+    ['Salade de fruit','Desserts',7,'salade de fruit.png','plat'],
+    ['Crepes au chocolat','Desserts',7,'crepes au chocolat.jpg','plat'],
+    ['Tarte aux pommes','Desserts',7,'tarte aux pommes.jpg','plat'],
+    ['Frites','Accompagnements',4,'Frites.jpg','plat'],
+    ['Fufu','Accompagnements',4,'Fufu.jpg','plat'],
+    ['Riz Blanc','Accompagnements',3,'Riz blanc.jpg','plat'],
+    ['Pommes de Terre','Accompagnements',4,'Pomme de terre.jpg','plat'],
+    ['Chikwangue','Accompagnements',4,'Chikwangue.jpg','plat'],
+    ['Bananes Plantain','Accompagnements',5,'Bananes.jpg','plat'],
+    // Boissons
+    ['Jus de Fruit','Boissons',4,'Jus de fruit.jpg','boisson'],
+    ['Milkshake','Boissons',5,'Milkshakes.jpg','boisson'],
+    ['Cocktail de Fruits','Boissons',5,'Coktail de fruit.jpg','boisson'],
+    ['Smoothie Banane','Boissons',5,'glace a la banane.jpg','boisson'],
+    ['Coca-Cola, Fanta, Sprite','Boissons',3,'boissons coca cola.png','boisson'],
+    ['Eau Minérale','Boissons',2,null,'boisson'],
+    ['Pinacolada','Boissons',3,'pinnacolada.png','boisson'],
+    ['Mojito','Boissons',3,'mojito.png','boisson'],
+    ['Jack Daniels','Boissons',4,'whisky jack daniel.jpg','boisson'],
+    ['Red Label','Boissons',5,'whisky red label.jpg','boisson'],
+    ['Heinekein','Boissons',5,'bierre heinekein.jpg','boisson'],
+];
+
+try {
+    foreach ($staticSeed as $seed) {
+        [$sname, $scat, $sprice, $simg, $stype] = $seed;
+        $imgPath = $simg ? normalize_menu_image_path(find_image_path_in_assets($simg)) : null;
+        if ($stype === 'plat') {
+            $stmt = $pdo->prepare('SELECT categorie, image_url FROM plat WHERE nom_plat = ?');
+            $stmt->execute([$sname]);
+            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$existing) {
+                $stmt2 = $pdo->prepare('INSERT INTO plat (nom_plat, prix_unitaire, categorie, quantite_plat, image_url) VALUES (?, ?, ?, ?, ?)');
+                $stmt2->execute([$sname, $sprice, $scat, 0, $imgPath]);
+            } else {
+                $currentCategory = trim((string) ($existing['categorie'] ?? ''));
+                $currentImage = trim((string) ($existing['image_url'] ?? ''));
+                if ($currentCategory !== $scat || ($currentImage === '' && $imgPath !== null)) {
+                    $stmt2 = $pdo->prepare('UPDATE plat SET categorie = ?, image_url = COALESCE(NULLIF(?, \'\'), image_url) WHERE nom_plat = ?');
+                    $stmt2->execute([$scat, $imgPath, $sname]);
+                }
+            }
+        } else {
+            $stmt = $pdo->prepare('SELECT image_url FROM boisson WHERE nom_boisson = ?');
+            $stmt->execute([$sname]);
+            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$existing) {
+                $stmt2 = $pdo->prepare('INSERT INTO boisson (nom_boisson, id_type, dosage, quantite_boisson, prix_unitaire, options_fruits, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)');
+                    $stmt2->execute([$sname, 1, '', 0, $sprice, '', $imgPath]);
+            } else {
+                $currentImage = trim((string) ($existing['image_url'] ?? ''));
+                if ($currentImage === '' && $imgPath !== null) {
+                    $stmt2 = $pdo->prepare('UPDATE boisson SET image_url = ? WHERE nom_boisson = ?');
+                    $stmt2->execute([$imgPath, $sname]);
+                }
+            }
+        }
+    }
+} catch (PDOException $e) {
+    // ignore import errors
+}
+try {
+    $stmt = $pdo->query("SELECT id_plat, nom_plat, prix_unitaire, categorie, image_url FROM plat ORDER BY categorie, nom_plat");
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $menuItems[] = [
+            'category' => $r['categorie'] ?: 'Plats principaux',
+            'name' => $r['nom_plat'],
+            'desc' => '',
+            'price' => isset($r['prix_unitaire']) ? (float) $r['prix_unitaire'] : 0,
+            'img' => normalize_menu_image_path($r['image_url'] ?: null),
+        ];
+    }
+    $boissonCols = array_column($pdo->query('SHOW COLUMNS FROM boisson')->fetchAll(PDO::FETCH_ASSOC), 'Field');
+    $typeBoissonTableExists = count($pdo->query("SHOW TABLES LIKE 'type_boisson'")->fetchAll(PDO::FETCH_ASSOC)) > 0;
+    if (in_array('id_type', $boissonCols, true) && $typeBoissonTableExists) {
+        $stmt = $pdo->query("SELECT b.id_boisson, b.nom_boisson, COALESCE(tb.nom_type, 'soda') AS type_boisson, b.dosage, b.quantite_boisson, b.options_fruits, b.prix_unitaire, b.image_url FROM boisson b LEFT JOIN type_boisson tb ON b.id_type = tb.id_type ORDER BY COALESCE(tb.nom_type, 'soda'), b.nom_boisson");
+    } else {
+        $stmt = $pdo->query("SELECT id_boisson, nom_boisson, 'soda' AS type_boisson, dosage, quantite_boisson, options_fruits, prix_unitaire, image_url FROM boisson ORDER BY nom_boisson");
+    }
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $typeLabel = trim((string) ($r['type_boisson'] ?? ''));
+        $desc = trim(trim(($r['dosage'] ?? '')) . (!empty($r['options_fruits']) ? ' - ' . $r['options_fruits'] : '') . ($typeLabel !== '' ? ' - ' . $typeLabel : ''));
+        $menuItems[] = [
+            'category' => 'Boissons',
+            'type' => $typeLabel,
+            'name' => $r['nom_boisson'],
+            'desc' => $desc,
+            'price' => isset($r['prix_unitaire']) ? (float) $r['prix_unitaire'] : 0,
+            'img' => normalize_menu_image_path($r['image_url'] ?: null),
+        ];
+    }
+} catch (PDOException $e) {
+    // keep $menuItems empty on error
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -30,7 +181,8 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
     <title>DynamoMenu - Menu</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css?v=9">
+    <?php csrf_meta_tag(); ?>
     <style>
         :root {
             --accent-color: #ff6f1f;
@@ -45,25 +197,24 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             display: grid;
             grid-template-columns: 1fr;
             gap: 1.25rem;
-            align-items: stretch;
+            align-items: start;
         }
         @media (min-width: 768px) {
             #menuList.menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
 
         .menu-card {
-            height: 100%;
+            height: auto;
             display: flex;
             flex-direction: column;
         }
 
-        /* Image à gauche (200 px) ; hauteur = toute la carte */
+        /* Image à gauche ; hauteur calée sur le contenu */
         .menu-card-inner {
             display: flex;
             flex-direction: row;
             align-items: stretch;
-            height: 100%;
-            min-height: var(--menu-img-min-height);
+            min-height: 0;
         }
 
         .menu-card .menu-img-wrap {
@@ -71,8 +222,8 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             width: var(--menu-img-width);
             min-width: var(--menu-img-width);
             max-width: var(--menu-img-width);
+            min-height: var(--menu-img-min-height);
             align-self: stretch;
-            min-height: 100%;
             position: relative;
             overflow: hidden;
             background: rgba(255, 255, 255, 0.05);
@@ -92,10 +243,11 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
         .menu-card-body {
             flex: 1 1 auto;
             min-width: 0;
-            padding: 1.15rem 1.25rem;
+            padding: 1rem 1.15rem;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
+            gap: 0.45rem;
         }
 
         .menu-card-body .menu-desc {
@@ -103,6 +255,57 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            margin: 0;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+
+        .menu-card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .menu-card-tag {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            background: rgba(var(--dm-primary-rgb), 0.12);
+            border: 1px solid rgba(var(--dm-primary-rgb), 0.28);
+            color: var(--dm-accent-soft);
+        }
+
+        .menu-card-tag--type {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.75);
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 500;
+        }
+
+        .menu-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-top: 0.15rem;
+            padding-top: 0.65rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .menu-card-footer .price {
+            font-size: 1.05rem;
+        }
+
+        .menu-card-footer-hint {
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 500;
         }
 
         .menu-card-body h3 {
@@ -166,10 +369,10 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
         .soda-unit-row { margin-bottom: 0.5rem; }
     </style>
 </head>
-<body>
+<body class="client-site">
     <?php render_client_nav('menu'); ?>
 
-    <main class="container-fluid px-3 px-md-4 py-4 py-md-5">
+    <main class="container-fluid px-3 px-md-4 py-4 py-md-5 client-main-menu">
         <?php if (!$tableCtx): ?>
         <div class="alert alert-warning mb-3 py-2 text-center" role="alert">
             Pour commander, scannez d'abord le <strong>QR code sur votre table</strong>.
@@ -194,18 +397,25 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             </div>
         </div>
 
+        <!-- Retour en haut -->
+        <button type="button" id="scrollTopBtn" class="client-scroll-top" aria-label="Retour en haut de la page" title="Retour en haut">
+            <i class="bi bi-arrow-up" aria-hidden="true"></i>
+        </button>
+
         <!-- Floating quick cart -->
-                <a href="<?php echo htmlspecialchars(table_link('panier.php')); ?>" class="position-fixed d-flex align-items-center justify-content-center bg-warning text-dark rounded-circle" style="width:56px;height:56px;right:20px;bottom:20px;z-index:1070;box-shadow:0 6px 18px rgba(0,0,0,0.2);">
+                <a href="<?php echo htmlspecialchars(table_link('panier.php')); ?>" class="client-fab-cart position-fixed d-flex align-items-center justify-content-center rounded-circle" style="width:56px;height:56px;right:20px;bottom:20px;z-index:1070;">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16">
               <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .49.598l-1.5 6A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L1.01 1.607 1 1.5H.5zM5 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
             </svg>
                         <span id="floatingCartCount" class="floating-badge">0</span>
         </a>
 
-        <div class="text-center">
+        <div class="text-center pb-4">
             <a class="btn btn-primary btn-lg px-5" href="<?php echo htmlspecialchars(table_link('panier.php')); ?>">Voir mon panier</a>
         </div>
     </main>
+
+    <?php render_client_footer(); ?>
 
     <!-- Modal boisson fruit -->
     <div class="modal fade drink-modal" id="fruitDrinkModal" tabindex="-1" aria-hidden="true">
@@ -275,7 +485,7 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             return new Intl.NumberFormat('fr-CD', { maximumFractionDigits: MONEY.decimals }).format(cdf) + ' ' + MONEY.symbol;
         }
 
-        const categories = ['All','Plats principaux','Apéritifs','Entrées','Kombo','Boissons','Desserts','Accompagnements'];
+        let categories = ['All'];
         const imageIndex = <?php echo json_encode($menuImageIndex, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
         const IMAGE_PLACEHOLDER = <?php echo json_encode($menuImagePlaceholder, JSON_UNESCAPED_SLASHES); ?>;
 
@@ -285,8 +495,20 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
 
         function localImg(filename) {
             if (!filename) return IMAGE_PLACEHOLDER;
-            const key = String(filename).toLowerCase();
-            const resolved = imageIndex[key];
+            let file = String(filename).trim();
+            if (file === '') return IMAGE_PLACEHOLDER;
+            file = file.replace(/assets\/images\/kombo\//gi, 'assets/images/combo/');
+            if (/^https?:\/\//i.test(file) || file.startsWith('data:')) {
+                return file;
+            }
+            if (file.startsWith('../assets/') || file.startsWith('./assets/') || file.startsWith('/assets/')) {
+                return encodeImagePath(file);
+            }
+            if (file.startsWith('assets/')) {
+                return encodeImagePath('../' + file);
+            }
+            const basename = file.split('/').pop().toLowerCase();
+            const resolved = imageIndex[basename];
             return resolved ? encodeImagePath(resolved) : IMAGE_PLACEHOLDER;
         }
 
@@ -300,10 +522,7 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
         const fruitModal = new bootstrap.Modal(document.getElementById('fruitDrinkModal'));
         const sodaModal = new bootstrap.Modal(document.getElementById('sodaDrinkModal'));
 
-        const items = [];
-        function add(cat,name,desc,price,img,rating=4.3,reviews=50){
-            items.push({category:cat,name,desc,price,img:localImg(img),rating,reviews});
-        }
+        const items = <?php echo json_encode($menuItems ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
         function drinkKind(name) {
             const n = name.toLowerCase().trim();
@@ -340,73 +559,12 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             });
         }
 
-        // --- Plats principaux (20)
-        add('Plats principaux','Pizza Margherita','Tomate, mozzarella, basilic',24, 'Pizza.jpg',4.6,210);
-        add('Plats principaux','Tacos Maison','Tacos garnis de viande épicée',27, 'Tacos.jpg',4.3,115);
-        add('Plats principaux','Poulet Mayo','Poulet rôti, sauce mayo',22, 'Poulet mayo.jpg',4.5,89);
-        add('Plats principaux','Spaghetti Bolognaise','Pâtes à la sauce bolognaise',19, 'spaghetti bolognaise.jpg',4.4,152);
-        add('Plats principaux','Fried Rice','Riz sauté aux légumes',18, 'Fried rice.jpg',4.2,76);
-        add('Plats principaux','Crevettes Sautées','Crevettes à l’ail et beurre',34, 'Crevetes.jpg',4.7,98);
-        add('Plats principaux','Poisson Grillé','Poisson ambassade grillé',36, 'poisson ambassade.jpg',4.5,125);
-        add('Plats principaux','Poisson Fumé','Filet de poisson fumé',28, 'Poisson fumé.jpg',4.2,64);
-        add('Plats principaux','Ntaba','Spécialité locale Ntaba',30, 'Ntaba.jpg',4.6,44);
-        add('Plats principaux','Poisson Salé','Poisson salé braisé',26, 'Poisson salé.jpg',4.1,54);
-        add('Plats principaux','Poulet Rôti','Poulet entier rôti',23, 'poulet.jpg',4.3,210);
-        add('Plats principaux','Macaroni Saucisse','Macaroni avec saucisse',20, 'pates aux saucisses.png',4.0,89);
-        add('Plats principaux','Saucisses Grillées','Saucisses maison',17, 'Saucisses.jpg',4.1,65);
-        add('Plats principaux','Combo Burger Poulet','Burger maison + frites',29, 'combo burger frites poulet.jpg',4.4,310);
-        add('Plats principaux','Fufu et Sauce','Fufu traditionnel avec sauce',16, 'Fufu.jpg',4.2,33);
-        add('Plats principaux','Burger Maison','Burger gourmet',21, 'KFC.jpg',4.3,140);
-        add('Plats principaux','Saucisses & Frites','Plateau familial',26, 'Saucisses frites.jpg',4.2,112);
-        add('Plats principaux','Makoso','Plat traditionnel',25, 'makoso.jpg',4.5,67);
-
-        // --- Apéritifs (5)
-        add('Apéritifs','Samoussa','Triangles croustillants farcis',6, 'Samoussa.jpg',4.4,125);
-        add('Apéritifs','Croquettes au fromage','Croquettes au fromage',5, 'croque monsieur.png',4.2,410);
-        add('Apéritifs','Croquettes aux pommes de terre','Croquettes aux pommes de terre',5, 'croquettes aux pommes de terre.png',4.1,84);
-        add('Apéritifs','4 Petits pains ','Petits pains',6, 'petits pains.png',4.0,30);
-        add('Apéritifs','3 Croissants au beurre','Croissants au beurre',6, 'pancakes.png',4.1,27);
-
-        // --- Entrées (5)
-        add('Entrées','Salade Verte','Salade fraîche',8, 'salade aux légumes.png',4.1,54);
-        add('Entrées','Soupe du Jour','Soupe aux légumes',9, 'soupes aux légumes.png',4.0,31);
-        add('Entrées','Salade Avocat','Salade avocat',8, 'salade avocat.png', 4.0,31);
-        add('Entrées','Carpaccio de Boeuf','Fines tranches de boeuf',12, 'bouillon à la viande de boeuf.png',4.5,22);
-
-        // --- Kombo (5)
-        add('Kombo','Combo 2 Burger + frites + coca','Assortiment pour 2 personnes',55, 'combo 2burgers frites et coca.png',4.6,48);
-        add('Kombo','Combo Burger','Burger + frites + boisson',28, 'combo burger frites poulet.jpg',4.4,142);
-        add('Kombo','Combo Sandwich','Sandwich + frites + salade',30, 'combo sandwich frites.png',4.3,36);
-        add('Kombo','Combo Croque monsieur','3 Croques monsieur + frites + Cocktail',32, 'combo 3croques monsieur frites et mojito.png',4.4,29);
-
-        // --- Boissons (20)
-        add('Boissons','Jus de Fruit','Jus frais maison',4, 'Jus de fruit.jpg',4.2,120);
-        add('Boissons','Milkshake','Milkshake onctueux',5, 'Milkshakes.jpg',4.3,88);
-        add('Boissons','Cocktail de Fruits','Mix vitaminé',5, 'Coktail de fruit.jpg',4.1,75);
-        add('Boissons','Smoothie Banane','Smoothie à la banane',5, 'glace a la banane.jpg',4.0,55);
-        add('Boissons','Coca-Cola, Fanta, Sprite','Boisson gazeuse',3, 'boissons coca cola.png',4.0,310);
-        add('Boissons','Eau Minérale','Bouteille 50cl',2, null,4.0,500);
-        add('Boissons','Pinacolada','Cocktail',3, 'pinnacolada.png',4.2,80);
-        add('Boissons','Mojito','Cocktail',3, 'mojito.png',4.2,80);
-        add('Boissons','Jack Daniels','Whisky',4, 'whisky jack daniel.jpg',4.3,44);
-        add('Boissons','Red Label','Whisky',5, 'whisky red label.jpg',4.2,67);
-        add('Boissons','Heinekein','Bierre',5, 'bierre heinekein.jpg',4.2,67);
-
-        // --- Desserts (10)
-        add('Desserts','Gâteau au Chocolat','Moelleux au chocolat',7, 'Gateau au chocolat.jpg',4.7,129);
-        add('Desserts','Glace à la Banane','Crème glacée banane',6, 'glace a la banane.jpg',4.4,98);
-        add('Desserts','Churros','Dessert italien',6, 'spring au chocolat.png',4.4,98);
-        add('Desserts','Salade de fruit','Salade de fruit',7, 'salade de fruit.png',4.2,34);
-        add('Desserts','Crepes au chocolat','Crepe au chocolat',7, 'crepes au chocolat.jpg',4.2,34);
-        add('Desserts','Tarte aux pommes','Tarte maison',7, 'tarte aux pommes.jpg',4.6,41);
-
-        // --- Accompagnements (5)
-        add('Accompagnements','Frites','Pommes frites',4, 'Frites.jpg',4.3,410);
-        add('Accompagnements','Fufu','Farine de mais',4, 'Fufu.jpg',4.3,410);
-        add('Accompagnements','Riz Blanc','Riz vapeur',3, 'Riz blanc.jpg',4.0,210);
-        add('Accompagnements','Pommes de Terre','Pommes de terre rissolées',4, 'Pomme de terre.jpg',4.1,64);
-        add('Accompagnements','Chikwangue','Manioc',4, 'Chikwangue.jpg',4.0,88);
-        add('Accompagnements','Bananes Plantain','Accompagnement local',5, 'Bananes.jpg',4.2,27);
+        // The menu is rendered from the database rows seeded by schema_upgrade().
+        items.forEach(i => {
+            if (i.category && !categories.includes(i.category)) {
+                categories.push(i.category);
+            }
+        });
 
         // render categories buttons
         const categoriesContainer = document.getElementById('categories');
@@ -419,21 +577,42 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
 
         const menuList = document.getElementById('menuList');
         let currentList = [];
+
+        const MENU_DESC_FALLBACK = {
+            'Combo': 'Formule complète, idéale pour un repas sur place.',
+            'Apéritifs': 'Pour commencer en douceur.',
+            'Entrées': 'Une entrée fraîche pour ouvrir l\'appétit.',
+            'Plats principaux': 'Préparé à la commande par notre cuisine.',
+            'Accompagnements': 'Le complément parfait de votre plat.',
+            'Desserts': 'Une touche sucrée pour finir en beauté.',
+            'Boissons': 'Servi frais avec votre commande.',
+        };
+
+        function menuItemDescription(item) {
+            const custom = (item.desc || '').trim();
+            if (custom) {
+                return custom;
+            }
+            return MENU_DESC_FALLBACK[item.category] || 'Disponible à la commande — servi à votre table.';
+        }
+
         function render(filter){
             menuList.innerHTML='';
             const list = filter==='All' ? items : items.filter(i=>i.category===filter);
             currentList = list;
             list.forEach((i, idx)=>{
                 const card=document.createElement('article');
-                card.className='card menu-card border-0 overflow-hidden h-100';
+                card.className='card menu-card border-0 overflow-hidden';
+                const descText = menuItemDescription(i);
+                const typeTag = i.type ? `<span class="menu-card-tag menu-card-tag--type">${i.type}</span>` : '';
                 card.innerHTML = `
                     <div class="menu-card-inner">
                         <div class="menu-img-wrap">
-                            <img src="${i.img}" alt="${i.name}" loading="lazy" decoding="async"
+                            <img src="${localImg(i.img)}" alt="${i.name}" loading="lazy" decoding="async"
                                  onerror="this.onerror=null;this.src=IMAGE_PLACEHOLDER;">
                         </div>
                         <div class="menu-card-body">
-                            <h3 class="h5 mb-1 d-flex justify-content-between align-items-start gap-2">
+                            <h3 class="h5 mb-0 d-flex justify-content-between align-items-start gap-2">
                                 <span class="flex-grow-1">${i.name}</span>
                                 <button type="button" class="btn btn-sm btn-outline-light flex-shrink-0 add-cart" data-idx="${idx}" title="Ajouter au panier">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cart-plus" viewBox="0 0 16 16" aria-hidden="true">
@@ -442,10 +621,13 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
                                     </svg>
                                 </button>
                             </h3>
-                            <div class="item-category mb-2">${i.category}</div>
-                            <p class="text-muted mb-3 menu-desc">${i.desc}</p>
-                            <div class="d-flex align-items-center justify-content-between text-warning fw-bold mt-auto">
-                                <span class="small">★ ${i.rating} (${i.reviews} avis)</span>
+                            <div class="menu-card-tags">
+                                <span class="menu-card-tag">${i.category}</span>
+                                ${typeTag}
+                            </div>
+                            <p class="text-muted menu-desc">${descText}</p>
+                            <div class="menu-card-footer">
+                                <span class="menu-card-footer-hint">Ajouter au panier</span>
                                 <span class="price">${fmtMoney(menuUnitToCdf(i.price))}</span>
                             </div>
                         </div>
@@ -488,6 +670,10 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
             formData.append('img', item.img);
             formData.append('category', item.category);
             formData.append('personnalisation', personnalisation);
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            if (csrfMeta) {
+                formData.append('_csrf', csrfMeta.getAttribute('content'));
+            }
 
             return fetch('panier.php?action=add', { method: 'POST', body: formData })
                 .then(r => r.json())
@@ -621,6 +807,18 @@ $menuImagePlaceholder = 'https://images.unsplash.com/photo-1525755662778-989d052
         loadCartKeys();
         render('All');
         setInterval(loadCartKeys, 5000);
+
+        const scrollTopBtn = document.getElementById('scrollTopBtn');
+        if (scrollTopBtn) {
+            const toggleScrollTop = () => {
+                scrollTopBtn.classList.toggle('is-visible', window.scrollY > 320);
+            };
+            window.addEventListener('scroll', toggleScrollTop, { passive: true });
+            toggleScrollTop();
+            scrollTopBtn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
     </script>
 </body>
 </html>

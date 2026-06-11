@@ -8,6 +8,14 @@ function admin_require_auth(): array
     return staff_require(['admin'], '../login.php');
 }
 
+/** Auth obligatoire avant toute logique admin (POST inclus). */
+function admin_init(): PDO
+{
+    admin_require_auth();
+
+    return admin_pdo();
+}
+
 function admin_pdo(): PDO
 {
     $db_config = require dirname(__DIR__) . '/config/db.php';
@@ -34,8 +42,7 @@ function admin_sidebar(string $active, array $items = []): void
             'notifications' => ['url' => 'notifications.php', 'icon' => 'bi-bell', 'label' => 'Notifications'],
             'employes' => ['url' => 'employes.php', 'icon' => 'bi-person-badge', 'label' => 'Employés'],
             'rapports' => ['url' => 'rapports.php', 'icon' => 'bi-file-earmark-bar-graph', 'label' => 'Rapports ventes'],
-            'stats' => ['url' => 'stats.php', 'icon' => 'bi-graph-up', 'label' => 'Statistiques'],
-            'contact' => ['url' => 'contact.php', 'icon' => 'bi-telephone', 'label' => 'Contact'],
+            'parametres' => ['url' => 'parametres.php', 'icon' => 'bi-gear', 'label' => 'Paramètres'],
             'logs' => ['url' => 'logs.php', 'icon' => 'bi-journal-text', 'label' => 'Journaux'],
         ];
     }
@@ -49,9 +56,10 @@ function admin_sidebar(string $active, array $items = []): void
         <nav class="sidebar-nav">
             <?php foreach ($items as $slug => $item): ?>
             <div class="nav-item">
-                <a class="nav-link<?php echo $slug === $active ? ' active' : ''; ?>" href="<?php echo htmlspecialchars($item['url']); ?>">
+                <?php $isActive = $slug === $active; ?>
+                <a class="nav-link<?php echo $isActive ? ' active' : ''; ?>" href="<?php echo htmlspecialchars($item['url']); ?>"<?php echo $isActive ? ' aria-current="page"' : ''; ?>>
                     <span class="nav-icon"><i class="bi <?php echo htmlspecialchars($item['icon']); ?>" aria-hidden="true"></i></span>
-                    <span><?php echo htmlspecialchars($item['label']); ?></span>
+                    <span class="nav-link-label"><?php echo htmlspecialchars($item['label']); ?></span>
                 </a>
             </div>
             <?php endforeach; ?>
@@ -79,8 +87,8 @@ function admin_shell_start(string $title, string $active, string $eyebrow, strin
         <div class="dashboard-topbar-brand">Dynamo<span>Menu</span></div>
         <div style="width:42px;"></div>
     </header>
+    <?php admin_sidebar($active); ?>
     <div class="dashboard-shell">
-        <?php admin_sidebar($active); ?>
         <main class="dashboard-main">
             <header class="dashboard-header">
                 <div class="header-title">

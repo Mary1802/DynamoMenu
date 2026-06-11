@@ -4,7 +4,10 @@
  * Ajoute les nouvelles colonnes et tables nécessaires
  */
 
-session_start();
+require_once __DIR__ . '/includes/setup_guard.php';
+require_once __DIR__ . '/includes/staff_auth.php';
+setup_require_access();
+staff_session_start();
 
 // Configuration
 $db_config = require 'config/db.php';

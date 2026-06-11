@@ -59,9 +59,9 @@ $boissonSelect = "b.nom_boisson";
 $boissonJoin = "";
 if (in_array('type_boisson', $boissonColumns, true)) {
     $boissonSelect .= ", b.type_boisson";
-} elseif ($typeBoissonTableExists && in_array('id_boisson', $boissonColumns, true)) {
+} elseif ($typeBoissonTableExists && in_array('id_type', $boissonColumns, true)) {
     $boissonSelect .= ", tb.nom_type AS type_boisson";
-    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_boisson = tb.id_boisson";
+    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_type = tb.id_type";
 }
 
 $stmt = $pdo->prepare("

@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/client_session.php';
+client_session_start();
 
 $db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/table_context.php';
@@ -19,6 +20,7 @@ try {
 bootstrap_table_context($pdo);
 contient_ensure_schema($pdo);
 require_once __DIR__ . '/../includes/client_header.php';
+require_once __DIR__ . '/../includes/client_footer.php';
 $tableCtx = table_session();
 
 // Récupérer les plats et boissons
@@ -33,9 +35,9 @@ $orderBy = "b.nom_boisson";
 if (in_array('type_boisson', $boissonColumns, true)) {
     $boissonSelect = "b.*, b.type_boisson";
     $orderBy = "b.type_boisson, b.nom_boisson";
-} elseif ($typeBoissonTableExists && in_array('id_boisson', $boissonColumns, true)) {
+} elseif ($typeBoissonTableExists && in_array('id_type', $boissonColumns, true)) {
     $boissonSelect = "b.*, tb.nom_type AS type_boisson";
-    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_boisson = tb.id_boisson";
+    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_type = tb.id_type";
     $orderBy = "tb.nom_type, b.nom_boisson";
 }
 $boissons = $pdo->query("SELECT $boissonSelect FROM boisson b $boissonJoin ORDER BY $orderBy")->fetchAll(PDO::FETCH_ASSOC);
@@ -50,6 +52,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'add') {
     header('Content-Type: application/json');
     
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!csrf_verify()) {
+            echo json_encode(['success' => false, 'message' => 'Session expirée. Rechargez la page.']);
+            exit;
+        }
         $type = $_POST['type'] ?? 'menu_item';
         $name = trim($_POST['name'] ?? '');
         $price = (float) ($_POST['price'] ?? 0);
@@ -106,6 +112,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'add') {
 }
 
 // Ajouter un article au panier
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    client_verify_post_csrf();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajouter_au_panier'])) {
     $type = $_POST['type'];
     $id = $_POST['id'];
@@ -203,7 +213,8 @@ $total_ttc = $total_panier + $tva_amount;
     <title>Mon Panier - DynamoMenu</title>
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css?v=7">
+    <?php csrf_meta_tag(); ?>
     <style>
         body {
             background: radial-gradient(circle at top left, rgba(255,111,31,0.16), transparent 28%),
@@ -462,7 +473,7 @@ $total_ttc = $total_panier + $tva_amount;
         }
     </style>
 </head>
-<body>
+<body class="client-site">
     <?php render_client_nav('panier'); ?>
 
     <main class="container-fluid px-3 px-md-4 py-4 py-md-5">
@@ -609,6 +620,9 @@ $total_ttc = $total_panier + $tva_amount;
         </div>
     </main>
 
+    <?php render_client_footer(); ?>
+
+    <script src="../assets/js/csrf.js?v=1"></script>
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
     <script>
         // Mettre à jour le badge du panier

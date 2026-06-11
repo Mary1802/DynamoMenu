@@ -1,6 +1,7 @@
 <?php
 
-session_start();
+require_once __DIR__ . '/../includes/client_session.php';
+client_session_start();
 
 require_once __DIR__ . '/../includes/table_context.php';
 

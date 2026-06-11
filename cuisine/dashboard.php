@@ -56,6 +56,7 @@ $sql_commandes_kitchen = "
         c.montant_total,
         c.statut,
         c.num_table,
+        c.instructions_speciales,
         cl.nom_client,
         cl.prenom_client,
         cl.telephone_client,
@@ -70,13 +71,13 @@ $sql_commandes_kitchen = "
     LEFT JOIN plat p ON d.id_plat = p.id_plat
     LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
     WHERE c.statut IN ('en_attente', 'en_preparation')
-    GROUP BY c.num_commande, c.date_commande, c.montant_total, c.statut, c.num_table,
+    GROUP BY c.num_commande, c.date_commande, c.montant_total, c.statut, c.num_table, c.instructions_speciales,
              cl.nom_client, cl.prenom_client, cl.telephone_client
     ORDER BY c.statut DESC, c.date_commande ASC
 ";
 
 $notif_items = dashboard_staff_notifications($pdo, 'cuisinier');
-$notif_count = (int) ($stats['en_attente'] + $stats['en_preparation']);
+$notif_count = (int) $stats['en_attente'];
 
 $commandes_actives = [];
 $commandes_terminees = [];
@@ -98,6 +99,9 @@ try {
     ));
     $stmt->execute();
     $commandes_terminees = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    dashboard_attach_order_lines($pdo, $commandes_actives);
+    dashboard_attach_order_lines($pdo, $commandes_terminees);
 } catch (PDOException $e) {
     $dashboard_error = 'Impossible de charger les commandes. Vérifiez que la base est à jour via init_db.php ou run_update.php.';
 }
@@ -156,7 +160,7 @@ try {
         <!-- Main Content -->
         <main class="dashboard-main">
             <!-- Header -->
-            <header class="dashboard-header">
+            <header class="dashboard-header dashboard-header--kitchen">
                 <div class="header-title">
                     <span class="header-eyebrow">Cuisine</span>
                     <h1>Bonjour, <?php echo htmlspecialchars($_SESSION['nom'] ?? 'Cuisinier'); ?></h1>
@@ -164,12 +168,13 @@ try {
                 </div>
                 
                 <div class="header-actions">
-                    <div class="search-box">
+                    <div class="header-actions-top">
+                        <?php dashboard_render_notifications('cuisinier', $notif_items, $notif_count); ?>
+                    </div>
+                    <div class="search-box search-box--mobile-visible">
                         <input type="search" class="search-input" data-dashboard-search placeholder="Nom, tél., table, n° commande…" aria-label="Rechercher une commande">
                         <span class="search-icon"><i class="bi bi-search" aria-hidden="true"></i></span>
                     </div>
-                    
-                    <?php dashboard_render_notifications('cuisinier', $notif_items, $notif_count); ?>
                 </div>
             </header>
 
@@ -184,30 +189,22 @@ try {
             </div>
             <?php endif; ?>
 
-            <!-- Stats Cards -->
-            <div class="cuisine-stats cuisine-stats--hide-mobile">
+            <!-- Stats (horizontal) -->
+            <div class="cuisine-stats">
                 <div class="dashboard-card stat-card">
                     <div class="stat-icon warning"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div>
                     <div class="stat-value"><?php echo (int) $stats['en_attente']; ?></div>
                     <div class="stat-label">En attente</div>
                 </div>
-                
                 <div class="dashboard-card stat-card">
                     <div class="stat-icon primary"><i class="bi bi-fire" aria-hidden="true"></i></div>
                     <div class="stat-value"><?php echo (int) $stats['en_preparation']; ?></div>
                     <div class="stat-label">En préparation</div>
                 </div>
-                
                 <div class="dashboard-card stat-card">
                     <div class="stat-icon success"><i class="bi bi-check-circle" aria-hidden="true"></i></div>
                     <div class="stat-value"><?php echo (int) $stats['prete']; ?></div>
                     <div class="stat-label">Prêtes à servir</div>
-                </div>
-                
-                <div class="dashboard-card stat-card">
-                    <div class="stat-icon info"><i class="bi bi-activity" aria-hidden="true"></i></div>
-                    <div class="stat-value"><?php echo (int) ($stats['en_attente'] + $stats['en_preparation']); ?></div>
-                    <div class="stat-label">Total actif</div>
                 </div>
             </div>
 
@@ -215,19 +212,15 @@ try {
             <div class="row g-4 kitchen-orders-layout">
                 <div class="col-lg-8">
                     <!-- Commandes en cours -->
-                    <div class="dashboard-card">
+                    <div class="dashboard-card kitchen-panel-card">
                         <div class="card-header">
                             <div>
                                 <h3 class="card-title">Commandes en cours</h3>
-                                <p class="card-subtitle">Vue en temps réel</p>
-                            </div>
-                            <div class="kitchen-timer">
-                                <i class="bi bi-clock" aria-hidden="true"></i>
-                                <span>Temps moyen : 15 min</span>
+                                <p class="card-subtitle">Détail complet pour la préparation</p>
                             </div>
                         </div>
                         
-                        <div class="order-timeline order-scroll-panel">
+                        <div class="order-timeline order-scroll-panel kitchen-scroll-panel">
                             <?php if (empty($commandes_actives)): ?>
                                 <div class="empty-state">
                                     <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
@@ -271,10 +264,10 @@ try {
                                             <?php endif; ?>
                                         </div>
                                         
-                                        <div class="order-items">
-                                            <?php foreach (dashboard_order_items_list($commande['details_plats'] ?? null) as $item): ?>
-                                                <div class="order-item"><?php echo htmlspecialchars($item); ?></div>
-                                            <?php endforeach; ?>
+                                        <?php dashboard_render_kitchen_instructions($commande['instructions_speciales'] ?? null); ?>
+                                        
+                                        <div class="order-items kitchen-order-items">
+                                            <?php dashboard_render_kitchen_order_details($commande['lignes'] ?? []); ?>
                                         </div>
                                         
                                         <div class="order-actions">
@@ -307,19 +300,19 @@ try {
                 
                 <div class="col-lg-4">
                     <!-- À servir -->
-                    <div class="dashboard-card">
+                    <div class="dashboard-card kitchen-panel-card">
                         <div class="card-header">
                             <h3 class="card-title">À servir</h3>
                             <a href="commandes.php?filtre=prete" class="card-action">Voir tout</a>
                         </div>
                         
                         <?php if (empty($commandes_terminees)): ?>
-                            <div class="empty-state">
+                            <div class="empty-state kitchen-scroll-panel">
                                 <div class="empty-icon"><i class="bi bi-check2-circle" aria-hidden="true"></i></div>
                                 <p>Aucune commande prête à servir</p>
                             </div>
                         <?php else: ?>
-                            <div class="order-timeline order-scroll-panel order-scroll-panel--short">
+                            <div class="order-timeline order-scroll-panel kitchen-scroll-panel">
                                 <?php foreach ($commandes_terminees as $cmd): ?>
                                     <div class="order-card" style="margin-bottom: 0.75rem;" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($cmd)); ?>">
                                         <div class="order-header">
@@ -329,7 +322,10 @@ try {
                                         <div class="order-details">
                                             <span class="order-meta"><i class="bi bi-table" aria-hidden="true"></i> Table <?php echo htmlspecialchars((string) ($cmd['num_table'] ?? '—')); ?></span>
                                             <span class="order-meta"><i class="bi bi-box-seam" aria-hidden="true"></i> <?php echo (int) $cmd['nombre_items']; ?> article(s)</span>
-                                            <span class="order-meta"><?php echo format_money((float) $cmd['montant_total']); ?></span>
+                                        </div>
+                                        <?php dashboard_render_kitchen_instructions($cmd['instructions_speciales'] ?? null); ?>
+                                        <div class="order-items kitchen-order-items">
+                                            <?php dashboard_render_kitchen_order_details($cmd['lignes'] ?? []); ?>
                                         </div>
                                         <div class="order-actions">
                                             <form method="POST" class="w-100">
@@ -345,27 +341,6 @@ try {
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
-                    </div>
-                    
-                    <!-- Statistiques rapides -->
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Statistiques</h3>
-                        </div>
-                        <div class="order-details flex-column align-items-stretch">
-                            <div class="stat-block">
-                                <div class="stat-block-label">Temps moyen de préparation</div>
-                                <div class="stat-block-value">15:24</div>
-                            </div>
-                            <div class="stat-block">
-                                <div class="stat-block-label">Commandes prêtes</div>
-                                <div class="stat-block-value"><?php echo (int) $stats['prete']; ?></div>
-                            </div>
-                            <div class="stat-block mb-0">
-                                <div class="stat-block-label">File active</div>
-                                <div class="stat-block-value"><?php echo (int) ($stats['en_attente'] + $stats['en_preparation']); ?></div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

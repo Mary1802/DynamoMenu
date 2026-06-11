@@ -174,10 +174,12 @@ try {
     $stmt = $pdo->prepare("
         SELECT 
             f.*, 
+            c.num_commande,
             c.montant_total, 
             t.num_table,
             cl.nom_client,
-            cl.prenom_client
+            cl.prenom_client,
+            cl.telephone_client
         FROM facture f
         JOIN commande c ON f.num_commande = c.num_commande
         LEFT JOIN table_restaurant t ON c.num_table = t.num_table
@@ -201,14 +203,12 @@ $commande_lignes = ($commande_details && isset($commande_details['num_commande']
 $stats_jour = [
     'total_paiements' => 0,
     'total_ca' => 0,
-    'moyenne_paiement' => 0,
 ];
 try {
     $stmt = $pdo->prepare("
         SELECT 
             COUNT(*) AS total_paiements,
-            COALESCE(SUM(total_paye), 0) AS total_ca,
-            COALESCE(AVG(total_paye), 0) AS moyenne_paiement
+            COALESCE(SUM(total_paye), 0) AS total_ca
         FROM facture 
         WHERE DATE(date_facture) = CURDATE()
     ");
@@ -317,25 +317,18 @@ try {
             <?php endif; ?>
 
             <!-- Statistiques -->
-            <div class="stats-row">
+            <div class="stats-row stats-row--3">
                 <div class="stat-box">
                     <div class="stat-value"><?php echo count($commandes_a_payer); ?></div>
                     <div class="stat-label">À Payer</div>
                 </div>
-                
                 <div class="stat-box">
                     <div class="stat-value"><?php echo format_money((float) ($stats_jour['total_ca'] ?? 0)); ?></div>
                     <div class="stat-label">CA Aujourd'hui</div>
                 </div>
-                
                 <div class="stat-box">
                     <div class="stat-value"><?php echo $stats_jour['total_paiements'] ?? 0; ?></div>
                     <div class="stat-label">Paiements</div>
-                </div>
-                
-                <div class="stat-box">
-                    <div class="stat-value"><?php echo format_money((float) ($stats_jour['moyenne_paiement'] ?? 0)); ?></div>
-                    <div class="stat-label">Moyenne</div>
                 </div>
             </div>
 
@@ -412,7 +405,7 @@ try {
                         Commandes livrées à encaisser
                         <span class="section-count">(<?php echo count($commandes_a_payer); ?> en attente)</span>
                     </div>
-                    
+                    <div class="caisse-section-scroll order-scroll-panel">
                     <?php if (empty($commandes_a_payer)): ?>
                     <div class="empty-state">
                         <div class="empty-icon"><i class="bi bi-wallet2" aria-hidden="true"></i></div>
@@ -461,12 +454,13 @@ try {
                         <?php endforeach; ?>
                     </div>
                     <?php endif; ?>
+                    </div>
                 </div>
                 
                 <!-- Section Paiements récents -->
                 <div class="paiements-section">
                     <div class="section-title">Paiements récents</div>
-                    
+                    <div class="caisse-section-scroll order-scroll-panel">
                     <?php if (empty($paiements_recents)): ?>
                     <div class="empty-state py-3">
                         <div class="empty-icon"><i class="bi bi-receipt" aria-hidden="true"></i></div>
@@ -476,7 +470,7 @@ try {
                     <div class="row g-2">
                         <?php foreach ($paiements_recents as $paiement): ?>
                         <div class="col-12">
-                            <div class="paiement-item">
+                            <div class="paiement-item" data-searchable data-search="<?php echo htmlspecialchars(dashboard_paiement_search_blob($paiement)); ?>">
                                 <div class="paiement-header">
                                     <div class="paiement-id">Facture #F-<?php echo str_pad($paiement['num_facture'], 4, '0', STR_PAD_LEFT); ?></div>
                                     <div class="paiement-montant"><?php echo format_money((float) $paiement['total_paye']); ?></div>
@@ -505,6 +499,7 @@ try {
                         <?php endforeach; ?>
                     </div>
                     <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </main>

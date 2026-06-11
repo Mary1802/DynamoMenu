@@ -17,6 +17,7 @@ try {
 }
 
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
+require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/money.php';
 
 $jour = date('Y-m-d');
@@ -75,95 +76,9 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div style="width: 42px;"></div>
     </header>
 
-    <div class="dashboard-shell">
-        <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
-            <div class="sidebar-brand">
-                <div class="brand-logo">DM</div>
-                <div class="brand-title">DynamoMenu</div>
-                <div class="brand-subtitle">Administration</div>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <div class="nav-item">
-                    <a class="nav-link active" href="dashboard.php">
-                        <span class="nav-icon"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
-                        <span>Dashboard</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="tables.php">
-                        <span class="nav-icon"><i class="bi bi-qr-code" aria-hidden="true"></i></span>
-                        <span>Tables & QR</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="commandes.php">
-                        <span class="nav-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
-                        <span>Commandes</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="plats.php">
-                        <span class="nav-icon"><i class="bi bi-grid" aria-hidden="true"></i></span>
-                        <span>Menu</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="clients.php">
-                        <span class="nav-icon"><i class="bi bi-people" aria-hidden="true"></i></span>
-                        <span>Clients</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="fidelite.php">
-                        <span class="nav-icon"><i class="bi bi-gift" aria-hidden="true"></i></span>
-                        <span>Fidélité</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="notifications.php">
-                        <span class="nav-icon"><i class="bi bi-bell" aria-hidden="true"></i></span>
-                        <span>Notifications</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="employes.php">
-                        <span class="nav-icon"><i class="bi bi-person-badge" aria-hidden="true"></i></span>
-                        <span>Employés</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="rapports.php">
-                        <span class="nav-icon"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i></span>
-                        <span>Rapports ventes</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="stats.php">
-                        <span class="nav-icon"><i class="bi bi-graph-up" aria-hidden="true"></i></span>
-                        <span>Statistiques</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="contact.php">
-                        <span class="nav-icon"><i class="bi bi-telephone" aria-hidden="true"></i></span>
-                        <span>Contact</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="logs.php">
-                        <span class="nav-icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
-                        <span>Journaux</span>
-                    </a>
-                </div>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <?php dashboard_sidebar_user_footer('admin'); ?>
-            </div>
-        </aside>
+    <?php admin_sidebar('dashboard'); ?>
 
-        <!-- Main Content -->
+    <div class="dashboard-shell">
         <main class="dashboard-main">
             <!-- Header -->
             <header class="dashboard-header">
@@ -393,7 +308,7 @@ $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </a>
                     
-                    <a href="contact.php" class="action-btn">
+                    <a href="parametres.php#contacts-admin" class="action-btn">
                         <div class="action-icon"><i class="bi bi-telephone" aria-hidden="true"></i></div>
                         <div class="action-content">
                             <h4>Contact</h4>
