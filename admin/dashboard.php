@@ -3,62 +3,18 @@
 require_once __DIR__ . '/../includes/staff_auth.php';
 staff_require(['admin']);
 
-// Configuration de la base de données
-$db_config = require '../config/db.php';
-try {
-    $pdo = new PDO(
-        "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion: ' . $e->getMessage());
-}
-
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
 require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/money.php';
 
-$jour = date('Y-m-d');
-$mois = date('Y-m');
-$ca_jour = dashboard_sales_totals($pdo, 'day', $jour);
-$ca_mois = dashboard_sales_totals($pdo, 'month', $mois);
+use App\Controller\Admin\DashboardController;
 
-// Récupérer les statistiques
-$stats = [
-    'total_orders' => $pdo->query("SELECT COUNT(*) FROM commande")->fetchColumn(),
-    'total_revenue' => $ca_mois['ca'],
-    'revenue_day' => $ca_jour['ca'],
-    'revenue_month' => $ca_mois['ca'],
-    'active_clients' => $pdo->query("SELECT COUNT(*) FROM client")->fetchColumn(),
-    'pending_orders' => $pdo->query("SELECT COUNT(*) FROM commande WHERE statut = 'en_attente'")->fetchColumn(),
-    'preparing_orders' => $pdo->query("SELECT COUNT(*) FROM commande WHERE statut = 'en_preparation'")->fetchColumn(),
-    'ready_orders' => $pdo->query("SELECT COUNT(*) FROM commande WHERE statut = 'prete'")->fetchColumn(),
-];
-
-// Récupérer les commandes récentes (limité à 3 pour économiser l'espace)
-$stmt = $pdo->prepare("
-    SELECT c.*, cl.nom_client 
-    FROM commande c
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    ORDER BY c.date_commande DESC
-    LIMIT 3
-");
-$stmt->execute();
-$recent_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Récupérer les meilleurs plats (limité à 3)
-$stmt = $pdo->prepare("
-    SELECT p.nom_plat, COUNT(d.id_detail) as ventes, SUM(d.sous_total) as revenu
-    FROM contient d
-    JOIN plat p ON d.id_plat = p.id_plat
-    GROUP BY p.id_plat, p.nom_plat
-    ORDER BY ventes DESC
-    LIMIT 3
-");
-$stmt->execute();
-$top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$data = (new DashboardController())->index();
+$stats = $data['stats'];
+$recent_orders = $data['recent_orders'];
+$top_plats = $data['top_plats'];
+$ca_jour = $data['ca_jour'];
+$ca_mois = $data['ca_mois'];
 ?>
 <!doctype html>
 <html lang="fr">

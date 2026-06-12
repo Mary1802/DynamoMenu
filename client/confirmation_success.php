@@ -1,16 +1,19 @@
 <?php
-require_once __DIR__ . '/../includes/client_session.php';
-client_session_start();
 
-// Vérifier qu'une commande a été confirmée
-if (!isset($_SESSION['commande_confirmee'])) {
+require_once __DIR__ . '/../bootstrap/app.php';
+require_once __DIR__ . '/../includes/client_session.php';
+require_once __DIR__ . '/../includes/money.php';
+
+use App\Controller\Client\OrderSuccessController;
+
+$data = (new OrderSuccessController())->show($_GET);
+if ($data === null) {
     header('Location: index.php');
     exit;
 }
 
-$commande = $_SESSION['commande_confirmee'];
-$num_commande = $_GET['commande'] ?? $commande['num_commande'];
-require_once __DIR__ . '/../includes/money.php';
+$num_commande = $data['num_commande'];
+$commande = $data['commande'];
 ?>
 <!doctype html>
 <html lang="fr">
@@ -230,7 +233,6 @@ require_once __DIR__ . '/../includes/money.php';
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-relative py-3">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="index.php">
@@ -246,13 +248,13 @@ require_once __DIR__ . '/../includes/money.php';
 
         <div class="success-card">
             <div class="text-center mb-4">
-                <h3 style="color: #f8fafc; font-weight: 800;">Commande #<?php echo str_pad($num_commande, 5, '0', STR_PAD_LEFT); ?></h3>
+                <h3 style="color: #f8fafc; font-weight: 800;">Commande #<?php echo str_pad((string) $num_commande, 5, '0', STR_PAD_LEFT); ?></h3>
             </div>
 
             <div class="commande-info">
                 <div class="info-row">
                     <span>Numéro de commande</span>
-                    <strong>#<?php echo str_pad($num_commande, 5, '0', STR_PAD_LEFT); ?></strong>
+                    <strong>#<?php echo str_pad((string) $num_commande, 5, '0', STR_PAD_LEFT); ?></strong>
                 </div>
                 <div class="info-row">
                     <span>Table</span>

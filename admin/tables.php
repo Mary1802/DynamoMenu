@@ -1,171 +1,28 @@
 <?php
 
-
-
 require_once __DIR__ . '/../includes/admin_layout.php';
-
-
-
-$pdo = admin_init();
-
-require_once __DIR__ . '/../includes/table_context.php';
-
 require_once __DIR__ . '/../services/qr_service.php';
 
-
-
-table_ensure_schema($pdo);
-
-table_assign_missing_codes($pdo);
-
-
-
-$message = '';
-
-$error = '';
-
-
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    if (isset($_POST['create_table'])) {
-
-        $places = max(1, (int) ($_POST['nombre_place'] ?? 2));
-
-        $libelle = trim($_POST['libelle'] ?? '');
-
-
-
-        try {
-
-            $next = (int) $pdo->query('SELECT COALESCE(MAX(num_table), 0) + 1 FROM table_restaurant')->fetchColumn();
-
-            $code = qr_generate_table_code($next);
-
-            $stmt = $pdo->prepare('INSERT INTO table_restaurant (num_table, nombre_place, libelle, code_table, actif) VALUES (?, ?, ?, ?, 1)');
-
-            $stmt->execute([$next, $places, $libelle ?: null, $code]);
-
-            $message = "Table n°{$next} créée avec QR.";
-
-        } catch (PDOException $e) {
-
-            $error = $e->getMessage();
-
-        }
-
-    }
-
-
-
-    if (isset($_POST['toggle_actif'])) {
-
-        $num = (int) $_POST['num_table'];
-
-        $stmt = $pdo->prepare('UPDATE table_restaurant SET actif = IF(actif = 1, 0, 1) WHERE num_table = ?');
-
-        $stmt->execute([$num]);
-
-        $message = 'Statut de la table mis à jour.';
-
-    }
-
-
-
-    if (isset($_POST['regenerate_code'])) {
-
-        $num = (int) $_POST['num_table'];
-
-        $code = qr_generate_table_code($num);
-
-        $stmt = $pdo->prepare('UPDATE table_restaurant SET code_table = ? WHERE num_table = ?');
-
-        $stmt->execute([$code, $num]);
-
-        $message = "Nouveau QR généré pour la table {$num}.";
-
-    }
-
-
-
-    if (isset($_POST['update_table'])) {
-
-        $num = (int) $_POST['num_table'];
-
-        $places = max(1, (int) ($_POST['nombre_place'] ?? 2));
-
-        $libelle = trim($_POST['libelle'] ?? '');
-
-        $stmt = $pdo->prepare('UPDATE table_restaurant SET nombre_place = ?, libelle = ? WHERE num_table = ?');
-
-        $stmt->execute([$places, $libelle !== '' ? $libelle : null, $num]);
-
-        $message = "Table n°{$num} modifiée.";
-
-    }
-
-
-
-    if (isset($_POST['delete_table'])) {
-
-        $num = (int) $_POST['num_table'];
-
-        try {
-
-            $stmt = $pdo->prepare('SELECT COUNT(*) FROM commande WHERE num_table = ?');
-
-            $stmt->execute([$num]);
-
-            if ((int) $stmt->fetchColumn() > 0) {
-
-                $error = "Impossible de supprimer la table n°{$num} : des commandes y sont encore rattachées.";
-
-            } else {
-
-                $pdo->prepare('DELETE FROM table_restaurant WHERE num_table = ?')->execute([$num]);
-
-                $message = "Table n°{$num} supprimée.";
-
-            }
-
-        } catch (PDOException $e) {
-
-            $error = 'Suppression impossible : ' . $e->getMessage();
-
-        }
-
-    }
-
-}
-
-
-
-$tables = $pdo->query('SELECT * FROM table_restaurant ORDER BY num_table')->fetchAll(PDO::FETCH_ASSOC);
-
-
+use App\Controller\Admin\TableController;
+
+admin_init();
+$result = (new TableController())->handle($_POST);
+$message = $result['message'];
+$error = $result['error'];
+$tables = $result['tables'];
 
 admin_shell_start(
-
     'Admin — Tables & QR',
-
     'tables',
-
     'Configuration',
-
     'Tables & codes QR',
-
     'Créez les tables, imprimez les QR et collez-les sur chaque table. Le client scanne une fois : il arrive sur l\'accueil et sa table reste enregistrée pour menu, panier et commande.'
-
 );
-
 ?>
 
 <style>
-
     .qr-thumb { width: 120px; height: 120px; border-radius: 8px; background: #fff; padding: 6px; }
-
     .code-badge { font-family: monospace; font-size: 0.8rem; color: var(--accent-warning); }
-
 </style>
 
 
@@ -212,7 +69,14 @@ admin_shell_start(
 
 <div class="chart-container">
 
-    <div class="chart-title">Tables existantes</div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div class="chart-title mb-0">Tables existantes</div>
+        <?php if ($tables !== []): ?>
+        <a href="imprimer_qr.php?all=1" target="_blank" rel="noopener" class="btn-primary btn-sm">
+            <i class="bi bi-printer" aria-hidden="true"></i> Imprimer tous les QR
+        </a>
+        <?php endif; ?>
+    </div>
 
     <div class="table-responsive-wrap">
 
@@ -275,67 +139,48 @@ admin_shell_start(
                     <td><?php echo (int) $t['actif'] ? 'Active' : 'Inactive'; ?></td>
 
                     <td class="admin-tables-actions-cell">
-
                         <form id="<?php echo $formId; ?>" method="post" class="admin-tables-edit-form">
-
                             <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
-
                         </form>
 
                         <div class="admin-tables-actions">
-
-                            <button type="submit" name="update_table" form="<?php echo $formId; ?>" class="btn-primary btn-sm admin-tables-btn admin-tables-btn--primary">
-
-                                <i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer
-
-                            </button>
-
-                            <a href="<?php echo htmlspecialchars($url); ?>" target="_blank" rel="noopener" class="btn-details btn-sm admin-tables-btn">
-
-                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Tester
-
-                            </a>
-
-                            <form method="post" class="admin-tables-action-form">
-
-                                <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
-
-                                <button type="submit" name="regenerate_code" class="btn-details btn-sm admin-tables-btn">
-
-                                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Nouveau QR
-
+                            <div class="admin-tables-actions-row">
+                                <button type="submit" name="update_table" form="<?php echo $formId; ?>" class="btn-primary btn-sm admin-tables-btn admin-tables-btn--primary">
+                                    <i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer
                                 </button>
+                            </div>
 
-                            </form>
+                            <div class="admin-tables-actions-row admin-tables-actions-row--qr">
+                                <a href="imprimer_qr.php?table=<?php echo (int) $t['num_table']; ?>" target="_blank" rel="noopener" class="btn-details btn-sm admin-tables-btn">
+                                    <i class="bi bi-printer" aria-hidden="true"></i> Imprimer
+                                </a>
+                                <a href="<?php echo htmlspecialchars($url); ?>" target="_blank" rel="noopener" class="btn-details btn-sm admin-tables-btn">
+                                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Tester
+                                </a>
+                                <form method="post" class="admin-tables-inline-form">
+                                    <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
+                                    <button type="submit" name="regenerate_code" class="btn-details btn-sm admin-tables-btn">
+                                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Regénérer
+                                    </button>
+                                </form>
+                            </div>
 
-                            <form method="post" class="admin-tables-action-form">
-
-                                <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
-
-                                <button type="submit" name="toggle_actif" class="btn-details btn-sm admin-tables-btn">
-
-                                    <i class="bi bi-toggle-<?php echo (int) $t['actif'] ? 'on' : 'off'; ?>" aria-hidden="true"></i>
-
-                                    <?php echo (int) $t['actif'] ? 'Désactiver' : 'Activer'; ?>
-
-                                </button>
-
-                            </form>
-
-                            <form method="post" class="admin-tables-action-form" onsubmit="return confirm('Supprimer définitivement la table n°<?php echo (int) $t['num_table']; ?> ?');">
-
-                                <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
-
-                                <button type="submit" name="delete_table" class="btn-details btn-sm admin-tables-btn admin-tables-btn--danger">
-
-                                    <i class="bi bi-trash" aria-hidden="true"></i> Supprimer
-
-                                </button>
-
-                            </form>
-
+                            <div class="admin-tables-actions-row admin-tables-actions-row--manage">
+                                <form method="post" class="admin-tables-inline-form">
+                                    <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
+                                    <button type="submit" name="toggle_actif" class="btn-details btn-sm admin-tables-btn">
+                                        <i class="bi bi-toggle-<?php echo (int) $t['actif'] ? 'on' : 'off'; ?>" aria-hidden="true"></i>
+                                        <?php echo (int) $t['actif'] ? 'Désactiver' : 'Activer'; ?>
+                                    </button>
+                                </form>
+                                <form method="post" class="admin-tables-inline-form" onsubmit="return confirm('Supprimer définitivement la table n°<?php echo (int) $t['num_table']; ?> ?');">
+                                    <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
+                                    <button type="submit" name="delete_table" class="btn-details btn-sm admin-tables-btn admin-tables-btn--danger">
+                                        <i class="bi bi-trash" aria-hidden="true"></i> Supprimer
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-
                     </td>
 
                 </tr>

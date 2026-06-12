@@ -1,83 +1,14 @@
 ﻿<?php
 
-require_once __DIR__ . '/includes/staff_auth.php';
-require_once __DIR__ . '/includes/employe_passwords.php';
+require_once __DIR__ . '/bootstrap/app.php';
+require_once __DIR__ . '/includes/session_security.php';
 
-staff_session_start();
+use App\Controller\Staff\LoginController;
 
-$db_config = require 'config/db.php';
-
-try {
-    $pdoBoot = new PDO(
-        'mysql:host=' . $db_config['host'] . ';dbname=' . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-    employe_upgrade_passwords($pdoBoot);
-} catch (PDOException $e) {
-    // Connexion BDD indisponible — message affiché à la soumission
-}
-
-$error = '';
-$success = isset($_GET['logout']) ? 'Vous êtes déconnecté.' : '';
-if (isset($_GET['err'])) {
-    $error = match ($_GET['err']) {
-        'role' => 'Accès refusé pour ce rôle.',
-        'session' => 'Session expirée ou compte modifié. Reconnectez-vous.',
-        'db' => 'Impossible de vérifier la session.',
-        default => 'Veuillez vous connecter.',
-    };
-}
-
-$current = staff_user();
-if ($current !== null) {
-    header('Location: ' . staff_dashboard_url($current['role']));
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!csrf_verify()) {
-        $error = 'Session expirée. Rechargez la page et réessayez.';
-    } else {
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $role = $_POST['role'] ?? '';
-
-    if ($email === '' || $password === '' || $role === '') {
-        $error = 'Veuillez remplir tous les champs.';
-    } else {
-        try {
-            $pdo = new PDO(
-                "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-                $db_config['user'],
-                $db_config['password'],
-                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-
-            employe_upgrade_passwords($pdo);
-
-            $stmt = $pdo->prepare('SELECT id_employe, nom_employe, prenom_employe, email_employe, mot_de_passe, role FROM employe WHERE email_employe = ? AND role = ?');
-            $stmt->execute([$email, $role]);
-            $employe = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($employe && password_verify_employe($password, (string) $employe['mot_de_passe']) && $employe['role'] === $role) {
-                if (password_employe_needs_rehash((string) $employe['mot_de_passe'])) {
-                    $hash = password_hash_employe($password);
-                    $pdo->prepare('UPDATE employe SET mot_de_passe = ? WHERE id_employe = ?')->execute([$hash, $employe['id_employe']]);
-                }
-                staff_login($employe, $role);
-                header('Location: ' . staff_dashboard_url($role));
-                exit;
-            }
-
-            $error = 'Email, mot de passe ou rôle incorrect.';
-        } catch (PDOException $e) {
-            $error = 'Erreur de connexion. Vérifiez la configuration de la base de données.';
-        }
-    }
-    }
-}
+$view = (new LoginController())->handle();
+$error = $view['error'];
+$success = $view['success'];
+$postRole = $view['postRole'];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -139,9 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="role" class="form-label">Rôle</label>
                 <select id="role" name="role" class="form-select" required>
                     <option value="">-- Sélectionner un rôle --</option>
-                    <option value="cuisinier"<?php echo (($_POST['role'] ?? '') === 'cuisinier') ? ' selected' : ''; ?>>Cuisinier</option>
-                    <option value="caissier"<?php echo (($_POST['role'] ?? '') === 'caissier') ? ' selected' : ''; ?>>Caissier</option>
-                    <option value="admin"<?php echo (($_POST['role'] ?? '') === 'admin') ? ' selected' : ''; ?>>Administrateur</option>
+                    <option value="cuisinier"<?php echo $postRole === 'cuisinier' ? ' selected' : ''; ?>>Cuisinier</option>
+                    <option value="caissier"<?php echo $postRole === 'caissier' ? ' selected' : ''; ?>>Caissier</option>
+                    <option value="admin"<?php echo $postRole === 'admin' ? ' selected' : ''; ?>>Administrateur</option>
                 </select>
             </div>
 

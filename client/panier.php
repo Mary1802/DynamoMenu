@@ -1,209 +1,20 @@
 <?php
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/client_session.php';
-client_session_start();
-
-$db_config = require '../config/db.php';
-require_once __DIR__ . '/../includes/table_context.php';
-require_once __DIR__ . '/../includes/cart_helpers.php';
 require_once __DIR__ . '/../includes/money.php';
-try {
-    $pdo = new PDO(
-        "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion: ' . $e->getMessage());
-}
-
-bootstrap_table_context($pdo);
-contient_ensure_schema($pdo);
 require_once __DIR__ . '/../includes/client_header.php';
 require_once __DIR__ . '/../includes/client_footer.php';
-$tableCtx = table_session();
 
-// Récupérer les plats et boissons
-$plats = $pdo->query("SELECT * FROM plat ORDER BY categorie")->fetchAll(PDO::FETCH_ASSOC);
+use App\Controller\Client\CartController;
 
-// Récupérer les boissons en supportant la table type_boisson normalisée
-$boissonColumns = array_column($pdo->query("SHOW COLUMNS FROM boisson")->fetchAll(PDO::FETCH_ASSOC), 'Field');
-$typeBoissonTableExists = count($pdo->query("SHOW TABLES LIKE 'type_boisson'")->fetchAll(PDO::FETCH_ASSOC)) > 0;
-$boissonSelect = "b.*";
-$boissonJoin = "";
-$orderBy = "b.nom_boisson";
-if (in_array('type_boisson', $boissonColumns, true)) {
-    $boissonSelect = "b.*, b.type_boisson";
-    $orderBy = "b.type_boisson, b.nom_boisson";
-} elseif ($typeBoissonTableExists && in_array('id_type', $boissonColumns, true)) {
-    $boissonSelect = "b.*, tb.nom_type AS type_boisson";
-    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_type = tb.id_type";
-    $orderBy = "tb.nom_type, b.nom_boisson";
-}
-$boissons = $pdo->query("SELECT $boissonSelect FROM boisson b $boissonJoin ORDER BY $orderBy")->fetchAll(PDO::FETCH_ASSOC);
-
-// Gestion du panier (session)
-if (!isset($_SESSION['panier'])) {
-    $_SESSION['panier'] = [];
-}
-
-// Gestion des requêtes AJAX
-if (isset($_GET['action']) && $_GET['action'] === 'add') {
-    header('Content-Type: application/json');
-    
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (!csrf_verify()) {
-            echo json_encode(['success' => false, 'message' => 'Session expirée. Rechargez la page.']);
-            exit;
-        }
-        $type = $_POST['type'] ?? 'menu_item';
-        $name = trim($_POST['name'] ?? '');
-        $price = (float) ($_POST['price'] ?? 0);
-        if ($price > 0 && $price < 500) {
-            $price = money_from_menu_unit($price);
-        }
-        $quantite = max(1, (int) ($_POST['quantite'] ?? 1));
-        $img = $_POST['img'] ?? '';
-        $category = $_POST['category'] ?? '';
-        $personnalisation = trim($_POST['personnalisation'] ?? '');
-
-        if ($name !== '' && $price > 0) {
-            $cartKey = cart_make_key($type, $name, $category, $personnalisation);
-
-            if (cart_is_duplicate_plat($type, $personnalisation) && cart_find_index($_SESSION['panier'], $cartKey) !== null) {
-                echo json_encode([
-                    'success' => false,
-                    'duplicate' => true,
-                    'message' => 'Cet article est déjà dans votre panier. Modifiez la quantité depuis le panier.',
-                ], JSON_UNESCAPED_UNICODE);
-                exit;
-            }
-
-            $_SESSION['panier'][] = [
-                'type' => $type,
-                'nom' => $name,
-                'prix' => $price,
-                'quantite' => $quantite,
-                'sous_total' => round($price * $quantite, 2),
-                'img' => $img,
-                'category' => $category,
-                'personnalisation' => $personnalisation,
-                'cart_key' => $cartKey,
-            ];
-
-            $totalQty = 0;
-            foreach ($_SESSION['panier'] as $it) {
-                $totalQty += (int) ($it['quantite'] ?? 1);
-            }
-
-            echo json_encode([
-                'success' => true,
-                'count' => $totalQty,
-                'cart_key' => $cartKey,
-                'keys' => cart_list_keys($_SESSION['panier']),
-            ], JSON_UNESCAPED_UNICODE);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Données invalides']);
-        }
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Méthode non autorisée']);
-    }
-    exit;
-}
-
-// Ajouter un article au panier
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    client_verify_post_csrf();
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajouter_au_panier'])) {
-    $type = $_POST['type'];
-    $id = $_POST['id'];
-    $quantite = intval($_POST['quantite']);
-    
-    if ($type === 'plat') {
-        $plat = $pdo->prepare("SELECT * FROM plat WHERE id_plat = ?");
-        $plat->execute([$id]);
-        $item = $plat->fetch(PDO::FETCH_ASSOC);
-        
-        if ($item) {
-            $sauces = isset($_POST['sauces']) ? implode(',', $_POST['sauces']) : '';
-            
-            $_SESSION['panier'][] = [
-                'type' => 'plat',
-                'id' => $id,
-                'nom' => $item['nom_plat'],
-                'prix' => $item['prix_unitaire'],
-                'quantite' => $quantite,
-                'sous_total' => $item['prix_unitaire'] * $quantite,
-                'sauces' => $sauces
-            ];
-        }
-    } elseif ($type === 'boisson') {
-        $boisson = $pdo->prepare("SELECT * FROM boisson WHERE id_boisson = ?");
-        $boisson->execute([$id]);
-        $item = $boisson->fetch(PDO::FETCH_ASSOC);
-        
-        if ($item) {
-            $personnalisation = $_POST['personnalisation_boisson'] ?? '';
-            
-            $_SESSION['panier'][] = [
-                'type' => 'boisson',
-                'id' => $id,
-                'nom' => $item['nom_boisson'],
-                'prix' => 2.50, // Prix fixe pour les boissons
-                'quantite' => $quantite,
-                'sous_total' => 2.50 * $quantite,
-                'personnalisation' => $personnalisation
-            ];
-        }
-    }
-    
-    header('Location: panier.php');
-    exit;
-}
-
-// Modifier la quantité
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modifier_quantite'])) {
-    $index = $_POST['index'];
-    $action = $_POST['action'];
-    
-    if (isset($_SESSION['panier'][$index])) {
-        if ($action === 'plus') {
-            $_SESSION['panier'][$index]['quantite']++;
-            $_SESSION['panier'][$index]['sous_total'] = $_SESSION['panier'][$index]['prix'] * $_SESSION['panier'][$index]['quantite'];
-        } elseif ($action === 'minus' && $_SESSION['panier'][$index]['quantite'] > 1) {
-            $_SESSION['panier'][$index]['quantite']--;
-            $_SESSION['panier'][$index]['sous_total'] = $_SESSION['panier'][$index]['prix'] * $_SESSION['panier'][$index]['quantite'];
-        }
-    }
-    
-    header('Location: panier.php');
-    exit;
-}
-
-// Supprimer un article
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['supprimer_article'])) {
-    $index = $_POST['index'];
-    if (isset($_SESSION['panier'][$index])) {
-        array_splice($_SESSION['panier'], $index, 1);
-    }
-    
-    header('Location: panier.php');
-    exit;
-}
-
-// Calculer le total et le nombre d'articles
-$total_panier = 0;
-$nombre_articles = 0;
-foreach ($_SESSION['panier'] as $item) {
-    $total_panier += $item['sous_total'];
-    $nombre_articles += $item['quantite'];
-}
-
-$tva_rate = 0.16; // 16% de TVA
-$tva_amount = $total_panier * $tva_rate;
-$total_ttc = $total_panier + $tva_amount;
+$data = (new CartController())->handle($_GET, $_POST);
+$tableCtx = $data['tableCtx'];
+$panier = $data['panier'];
+$total_panier = $data['total_panier'];
+$nombre_articles = $data['nombre_articles'];
+$tva_rate = $data['tva_rate'];
+$tva_amount = $data['tva_amount'];
+$total_ttc = $data['total_ttc'];
 ?>
 <!doctype html>
 <html lang="fr">
@@ -485,7 +296,7 @@ $total_ttc = $total_panier + $tva_amount;
                     <p class="lead text-light">Vérifiez et confirmez votre commande</p>
                 </div>
         
-        <?php if (empty($_SESSION['panier'])): ?>
+        <?php if (empty($panier)): ?>
         <div class="empty-panier">
             <h3>Votre panier est vide</h3>
             <p>Ajoutez des plats et boissons pour commencer votre commande</p>
@@ -508,7 +319,7 @@ $total_ttc = $total_panier + $tva_amount;
                         <div class="col-2 text-center">Total article</div>
                     </div>
                     
-                    <?php foreach ($_SESSION['panier'] as $index => $item): ?>
+                    <?php foreach ($panier as $index => $item): ?>
                     <div class="panier-item row align-items-center">
                         <div class="item-info col-6">
                             <div class="item-name">

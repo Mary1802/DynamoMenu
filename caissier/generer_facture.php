@@ -1,87 +1,25 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/staff_auth.php';
-staff_require(['caissier']);
-
-// Configuration de la base de données
-$db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/money.php';
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
-try {
-    $pdo = new PDO(
-        "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion: ' . $e->getMessage());
-}
 
-// Récupérer le numéro de facture
-$num_facture = $_GET['facture'] ?? null;
-if (!$num_facture) {
+use App\Controller\Caissier\FactureController;
+
+staff_require(['caissier']);
+
+$result = (new FactureController())->show($_GET);
+if ($result === null) {
     header('Location: paiement.php');
     exit;
 }
 
-// Récupérer les détails de la facture
-$stmt = $pdo->prepare("
-    SELECT 
-        f.*,
-        c.num_commande,
-        c.date_commande,
-        c.montant_total,
-        c.statut,
-        t.num_table,
-        cl.nom_client,
-        cl.prenom_client,
-        cl.email_client,
-        cl.telephone_client
-    FROM facture f
-    JOIN commande c ON f.num_commande = c.num_commande
-    LEFT JOIN table_restaurant t ON c.num_table = t.num_table
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    WHERE f.num_facture = ?
-");
-$stmt->execute([$num_facture]);
-$facture = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$facture) {
-    header('Location: paiement.php');
-    exit;
-}
-
-// Récupérer les détails des articles
-$boissonColumns = array_column($pdo->query("SHOW COLUMNS FROM boisson")->fetchAll(PDO::FETCH_ASSOC), 'Field');
-$typeBoissonTableExists = count($pdo->query("SHOW TABLES LIKE 'type_boisson'")->fetchAll(PDO::FETCH_ASSOC)) > 0;
-$boissonSelect = "b.nom_boisson";
-$boissonJoin = "";
-if (in_array('type_boisson', $boissonColumns, true)) {
-    $boissonSelect .= ", b.type_boisson";
-} elseif ($typeBoissonTableExists && in_array('id_type', $boissonColumns, true)) {
-    $boissonSelect .= ", tb.nom_type AS type_boisson";
-    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_type = tb.id_type";
-}
-
-$stmt = $pdo->prepare("
-    SELECT 
-        d.*,
-        p.nom_plat,
-        p.prix_unitaire as prix_plat,
-        $boissonSelect
-    FROM contient d
-    LEFT JOIN plat p ON d.id_plat = p.id_plat
-    LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
-    $boissonJoin
-    WHERE d.num_commande = ?
-");
-$stmt->execute([$facture['num_commande']]);
-$articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Calculer la TVA (20%)
-$tva = $facture['total_paye'] * 0.20;
-$ht = $facture['total_paye'] - $tva;
+$num_facture = $result['num_facture'];
+$facture = $result['facture'];
+$articles = $result['articles'];
+$ht = $result['ht'];
+$tva = $result['tva'];
 ?>
 <!doctype html>
 <html lang="fr">
@@ -91,16 +29,53 @@ $ht = $facture['total_paye'] - $tva;
     <title>Facture F-<?php echo str_pad($num_facture, 4, '0', STR_PAD_LEFT); ?> - DynamoMenu</title>
     <style>
         @page {
-            margin: 0;
+            size: A4;
+            margin: 15mm 12mm;
         }
-        
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
             color: #333;
         }
-        
+
+        .screen-only {
+            position: fixed;
+            z-index: 1000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .print-btn {
+            top: 20px;
+            right: 20px;
+            background: #ff6f1f;
+            color: white;
+        }
+
+        .print-btn:hover {
+            background: #ff8a3d;
+        }
+
+        .back-btn {
+            top: 20px;
+            left: 20px;
+            background: #6c757d;
+            color: white;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+        }
+
         .facture-container {
             max-width: 800px;
             margin: 0 auto;
@@ -133,6 +108,7 @@ $ht = $facture['total_paye'] - $tva;
             font-size: 12px;
             color: #666;
             line-height: 1.4;
+            overflow-wrap: anywhere;
         }
         
         .facture-info {
@@ -186,6 +162,8 @@ $ht = $facture['total_paye'] - $tva;
             font-size: 14px;
             color: #333;
             font-weight: 500;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         
         .articles-table {
@@ -208,6 +186,8 @@ $ht = $facture['total_paye'] - $tva;
             padding: 10px;
             font-size: 12px;
             border-bottom: 1px solid #eee;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         
         .articles-table tr:last-child td {
@@ -263,42 +243,51 @@ $ht = $facture['total_paye'] - $tva;
             border-top: 1px solid #333;
             margin: 20px 0 5px 0;
         }
-        
-        .print-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #ff6f1f;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        
-        .print-btn:hover {
-            background: #ff8a3d;
-        }
-        
+
         @media print {
-            .print-btn {
-                display: none;
+            .screen-only {
+                display: none !important;
             }
-            
-            body {
+
+            html, body {
+                margin: 0;
                 padding: 0;
+                background: #fff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
-            
+
             .facture-container {
-                border: none;
+                max-width: none;
+                width: 100%;
+                margin: 0;
                 padding: 0;
+                border: none;
+                box-shadow: none;
+            }
+
+            .header,
+            .client-info,
+            .total-section,
+            .signature {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            .articles-table {
+                page-break-inside: auto;
+            }
+
+            .articles-table tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
             }
         }
     </style>
 </head>
 <body>
-    <button class="print-btn" onclick="window.print()">🖨️ Imprimer la facture</button>
+    <button type="button" class="screen-only back-btn" onclick="window.location.href='paiement.php'">← Retour au dashboard</button>
+    <button type="button" class="screen-only print-btn" onclick="window.print()">🖨️ Imprimer la facture</button>
     
     <div class="facture-container">
         <!-- En-tête -->
@@ -440,18 +429,10 @@ $ht = $facture['total_paye'] - $tva;
     </div>
     
     <script>
-        // Impression automatique optionnelle
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('print')) {
             window.print();
         }
-        
-        // Ajouter un bouton de retour
-        const backBtn = document.createElement('button');
-        backBtn.innerHTML = '← Retour au dashboard';
-        backBtn.style.cssText = 'position: fixed; top: 20px; left: 20px; background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;';
-        backBtn.onclick = () => window.location.href = 'paiement.php';
-        document.body.appendChild(backBtn);
     </script>
 </body>
 </html>

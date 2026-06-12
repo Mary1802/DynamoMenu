@@ -1,43 +1,23 @@
 <?php
-require_once __DIR__ . '/../includes/client_session.php';
-client_session_start();
 
-// Vérifier qu'une demande de paiement existe
-if (!isset($_SESSION['demande_paiement'])) {
+require_once __DIR__ . '/../bootstrap/app.php';
+require_once __DIR__ . '/../includes/client_session.php';
+require_once __DIR__ . '/../includes/money.php';
+
+use App\Controller\Client\PaymentConfirmationController;
+use App\Service\ClientPaymentService;
+
+$data = (new PaymentConfirmationController())->show($_GET);
+if ($data === null) {
     header('Location: index.php');
     exit;
 }
 
-$demande = $_SESSION['demande_paiement'];
-$commande_id = $_GET['commande'] ?? $demande['commande_id'];
-
-// Configuration de la base de données
-$db_config = require '../config/db.php';
-require_once __DIR__ . '/../includes/money.php';
-try {
-    $pdo = new PDO(
-        "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion: ' . $e->getMessage());
-}
-
-// Récupérer les détails de la commande
-$stmt = $pdo->prepare("
-    SELECT c.*, t.num_table, cl.nom_client, cl.prenom_client
-    FROM commande c
-    LEFT JOIN table_restaurant t ON c.num_table = t.num_table
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    WHERE c.num_commande = ?
-");
-$stmt->execute([$commande_id]);
-$commande = $stmt->fetch(PDO::FETCH_ASSOC);
-
-// Effacer la demande de paiement après affichage
-unset($_SESSION['demande_paiement']);
+$commande_id = $data['commande_id'];
+$demande = $data['demande'];
+$commande = $data['commande'];
+$mode_icons = ['carte' => '💳', 'especes' => '💵', 'mobile' => '📱'];
+$mode_labels = ClientPaymentService::modeIcons();
 ?>
 <!doctype html>
 <html lang="fr">
@@ -133,7 +113,6 @@ unset($_SESSION['demande_paiement']);
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="index.php">
@@ -149,12 +128,12 @@ unset($_SESSION['demande_paiement']);
         <p class="lead">Le caissier a été notifié et viendra à votre table pour finaliser le paiement.</p>
         
         <div class="confirmation-card">
-            <h3>Commande #<?php echo str_pad($commande_id, 5, '0', STR_PAD_LEFT); ?></h3>
+            <h3>Commande #<?php echo str_pad((string) $commande_id, 5, '0', STR_PAD_LEFT); ?></h3>
             
             <div class="demande-info">
                 <div class="info-row">
                     <span>Numéro de commande</span>
-                    <span><strong>#<?php echo str_pad($commande_id, 5, '0', STR_PAD_LEFT); ?></strong></span>
+                    <span><strong>#<?php echo str_pad((string) $commande_id, 5, '0', STR_PAD_LEFT); ?></strong></span>
                 </div>
                 <div class="info-row">
                     <span>Table</span>
@@ -172,18 +151,6 @@ unset($_SESSION['demande_paiement']);
                     <span>Mode de paiement choisi</span>
                     <span>
                         <div class="mode-text">
-                            <?php 
-                            $mode_icons = [
-                                'carte' => '💳',
-                                'especes' => '💵',
-                                'mobile' => '📱'
-                            ];
-                            $mode_labels = [
-                                'carte' => 'Carte bancaire',
-                                'especes' => 'Espèces',
-                                'mobile' => 'Paiement mobile'
-                            ];
-                            ?>
                             <span class="mode-icon"><?php echo $mode_icons[$demande['mode_paiement']] ?? '💳'; ?></span>
                             <span><?php echo $mode_labels[$demande['mode_paiement']] ?? ucfirst($demande['mode_paiement']); ?></span>
                         </div>
@@ -219,12 +186,10 @@ unset($_SESSION['demande_paiement']);
 
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Redirection automatique après 30 secondes
         setTimeout(() => {
             window.location.href = 'index.php';
         }, 30000);
         
-        // Compte à rebours
         let countdown = 30;
         const countdownElement = document.createElement('div');
         countdownElement.style.cssText = 'margin-top: 1rem; color: #666; font-size: 0.9rem;';

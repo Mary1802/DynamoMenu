@@ -1,191 +1,23 @@
 <?php
 
 require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../includes/schema_upgrade.php';
-require_once __DIR__ . '/../includes/menu_image_index.php';
+
+use App\Controller\Admin\PlatController;
 
 $pdo = admin_init();
-schema_upgrade($pdo);
-$message = '';
-$error = '';
-
-/**
- * @param array<string, mixed> $file
- * @return string|null
- */
-function upload_menu_image(array $file): ?string
-{
-    if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
-        return null;
-    }
-
-    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!in_array($file['type'] ?? '', $allowed, true)) {
-        return null;
-    }
-
-    $uploadDir = dirname(__DIR__) . '/assets/images/uploads';
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
-        return null;
-    }
-
-    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $basename = preg_replace('/[^a-zA-Z0-9_-]+/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
-    $filename = $basename . '-' . bin2hex(random_bytes(6)) . '.' . $extension;
-    $destination = $uploadDir . '/' . $filename;
-
-    if (!move_uploaded_file($file['tmp_name'], $destination)) {
-        return null;
-    }
-
-    return 'assets/images/uploads/' . $filename;
-}
-
-function resolve_type_boisson_id(PDO $pdo, string $nomType): ?int
-{
-    $nomType = trim($nomType);
-    if ($nomType === '') {
-        return null;
-    }
-    $stmt = $pdo->prepare('SELECT id_type FROM type_boisson WHERE nom_type = ?');
-    $stmt->execute([$nomType]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    return $row ? (int) $row['id_type'] : null;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        if (isset($_POST['add_plat'])) {
-            $imagePath = upload_menu_image($_FILES['image_plat'] ?? []);
-            $quantite = isset($_POST['quantite_plat']) ? (int) $_POST['quantite_plat'] : 0;
-            $stmt = $pdo->prepare('INSERT INTO plat (nom_plat, prix_unitaire, categorie, quantite_plat, image_url) VALUES (?, ?, ?, ?, ?)');
-            $stmt->execute([trim($_POST['nom_plat']), (float) $_POST['prix_unitaire'], trim($_POST['categorie'] ?? ''), $quantite, $imagePath]);
-            admin_log($pdo, 'plat_create', 'Plat ajouté : ' . $_POST['nom_plat']);
-            $message = 'Plat ajouté.';
-        }
-        if (isset($_POST['update_plat'])) {
-            $imagePath = upload_menu_image($_FILES['image_plat'] ?? []);
-            $quantite = isset($_POST['quantite_plat']) ? (int) $_POST['quantite_plat'] : 0;
-            if ($imagePath !== null) {
-                $stmt = $pdo->prepare('UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?, quantite_plat = ?, image_url = ? WHERE id_plat = ?');
-                $stmt->execute([trim($_POST['nom_plat']), (float) $_POST['prix_unitaire'], trim($_POST['categorie'] ?? ''), $quantite, $imagePath, (int) $_POST['id_plat']]);
-            } else {
-                $stmt = $pdo->prepare('UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?, quantite_plat = ? WHERE id_plat = ?');
-                $stmt->execute([trim($_POST['nom_plat']), (float) $_POST['prix_unitaire'], trim($_POST['categorie'] ?? ''), $quantite, (int) $_POST['id_plat']]);
-            }
-            $message = 'Plat mis à jour.';
-        }
-        if (isset($_POST['delete_plat'])) {
-            $pdo->prepare('DELETE FROM plat WHERE id_plat = ?')->execute([(int) $_POST['id_plat']]);
-            $message = 'Plat supprimé.';
-        }
-        if (isset($_POST['add_boisson'])) {
-            $idType = resolve_type_boisson_id($pdo, (string) ($_POST['type_boisson'] ?? ''));
-            if ($idType === null) {
-                $error = 'Choisissez un type de boisson existant.';
-            } else {
-                $imagePath = upload_menu_image($_FILES['image_boisson'] ?? []);
-                $prix = isset($_POST['prix_unitaire']) ? (float) $_POST['prix_unitaire'] : 0.0;
-                $stmt = $pdo->prepare('INSERT INTO boisson (nom_boisson, id_type, dosage, quantite_boisson, prix_unitaire, options_fruits, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)');
-                $stmt->execute([
-                    trim($_POST['nom_boisson']),
-                    $idType,
-                    trim($_POST['dosage'] ?? ''),
-                    (int) ($_POST['quantite_boisson'] ?? 0),
-                    $prix,
-                    trim($_POST['options_fruits'] ?? ''),
-                    $imagePath,
-                ]);
-                $message = 'Boisson ajoutée.';
-            }
-        }
-        if (isset($_POST['update_boisson'])) {
-            $idType = resolve_type_boisson_id($pdo, (string) ($_POST['type_boisson'] ?? ''));
-            if ($idType === null) {
-                $error = 'Choisissez un type de boisson existant.';
-            } else {
-                $imagePath = upload_menu_image($_FILES['image_boisson'] ?? []);
-                $prix = isset($_POST['prix_unitaire']) ? (float) $_POST['prix_unitaire'] : 0.0;
-                if ($imagePath !== null) {
-                    $stmt = $pdo->prepare('UPDATE boisson SET nom_boisson = ?, id_type = ?, dosage = ?, quantite_boisson = ?, prix_unitaire = ?, options_fruits = ?, image_url = ? WHERE id_boisson = ?');
-                    $stmt->execute([
-                        trim($_POST['nom_boisson']),
-                        $idType,
-                        trim($_POST['dosage'] ?? ''),
-                        (int) ($_POST['quantite_boisson'] ?? 0),
-                        $prix,
-                        trim($_POST['options_fruits'] ?? ''),
-                        $imagePath,
-                        (int) $_POST['id_boisson'],
-                    ]);
-                } else {
-                    $stmt = $pdo->prepare('UPDATE boisson SET nom_boisson = ?, id_type = ?, dosage = ?, quantite_boisson = ?, prix_unitaire = ?, options_fruits = ? WHERE id_boisson = ?');
-                    $stmt->execute([
-                        trim($_POST['nom_boisson']),
-                        $idType,
-                        trim($_POST['dosage'] ?? ''),
-                        (int) ($_POST['quantite_boisson'] ?? 0),
-                        $prix,
-                        trim($_POST['options_fruits'] ?? ''),
-                        (int) $_POST['id_boisson'],
-                    ]);
-                }
-                $message = 'Boisson mise à jour.';
-            }
-        }
-        if (isset($_POST['delete_boisson'])) {
-            $pdo->prepare('DELETE FROM boisson WHERE id_boisson = ?')->execute([(int) $_POST['id_boisson']]);
-            $message = 'Boisson supprimée.';
-        }
-    } catch (PDOException $e) {
-        $error = $e->getMessage();
-    }
-}
-
-$q = $_GET['q'] ?? '';
-$platsQuery = 'SELECT * FROM plat';
-$boissonsQuery = 'SELECT b.*, tb.nom_type AS type_boisson FROM boisson b';
-// Detect available columns on boisson to avoid referencing missing columns
-$boissonCols = array_column($pdo->query('SHOW COLUMNS FROM boisson')->fetchAll(PDO::FETCH_ASSOC), 'Field');
-$typeBoissonTableExists = count($pdo->query("SHOW TABLES LIKE 'type_boisson'")->fetchAll(PDO::FETCH_ASSOC)) > 0;
-$boissonJoin = '';
-if ($typeBoissonTableExists && in_array('id_type', $boissonCols, true)) {
-    $boissonJoin = ' LEFT JOIN type_boisson tb ON b.id_type = tb.id_type';
-} else {
-    $boissonsQuery = 'SELECT * FROM boisson';
-}
-if ($q !== '') {
-    $qpattern = '%' . $q . '%';
-    $platsQuery .= ' WHERE nom_plat LIKE ? OR categorie LIKE ?';
-    if ($typeBoissonTableExists && in_array('id_type', $boissonCols, true)) {
-        $stmt = $pdo->prepare($platsQuery . ' ORDER BY categorie, nom_plat');
-        $stmt->execute([$qpattern, $qpattern]);
-        $plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt = $pdo->prepare($boissonsQuery . $boissonJoin . ' WHERE nom_boisson LIKE ? ORDER BY nom_boisson');
-        $stmt->execute([$qpattern]);
-        $boissons = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-        // Fallback: search by name, dosage, options_fruits
-        $boissonsQuery .= ' WHERE nom_boisson LIKE ? OR dosage LIKE ? OR options_fruits LIKE ?';
-        $stmt = $pdo->prepare($platsQuery . ' ORDER BY categorie, nom_plat');
-        $stmt->execute([$qpattern, $qpattern]);
-        $plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt = $pdo->prepare($boissonsQuery . ' ORDER BY nom_boisson');
-        $stmt->execute([$qpattern, $qpattern, $qpattern]);
-        $boissons = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-} else {
-    $plats = $pdo->query($platsQuery . ' ORDER BY categorie, nom_plat')->fetchAll(PDO::FETCH_ASSOC);
-    $boissons = $pdo->query($boissonsQuery . $boissonJoin . ' ORDER BY nom_boisson')->fetchAll(PDO::FETCH_ASSOC);
-}
-$categoriePlatOptions = dashboard_plat_categories($pdo);
-$typesBoissonOptions = dashboard_boisson_types($pdo);
+$result = (new PlatController())->handle($_GET, $_POST, $_FILES);
+$message = $result['message'];
+$error = $result['error'];
+$q = $result['q'];
+$plats = $result['plats'];
+$boissons = $result['boissons'];
+$categoriePlatOptions = $result['categoriePlatOptions'];
+$typesBoissonOptions = $result['typesBoissonOptions'];
 
 admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gérez les articles en base (le menu client peut rester synchronisé manuellement).');
 ?>
 <?php if ($message): ?><div class="success-message"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
-<?php if ($error): ?><div class="success-message" style="color:#dc3545;border-color:rgba(220,53,69,.3);"<?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+<?php if ($error): ?><div class="success-message" style="color:#dc3545;border-color:rgba(220,53,69,.3);"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
 <div class="chart-container mb-4">
     <div class="chart-title">Rechercher</div>

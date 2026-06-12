@@ -4,56 +4,17 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/schema_upgrade.php';
 require_once __DIR__ . '/../includes/money.php';
 
+use App\Controller\Admin\CommandeController;
+
 $pdo = admin_init();
 schema_upgrade($pdo);
 
-$message = '';
-$statuts = [
-    'en_attente' => 'En attente',
-    'en_preparation' => 'En préparation',
-    'prete' => 'Prête',
-    'livree' => 'Livrée',
-    'annulee' => 'Annulée',
-];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_statut'])) {
-    $num = (int) $_POST['num_commande'];
-    $statut = $_POST['statut'] ?? '';
-    if (isset($statuts[$statut])) {
-        $pdo->prepare('UPDATE commande SET statut = ? WHERE num_commande = ?')->execute([$statut, $num]);
-        admin_log($pdo, 'commande_statut', "Commande #{$num} → {$statut}");
-        $message = 'Statut mis à jour.';
-        if ($statut === 'prete') {
-            require_once __DIR__ . '/../includes/notification_service.php';
-            notification_commande_prete($pdo, $num);
-        }
-    }
-}
-
-$filter = $_GET['statut'] ?? '';
-$q = $_GET['q'] ?? '';
-$sql = "
-    SELECT c.*, cl.nom_client, cl.prenom_client, cl.email_client
-    FROM commande c
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    WHERE 1=1
-";
-$params = [];
-if ($filter !== '' && isset($statuts[$filter])) {
-    $sql .= ' AND c.statut = ?';
-    $params[] = $filter;
-}
-if ($q !== '') {
-    $sql .= ' AND (c.num_commande LIKE ? OR c.num_table LIKE ? OR CONCAT(cl.prenom_client, " ", cl.nom_client) LIKE ?)';
-    $qpattern = '%' . $q . '%';
-    $params[] = $qpattern;
-    $params[] = $qpattern;
-    $params[] = $qpattern;
-}
-$sql .= ' ORDER BY c.date_commande DESC LIMIT 200';
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$result = (new CommandeController())->handle($_GET, $_POST);
+$message = $result['message'];
+$statuts = $result['statuts'];
+$commandes = $result['commandes'];
+$filter = $result['filter'];
+$q = $result['q'];
 
 admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes', 'Suivi et modification des statuts.');
 ?>
@@ -63,7 +24,7 @@ admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes
     <div class="chart-title">Rechercher</div>
     <form method="get" class="row g-3">
         <div class="col-md-6">
-            <input type="text" name="q" class="form-control" placeholder="Rechercher par numéro de commande, client, ou table..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
+            <input type="text" name="q" class="form-control" placeholder="Rechercher par numéro de commande, client, ou table..." value="<?php echo htmlspecialchars($q); ?>">
         </div>
         <div class="col-md-4">
             <select name="statut" class="form-select" style="max-width:220px; min-width:220px;">

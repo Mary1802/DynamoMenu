@@ -1,57 +1,19 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/staff_auth.php';
-staff_require(['cuisinier']);
-
-$db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/money.php';
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
 
-$pdo = new PDO(
-    "mysql:host={$db_config['host']};dbname={$db_config['dbname']}",
-    $db_config['user'],
-    $db_config['password'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
+use App\Controller\Cuisine\CommandeListController;
 
-$filtre = $_GET['filtre'] ?? 'actives';
-$where = "c.statut IN ('en_attente', 'en_preparation')";
-if ($filtre === 'prete') {
-    $where = "c.statut = 'prete'";
-} elseif ($filtre === 'toutes') {
-    $where = "c.statut NOT IN ('annulee')";
-}
+staff_require(['cuisinier']);
 
-$stmt = $pdo->query("
-    SELECT c.num_commande, c.date_commande, c.montant_total, c.statut, c.num_table, c.instructions_speciales,
-           cl.nom_client, cl.prenom_client, cl.telephone_client
-    FROM commande c
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    WHERE {$where}
-    ORDER BY c.date_commande DESC
-    LIMIT 80
-");
-$commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-dashboard_attach_order_lines($pdo, $commandes);
-
-$stmt = $pdo->query("
-    SELECT c.num_commande, c.date_commande, c.montant_total, c.statut, c.num_table, c.instructions_speciales,
-           cl.nom_client, cl.prenom_client, cl.telephone_client
-    FROM commande c
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    WHERE c.statut NOT IN ('annulee')
-    ORDER BY c.date_commande DESC
-    LIMIT 20
-");
-$commandes_recentes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-dashboard_attach_order_lines($pdo, $commandes_recentes);
-
-$statut_labels = [
-    'en_attente' => 'En attente',
-    'en_preparation' => 'En préparation',
-    'prete' => 'Prête',
-    'livree' => 'Livrée',
-];
+$data = (new CommandeListController())->index($_GET);
+$filtre = $data['filtre'];
+$commandes = $data['commandes'];
+$commandes_recentes = $data['commandes_recentes'];
+$statut_labels = $data['statut_labels'];
 ?>
 <!doctype html>
 <html lang="fr">
@@ -180,20 +142,15 @@ $statut_labels = [
     (function () {
         document.querySelectorAll('.btn-toggle-commande-detail').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                var id = btn.getAttribute('data-target');
-                var panel = id ? document.getElementById(id) : null;
+                var panel = document.getElementById(btn.getAttribute('data-target'));
                 if (!panel) return;
-                var willOpen = panel.hidden;
-                document.querySelectorAll('.commande-detail-panel').forEach(function (p) { p.hidden = true; });
-                document.querySelectorAll('.btn-toggle-commande-detail').forEach(function (b) {
-                    b.setAttribute('aria-expanded', 'false');
-                    b.textContent = 'Voir';
-                });
-                if (willOpen) {
-                    panel.hidden = false;
+                var open = panel.hasAttribute('hidden');
+                if (open) {
+                    panel.removeAttribute('hidden');
                     btn.setAttribute('aria-expanded', 'true');
-                    btn.textContent = 'Masquer';
-                    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    panel.setAttribute('hidden', '');
+                    btn.setAttribute('aria-expanded', 'false');
                 }
             });
         });

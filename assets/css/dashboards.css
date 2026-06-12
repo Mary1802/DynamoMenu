@@ -1422,8 +1422,8 @@ html.theme-light body.dashboard-body input[type="file"].file-input-btn-only::-we
 }
 
 .admin-tables-actions-cell {
-    min-width: 260px;
-    vertical-align: top;
+    min-width: 300px;
+    vertical-align: middle;
 }
 
 .admin-tables-edit-form {
@@ -1431,29 +1431,63 @@ html.theme-light body.dashboard-body input[type="file"].file-input-btn-only::-we
 }
 
 .admin-tables-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
     width: 100%;
-    max-width: 300px;
+    max-width: 320px;
 }
 
-.admin-tables-action-form {
-    display: contents;
+.admin-tables-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: stretch;
+}
+
+.admin-tables-actions-row + .admin-tables-actions-row {
+    padding-top: 0.55rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+html.theme-light .admin-tables-actions-row + .admin-tables-actions-row {
+    border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.admin-tables-inline-form {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    display: flex;
+}
+
+.admin-tables-actions-row--qr .admin-tables-inline-form,
+.admin-tables-actions-row--qr > .admin-tables-btn {
+    flex: 1 1 calc(33.333% - 0.3rem);
+    min-width: 5.5rem;
+}
+
+.admin-tables-actions-row--manage .admin-tables-inline-form {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 7rem;
 }
 
 .admin-tables-actions .admin-tables-btn {
-    flex: none;
+    flex: 1 1 auto;
     min-width: 0;
     width: 100%;
-    min-height: 38px;
-    padding: 0.45rem 0.65rem;
-    font-size: 0.8rem;
+    min-height: 36px;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.78rem;
     white-space: nowrap;
 }
 
-.admin-tables-actions .admin-tables-btn--primary {
-    grid-column: 1 / -1;
+.admin-tables-actions-row--main .admin-tables-btn--primary {
+    flex: 1 1 100%;
+}
+
+.admin-tables-inline-form .admin-tables-btn {
+    width: 100%;
 }
 
 .admin-tables-actions .admin-tables-btn--danger {
@@ -1467,9 +1501,18 @@ html.theme-light body.dashboard-body input[type="file"].file-input-btn-only::-we
     border-color: rgba(220, 53, 69, 0.6);
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
+    .admin-tables-actions-cell {
+        min-width: 240px;
+    }
+
     .admin-tables-actions {
         max-width: none;
+    }
+
+    .admin-tables-actions-row--qr .admin-tables-inline-form,
+    .admin-tables-actions-row--qr > .admin-tables-btn {
+        flex: 1 1 calc(50% - 0.25rem);
     }
 }
 

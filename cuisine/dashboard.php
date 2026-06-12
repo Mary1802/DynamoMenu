@@ -1,110 +1,24 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/staff_auth.php';
-staff_require(['cuisinier']);
-
-// Configuration de la base de données
-$db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/money.php';
-try {
-    $pdo = new PDO(
-        "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion: ' . $e->getMessage());
-}
-
-// Traiter les actions (mise à jour du statut)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $commande_id = $_POST['commande_id'] ?? '';
-
-    if ($action === 'en_cours') {
-        $stmt = $pdo->prepare("UPDATE commande SET statut = 'en_preparation' WHERE num_commande = ?");
-        $stmt->execute([$commande_id]);
-    } elseif ($action === 'termine') {
-        $stmt = $pdo->prepare("UPDATE commande SET statut = 'prete' WHERE num_commande = ?");
-        $stmt->execute([$commande_id]);
-        require_once __DIR__ . '/../includes/notification_service.php';
-        notification_commande_prete($pdo, (int) $commande_id);
-    } elseif ($action === 'livree') {
-        $stmt = $pdo->prepare("UPDATE commande SET statut = 'livree' WHERE num_commande = ? AND statut = 'prete'");
-        $stmt->execute([$commande_id]);
-    }
-
-    // Post/Redirect/Get pour éviter la resoumission de formulaire
-    header('Location: dashboard.php');
-    exit;
-}
-
-// Récupérer les statistiques
-$stats = [
-    'en_attente' => $pdo->query("SELECT COUNT(*) FROM commande WHERE statut = 'en_attente'")->fetchColumn(),
-    'en_preparation' => $pdo->query("SELECT COUNT(*) FROM commande WHERE statut = 'en_preparation'")->fetchColumn(),
-    'prete' => $pdo->query("SELECT COUNT(*) FROM commande WHERE statut = 'prete'")->fetchColumn(),
-];
-
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
 
-$sql_commandes_kitchen = "
-    SELECT 
-        c.num_commande,
-        c.date_commande,
-        c.montant_total,
-        c.statut,
-        c.num_table,
-        c.instructions_speciales,
-        cl.nom_client,
-        cl.prenom_client,
-        cl.telephone_client,
-        COUNT(d.id_detail) AS nombre_items,
-        GROUP_CONCAT(
-            CONCAT(COALESCE(p.nom_plat, b.nom_boisson), ' (x', d.quantite, ')')
-            SEPARATOR ', '
-        ) AS details_plats
-    FROM commande c
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    LEFT JOIN contient d ON c.num_commande = d.num_commande
-    LEFT JOIN plat p ON d.id_plat = p.id_plat
-    LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
-    WHERE c.statut IN ('en_attente', 'en_preparation')
-    GROUP BY c.num_commande, c.date_commande, c.montant_total, c.statut, c.num_table, c.instructions_speciales,
-             cl.nom_client, cl.prenom_client, cl.telephone_client
-    ORDER BY c.statut DESC, c.date_commande ASC
-";
+use App\Controller\Cuisine\KitchenDashboardController;
 
-$notif_items = dashboard_staff_notifications($pdo, 'cuisinier');
-$notif_count = (int) $stats['en_attente'];
+staff_require(['cuisinier']);
 
-$commandes_actives = [];
-$commandes_terminees = [];
-$dashboard_error = null;
+$kitchen = new KitchenDashboardController();
+$kitchen->handlePost($_POST);
+$data = $kitchen->index();
 
-try {
-    $stmt = $pdo->prepare($sql_commandes_kitchen);
-    $stmt->execute();
-    $commandes_actives = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $stmt = $pdo->prepare(str_replace(
-        "WHERE c.statut IN ('en_attente', 'en_preparation')",
-        "WHERE c.statut = 'prete'",
-        str_replace(
-            'ORDER BY c.statut DESC, c.date_commande ASC',
-            'ORDER BY c.date_commande DESC LIMIT 10',
-            $sql_commandes_kitchen
-        )
-    ));
-    $stmt->execute();
-    $commandes_terminees = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    dashboard_attach_order_lines($pdo, $commandes_actives);
-    dashboard_attach_order_lines($pdo, $commandes_terminees);
-} catch (PDOException $e) {
-    $dashboard_error = 'Impossible de charger les commandes. Vérifiez que la base est à jour via init_db.php ou run_update.php.';
-}
+$stats = $data['stats'];
+$commandes_actives = $data['commandes_actives'];
+$commandes_terminees = $data['commandes_terminees'];
+$dashboard_error = $data['dashboard_error'];
+$notif_count = $data['notif_count'];
+$notif_items = $data['notif_items'];
 ?>
 
 <!doctype html>

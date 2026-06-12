@@ -1,42 +1,14 @@
 <?php
 
 require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../includes/fidelity_service.php';
 
-$pdo = admin_init();
-fidelity_ensure($pdo);
+use App\Controller\Admin\ClientController;
 
-$message = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['adjust_points'])) {
-    $id = (int) $_POST['id_client'];
-    $delta = (int) $_POST['delta'];
-    $note = trim($_POST['note'] ?? 'Ajustement admin');
-    if ($id > 0 && $delta !== 0) {
-        fidelity_add_points($pdo, $id, $delta, 'ajustement', $note);
-        admin_log($pdo, 'fidelite_ajust', "Client #{$id} : {$delta} pts — {$note}", 'fidelite');
-        $message = 'Points mis à jour.';
-    }
-}
-
-$q = $_GET['q'] ?? '';
-$sql = '
-    SELECT id_client, nom_client, prenom_client, email_client, telephone_client, points, niveau_fidelite, date_inscription
-    FROM client
-    WHERE 1=1
-';
-$params = [];
-if ($q !== '') {
-    $sql .= ' AND (nom_client LIKE ? OR prenom_client LIKE ? OR email_client LIKE ?)';
-    $qpattern = '%' . $q . '%';
-    $params[] = $qpattern;
-    $params[] = $qpattern;
-    $params[] = $qpattern;
-}
-$sql .= ' ORDER BY points DESC, nom_client LIMIT 300';
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+admin_init();
+$result = (new ClientController())->handle($_GET, $_POST);
+$message = $result['message'];
+$clients = $result['clients'];
+$q = $result['q'];
 
 admin_shell_start('Admin — Clients', 'clients', 'CRM', 'Clients & points', 'Consultez les profils et ajustez les points fidélité.');
 ?>
@@ -80,7 +52,7 @@ admin_shell_start('Admin — Clients', 'clients', 'CRM', 'Clients & points', 'Co
                     <td><?php echo htmlspecialchars($cl['email_client'] ?? '—'); ?></td>
                     <td><?php echo htmlspecialchars($cl['telephone_client'] ?? '—'); ?></td>
                     <td><strong><?php echo (int) $cl['points']; ?></strong></td>
-                    <td><?php echo htmlspecialchars(fidelity_niveau_label($cl['niveau_fidelite'] ?? fidelity_niveau((int) $cl['points']))); ?></td>
+                    <td><?php echo htmlspecialchars($cl['niveau_label']); ?></td>
                     <td>
                         <form method="post" class="d-flex gap-1 flex-wrap align-items-center">
                             <input type="hidden" name="id_client" value="<?php echo (int) $cl['id_client']; ?>">

@@ -1,47 +1,14 @@
 <?php
 
 require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../includes/fidelity_service.php';
 
-$pdo = admin_init();
-fidelity_ensure($pdo);
+use App\Controller\Admin\FideliteController;
 
-$message = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_reward'])) {
-        $stmt = $pdo->prepare('INSERT INTO recompense_fidelite (libelle, description, points_requis, type_recompense, valeur, actif) VALUES (?, ?, ?, ?, ?, 1)');
-        $stmt->execute([
-            trim($_POST['libelle']),
-            trim($_POST['description'] ?? ''),
-            (int) $_POST['points_requis'],
-            $_POST['type_recompense'],
-            (float) $_POST['valeur'],
-        ]);
-        admin_log($pdo, 'recompense_create', 'Récompense : ' . $_POST['libelle'], 'fidelite');
-        $message = 'Récompense créée.';
-    }
-    if (isset($_POST['update_reward'])) {
-        $stmt = $pdo->prepare('UPDATE recompense_fidelite SET libelle = ?, description = ?, points_requis = ?, type_recompense = ?, valeur = ?, actif = ? WHERE id_recompense = ?');
-        $stmt->execute([
-            trim($_POST['libelle']),
-            trim($_POST['description'] ?? ''),
-            (int) $_POST['points_requis'],
-            $_POST['type_recompense'],
-            (float) $_POST['valeur'],
-            isset($_POST['actif']) ? 1 : 0,
-            (int) $_POST['id_recompense'],
-        ]);
-        $message = 'Récompense mise à jour.';
-    }
-    if (isset($_POST['delete_reward'])) {
-        $pdo->prepare('DELETE FROM recompense_fidelite WHERE id_recompense = ?')->execute([(int) $_POST['id_recompense']]);
-        $message = 'Récompense supprimée.';
-    }
-}
-
-$rewards = fidelity_list_rewards($pdo, false);
-$types = ['pourcentage' => '% réduction', 'montant_fixe' => 'Montant fixe (FC)', 'cadeau' => 'Cadeau'];
+admin_init();
+$result = (new FideliteController())->handle($_POST);
+$message = $result['message'];
+$rewards = $result['rewards'];
+$types = $result['types'];
 
 admin_shell_start('Admin — Fidélité', 'fidelite', 'Fidélité', 'Récompenses', 'Définissez les paliers échangeables contre des points.');
 ?>

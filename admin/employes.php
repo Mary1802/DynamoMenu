@@ -1,88 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../includes/employe_passwords.php';
 
-$pdo = admin_init();
-$message = '';
-$error = '';
-$roles = ['admin' => 'Administrateur', 'cuisinier' => 'Cuisinier', 'caissier' => 'Caissier'];
+use App\Controller\Admin\EmployeController;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_employe'])) {
-        $email = trim($_POST['email_employe'] ?? '');
-        $mdp = (string) ($_POST['mot_de_passe'] ?? '');
-        $role = (string) ($_POST['role'] ?? '');
+admin_init();
 
-        if ($email === '' || $mdp === '') {
-            $error = 'Email et mot de passe requis.';
-        } elseif (!employe_password_is_valid($mdp)) {
-            $error = 'Le mot de passe doit contenir au moins 6 caractères.';
-        } elseif (!isset($roles[$role])) {
-            $error = 'Rôle invalide.';
-        } else {
-            try {
-                $stmt = $pdo->prepare('INSERT INTO employe (nom_employe, prenom_employe, email_employe, mot_de_passe, role, telephone_employe) VALUES (?, ?, ?, ?, ?, ?)');
-                $stmt->execute([
-                    trim($_POST['nom_employe']),
-                    trim($_POST['prenom_employe']),
-                    $email,
-                    password_hash_employe($mdp),
-                    $role,
-                    trim($_POST['telephone_employe'] ?? ''),
-                ]);
-                admin_log($pdo, 'employe_create', "Employé créé : {$email} ({$role})");
-                $message = 'Compte créé. L\'employé peut se connecter avec son email et le mot de passe défini.';
-            } catch (PDOException $e) {
-                $error = 'Cet email est déjà utilisé ou la création a échoué.';
-            }
-        }
-    }
-
-    if (isset($_POST['reset_password'])) {
-        $id = (int) ($_POST['id_employe'] ?? 0);
-        $mdp = (string) ($_POST['nouveau_mot_de_passe'] ?? '');
-
-        if ($id <= 0 || $mdp === '') {
-            $error = 'Employé et nouveau mot de passe requis.';
-        } elseif (!employe_password_is_valid($mdp)) {
-            $error = 'Le mot de passe doit contenir au moins 6 caractères.';
-        } else {
-            $stmt = $pdo->prepare('SELECT email_employe FROM employe WHERE id_employe = ?');
-            $stmt->execute([$id]);
-            $email = $stmt->fetchColumn();
-            if (!$email) {
-                $error = 'Employé introuvable.';
-            } else {
-                $pdo->prepare('UPDATE employe SET mot_de_passe = ? WHERE id_employe = ?')
-                    ->execute([password_hash_employe($mdp), $id]);
-                admin_log($pdo, 'employe_password_reset', "Mot de passe réinitialisé : {$email}");
-                $message = 'Mot de passe mis à jour pour ' . $email . '.';
-            }
-        }
-    }
-
-    if (isset($_POST['delete_employe'])) {
-        $id = (int) $_POST['id_employe'];
-        if ($id !== (int) ($_SESSION['user_id'] ?? 0)) {
-            $pdo->prepare('DELETE FROM employe WHERE id_employe = ?')->execute([$id]);
-            admin_log($pdo, 'employe_delete', "Employé #{$id} supprimé");
-            $message = 'Employé supprimé.';
-        } else {
-            $error = 'Vous ne pouvez pas supprimer votre propre compte.';
-        }
-    }
-}
-
-$q = $_GET['q'] ?? '';
-if ($q !== '') {
-    $stmt = $pdo->prepare('SELECT * FROM employe WHERE nom_employe LIKE ? OR prenom_employe LIKE ? OR email_employe LIKE ? ORDER BY role, nom_employe');
-    $qpattern = '%' . $q . '%';
-    $stmt->execute([$qpattern, $qpattern, $qpattern]);
-    $employes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} else {
-    $employes = $pdo->query('SELECT * FROM employe ORDER BY role, nom_employe')->fetchAll(PDO::FETCH_ASSOC);
-}
+$result = (new EmployeController())->handle($_GET, $_POST, $_SESSION);
+$message = $result['message'];
+$error = $result['error'];
+$employes = $result['employes'];
+$q = $result['q'];
+$passwordHasher = $result['passwordHasher'];
+$passwordService = $result['passwordService'];
+$roles = EmployeController::ROLES;
 
 admin_shell_start(
     'Admin — Employés',
@@ -146,12 +77,14 @@ admin_shell_start(
 
 <div class="chart-container">
     <div class="chart-title">Liste des comptes</div>
+    <p class="text-secondary small mb-3">Identifiants de connexion sur <strong>login.php</strong>. Le mot de passe affiché est celui défini à la création ou lors de la dernière réinitialisation.</p>
     <div class="table-responsive-wrap">
         <table class="data-table">
             <thead>
                 <tr>
                     <th>Nom</th>
-                    <th>Email</th>
+                    <th>E-mail (identifiant)</th>
+                    <th>Mot de passe</th>
                     <th>Rôle</th>
                     <th>Téléphone</th>
                     <th>Nouveau mot de passe</th>
@@ -159,23 +92,36 @@ admin_shell_start(
                 </tr>
             </thead>
             <tbody>
-            <?php foreach ($employes as $e): ?>
+            <?php foreach ($employes as $e):
+                $visiblePassword = $passwordService->displayPassword(
+                    $e->email,
+                    $e->passwordNote,
+                    $e->motDePasse
+                ) ?? $e->visiblePassword($passwordHasher);
+                ?>
                 <tr>
-                    <td><?php echo htmlspecialchars($e['prenom_employe'] . ' ' . $e['nom_employe']); ?></td>
-                    <td><?php echo htmlspecialchars($e['email_employe']); ?></td>
-                    <td><?php echo htmlspecialchars($roles[$e['role']] ?? $e['role']); ?></td>
-                    <td><?php echo htmlspecialchars($e['telephone_employe'] ?? '—'); ?></td>
+                    <td><?php echo htmlspecialchars($e->fullName()); ?></td>
+                    <td><span class="staff-credential"><?php echo htmlspecialchars($e->email); ?></span></td>
+                    <td>
+                        <?php if ($visiblePassword !== null): ?>
+                        <span class="staff-credential staff-credential--password"><?php echo htmlspecialchars($visiblePassword); ?></span>
+                        <?php else: ?>
+                        <span class="text-secondary small">Définissez un mot de passe ci-contre</span>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo htmlspecialchars($roles[$e->role] ?? $e->role); ?></td>
+                    <td><?php echo htmlspecialchars($e->telephone ?? '—'); ?></td>
                     <td>
                         <form method="post" class="d-flex gap-1 flex-wrap align-items-center">
-                            <input type="hidden" name="id_employe" value="<?php echo (int) $e['id_employe']; ?>">
+                            <input type="hidden" name="id_employe" value="<?php echo $e->id; ?>">
                             <input type="password" name="nouveau_mot_de_passe" class="form-control form-control-sm" style="min-width:140px;max-width:180px;" minlength="6" placeholder="Nouveau mot de passe" required autocomplete="new-password">
                             <button type="submit" name="reset_password" class="btn-details btn-sm">Mettre à jour</button>
                         </form>
                     </td>
                     <td>
-                        <?php if ((int) $e['id_employe'] !== (int) ($_SESSION['user_id'] ?? 0)): ?>
+                        <?php if ($e->id !== (int) ($_SESSION['user_id'] ?? 0)): ?>
                         <form method="post" class="d-inline">
-                            <input type="hidden" name="id_employe" value="<?php echo (int) $e['id_employe']; ?>">
+                            <input type="hidden" name="id_employe" value="<?php echo $e->id; ?>">
                             <button type="submit" name="delete_employe" class="btn-details btn-sm" onclick="return confirm('Supprimer cet employé ?');">Supprimer</button>
                         </form>
                         <?php else: ?>
@@ -188,4 +134,26 @@ admin_shell_start(
         </table>
     </div>
 </div>
+<style>
+.staff-credential {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9rem;
+    color: var(--text-primary, #f8fafc);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 0.2rem 0.5rem;
+    user-select: all;
+    word-break: break-all;
+}
+html.theme-light .staff-credential {
+    color: #1a1a2e;
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.12);
+}
+.staff-credential--password {
+    letter-spacing: 0.02em;
+}
+</style>
 <?php admin_shell_end(); ?>

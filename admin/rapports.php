@@ -3,36 +3,22 @@
 require_once __DIR__ . '/../includes/admin_layout.php';
 require_once __DIR__ . '/../includes/money.php';
 
-$pdo = admin_init();
+use App\Controller\Admin\ReportController;
+use App\Service\ReportService;
 
-if (!empty($_GET['mois']) && preg_match('/^\d{4}-\d{2}$/', (string) $_GET['mois'])) {
-    $dateMois = DateTime::createFromFormat('Y-m', (string) $_GET['mois']);
-    $annee = $dateMois ? (int) $dateMois->format('Y') : (int) date('Y');
-    $moisNum = $dateMois ? (int) $dateMois->format('n') : (int) date('n');
-} else {
-    $period = dashboard_report_parse_period(
-        isset($_GET['annee']) ? (int) $_GET['annee'] : null,
-        isset($_GET['mois']) ? (int) $_GET['mois'] : null
-    );
-    $annee = $period['annee'];
-    $moisNum = $period['mois'];
-}
-
-$moisKey = dashboard_report_month_key($annee, $moisNum);
-$daysInMonth = (int) date('t', strtotime($moisKey . '-01'));
-$jourExport = isset($_GET['jour']) ? (int) $_GET['jour'] : min((int) date('j'), $daysInMonth);
-if ($moisKey !== date('Y-m')) {
-    $jourExport = min($jourExport, $daysInMonth);
-}
-$jourExport = max(1, min($daysInMonth, $jourExport));
-
-$rapport_jour = dashboard_sales_totals($pdo, 'day', date('Y-m-d'));
-$rapport_mois = dashboard_sales_totals($pdo, 'month', $moisKey);
-$lignes_mois = dashboard_fetch_factures_lignes($pdo, $moisKey);
-$moisLabel = dashboard_report_month_label($annee, $moisNum);
-$exportBase = 'annee=' . $annee . '&mois=' . $moisNum;
-$anneeCourante = (int) date('Y');
-$annees = range($anneeCourante - 2, $anneeCourante + 1);
+admin_init();
+$data = (new ReportController())->index($_GET);
+$rapport_jour = $data['rapport_jour'];
+$rapport_mois = $data['rapport_mois'];
+$lignes_mois = $data['lignes_mois'];
+$annee = $data['annee'];
+$moisNum = $data['moisNum'];
+$moisLabel = $data['moisLabel'];
+$daysInMonth = $data['daysInMonth'];
+$jourExport = $data['jourExport'];
+$exportBase = $data['exportBase'];
+$annees = $data['annees'];
+$nomsMois = ReportService::MONTH_NAMES;
 
 admin_shell_start(
     'Admin — Rapports ventes',
@@ -73,14 +59,7 @@ admin_shell_start(
     <div class="col-md-4">
         <label class="form-label text-secondary" for="filtreMois">Mois</label>
         <select name="mois" id="filtreMois" class="form-select">
-            <?php
-            $nomsMois = [
-                1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-                5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
-                9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
-            ];
-            foreach ($nomsMois as $num => $nom):
-            ?>
+            <?php foreach ($nomsMois as $num => $nom): ?>
             <option value="<?php echo $num; ?>"<?php echo $num === $moisNum ? ' selected' : ''; ?>><?php echo $nom; ?></option>
             <?php endforeach; ?>
         </select>

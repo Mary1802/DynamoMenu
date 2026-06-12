@@ -1,28 +1,29 @@
 <?php
 
-require_once dirname(__DIR__) . '/includes/app_url.php';
-
 /**
- * Génère un identifiant unique pour une table.
+ * Service QR — pont vers App\Service\QrService.
  */
+
+require_once dirname(__DIR__) . '/includes/bootstrap.php';
+
+use App\Service\QrService;
+
 function qr_generate_table_code(int $numTable): string
 {
-    return 'TBL-' . str_pad((string) $numTable, 3, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+    return QrService::generateTableCode($numTable);
 }
 
-/**
- * URL imprimée sur le QR : accueil client, table mémorisée en session (scan unique).
- */
 function qr_table_entry_url(string $codeTable): string
 {
-    return app_base_url() . '/client/index.php?t=' . rawurlencode($codeTable);
+    return app()->qrService()->tableEntryUrl($codeTable);
 }
 
-/**
- * URL d'image QR (service externe, sans dépendance Composer).
- */
 function qr_image_url(string $targetUrl, int $size = 280): string
 {
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=' . $size . 'x' . $size
-        . '&data=' . rawurlencode($targetUrl);
+    return QrService::imageUrl($targetUrl, $size);
+}
+
+function qr_print_image_url(string $targetUrl, int $size = 480): string
+{
+    return QrService::printImageUrl($targetUrl, $size);
 }

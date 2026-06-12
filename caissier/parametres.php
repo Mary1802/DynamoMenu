@@ -1,31 +1,16 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/staff_auth.php';
+
+use App\Controller\Staff\ParametresController;
+
 staff_require(['caissier']);
+$result = (new ParametresController())->index(staff_user());
+$account = $result['account'];
+$contacts = $result['contacts'];
 
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
-
-$user = staff_user();
-$db_config = require __DIR__ . '/../config/db.php';
-try {
-    $pdo = new PDO(
-        'mysql:host=' . $db_config['host'] . ';dbname=' . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-    $contacts = dashboard_contacts($pdo);
-    $account = dashboard_staff_account($pdo, $user);
-} catch (PDOException $e) {
-    $contacts = dashboard_contacts();
-    $account = [
-        'nom' => $user['nom'] ?? 'Utilisateur',
-        'prenom' => '',
-        'nom_famille' => '',
-        'email' => $user['email'] ?? '',
-        'role' => staff_role_label((string) ($user['role'] ?? 'caissier')),
-    ];
-}
 ?>
 <!doctype html>
 <html lang="fr">

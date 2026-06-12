@@ -2,22 +2,12 @@
 
 require_once __DIR__ . '/../includes/admin_layout.php';
 
-$pdo = admin_init();
+use App\Controller\Admin\LogController;
 
-$q = $_GET['q'] ?? '';
-$logs = [];
-try {
-    if ($q !== '') {
-        $stmt = $pdo->prepare('SELECT * FROM log_activite WHERE action LIKE ? OR module_concerne LIKE ? OR description LIKE ? ORDER BY date_action DESC LIMIT 200');
-        $qpattern = '%' . $q . '%';
-        $stmt->execute([$qpattern, $qpattern, $qpattern]);
-        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-        $logs = $pdo->query('SELECT * FROM log_activite ORDER BY date_action DESC LIMIT 200')->fetchAll(PDO::FETCH_ASSOC);
-    }
-} catch (PDOException $e) {
-    $logs = [];
-}
+admin_init();
+$result = (new LogController())->handle($_GET);
+$logs = $result['logs'];
+$q = $result['q'];
 
 admin_shell_start('Admin — Journaux', 'logs', 'Audit', 'Journaux d\'activité', 'Historique des actions enregistrées.');
 ?>

@@ -1,92 +1,30 @@
 <?php
+
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/client_session.php';
-client_session_start();
-
-$num_commande = (int) ($_GET['commande'] ?? $_SESSION['suivi_commande_id'] ?? 0);
-$accessToken = trim((string) ($_GET['token'] ?? ''));
-if ($num_commande <= 0) {
-    header('Location: index.php');
-    exit;
-}
-
-$db_config = require __DIR__ . '/../config/db.php';
-require_once __DIR__ . '/../includes/table_context.php';
 require_once __DIR__ . '/../includes/money.php';
 
-try {
-    $pdo = new PDO(
-        'mysql:host=' . $db_config['host'] . ';dbname=' . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion');
-}
+use App\Controller\Client\OrderTrackingController;
 
-bootstrap_table_context($pdo);
-
-$stmt = $pdo->prepare("
-    SELECT c.*, cl.nom_client, cl.prenom_client, cl.email_client, cl.telephone_client,
-           t.num_table, t.libelle AS table_libelle
-    FROM commande c
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    LEFT JOIN table_restaurant t ON c.num_table = t.num_table
-    WHERE c.num_commande = ?
-");
-$stmt->execute([$num_commande]);
-$commande = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$commande) {
+$data = (new OrderTrackingController())->show($_GET);
+if ($data === null) {
     header('Location: index.php');
     exit;
 }
 
-client_require_order_access($commande, $accessToken !== '' ? $accessToken : null);
+$num_commande = $data['num_commande'];
+$commande = $data['commande'];
+$lignes = $data['lignes'];
+$facture = $data['facture'];
+$statutInitial = $data['statutInitial'];
+$tableLabel = $data['tableLabel'];
+$clientNom = $data['clientNom'];
+$modePaiement = $data['modePaiement'];
+$remise = $data['remise'];
+$sousTotalLignes = $data['sousTotalLignes'];
+$indexUrl = $data['indexUrl'];
 
-$stmt = $pdo->prepare("
-    SELECT COALESCE(p.nom_plat, b.nom_boisson, d.personnalisation_boisson) AS nom,
-           d.quantite, d.prix, d.sous_total, d.personnalisation_boisson
-    FROM contient d
-    LEFT JOIN plat p ON d.id_plat = p.id_plat
-    LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
-    WHERE d.num_commande = ?
-    ORDER BY d.id_detail
-");
-$stmt->execute([$num_commande]);
-$lignes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$facture = null;
-try {
-    $stmt = $pdo->prepare('SELECT * FROM facture WHERE num_commande = ? LIMIT 1');
-    $stmt->execute([$num_commande]);
-    $facture = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-} catch (PDOException $e) {
-    $facture = null;
-}
-
-$statuts = [
-    'en_attente' => 'En attente',
-    'en_preparation' => 'En préparation',
-    'prete' => 'Prête — en route vers votre table',
-    'livree' => 'Livrée',
-    'annulee' => 'Annulée',
-];
-$statutInitial = $statuts[$commande['statut']] ?? $commande['statut'];
-
-$tableLabel = $commande['table_libelle'] ?: ('Table ' . $commande['num_table']);
-$clientNom = trim(($commande['prenom_client'] ?? '') . ' ' . ($commande['nom_client'] ?? ''));
-$modePaiement = '';
-if (!empty($commande['mode_paiement_souhaite'])) {
-    $modePaiement = $commande['mode_paiement_souhaite'] === 'mobile_money' ? 'Mobile money' : 'Espèces (cash)';
-}
-if ($facture) {
-    $modesFacture = ['especes' => 'Espèces', 'mobile' => 'Mobile money', 'carte' => 'Carte'];
-    $modePaiement = $modesFacture[$facture['mode_paiement']] ?? $facture['mode_paiement'];
-}
-
-$remise = (float) ($commande['remise_montant'] ?? 0);
-$sousTotalLignes = array_sum(array_column($lignes, 'sous_total'));
+require_once __DIR__ . '/../includes/table_context.php';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -168,7 +106,7 @@ $sousTotalLignes = array_sum(array_column($lignes, 'sous_total'));
 </head>
 <body>
     <header class="navbar navbar-dark px-3 py-3">
-        <a class="navbar-brand fw-bold text-white" href="<?php echo htmlspecialchars(table_link('index.php')); ?>">DynamoMenu</a>
+        <a class="navbar-brand fw-bold text-white" href="<?php echo htmlspecialchars($indexUrl); ?>">DynamoMenu</a>
     </header>
 
     <main class="suivi-wrap">
@@ -242,10 +180,10 @@ $sousTotalLignes = array_sum(array_column($lignes, 'sous_total'));
             </div>
 
             <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
-                <a href="<?php echo htmlspecialchars(table_link('index.php')); ?>" class="btn btn-outline-light flex-fill">
+                <a href="<?php echo htmlspecialchars($indexUrl); ?>" class="btn btn-outline-light flex-fill">
                     <i class="bi bi-house-door"></i> Retour à l'accueil
                 </a>
-                <a href="nouvelle_commande.php" class="btn btn-primary flex-fill" style="background:#ff6f1f;border-color:#ff6f1f;">
+                <a href="<?php echo htmlspecialchars(table_link('nouvelle_commande.php')); ?>" class="btn btn-primary flex-fill" style="background:#ff6f1f;border-color:#ff6f1f;">
                     <i class="bi bi-plus-circle"></i> Commander à nouveau
                 </a>
             </div>

@@ -1,55 +1,21 @@
 <?php
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/client_session.php';
-client_session_start();
-$db_config = require __DIR__ . '/../config/db.php';
-require_once __DIR__ . '/../includes/table_context.php';
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
 require_once __DIR__ . '/../includes/client_footer.php';
 require_once __DIR__ . '/../includes/client_header.php';
 
-try {
-    $pdo = new PDO(
-        'mysql:host=' . $db_config['host'] . ';dbname=' . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-    bootstrap_table_context($pdo);
-    table_redirect_after_scan('index.php');
-} catch (PDOException $e) {
-    die('Erreur de connexion');
-}
+use App\Controller\Client\HomeController;
 
-$tableCtx = table_session();
-$tableError = $_SESSION['table_error'] ?? null;
-unset($_SESSION['table_error']);
-$scanError = isset($_GET['err']) && $_GET['err'] === 'table';
-$menuUrl = table_link('menu.php');
-$panierUrl = table_link('panier.php');
-$appConfig = require __DIR__ . '/../config/app.php';
-$contactRows = [];
-try {
-    $contactRows = dashboard_contact_list($pdo);
-} catch (Throwable $e) {
-    // fallback to config file
-}
-if ($contactRows === [] && is_array($appConfig['contacts'] ?? null) && $appConfig['contacts'] !== []) {
-    $contactRows = [$appConfig['contacts']];
-}
-
-$hasContactSection = false;
-foreach ($contactRows as $row) {
-    $nom = trim((string) ($row['nom'] ?? $row['nom_etablissement'] ?? ''));
-    if ($nom !== ''
-        || trim((string) ($row['adresse'] ?? '')) !== ''
-        || trim((string) ($row['horaires'] ?? '')) !== ''
-        || trim((string) ($row['telephone'] ?? '')) !== ''
-        || trim((string) ($row['email'] ?? '')) !== ''
-        || trim((string) ($row['whatsapp'] ?? '')) !== '') {
-        $hasContactSection = true;
-        break;
-    }
-}
+$data = (new HomeController())->index();
+$tableCtx = $data['tableCtx'];
+$tableError = $data['tableError'];
+$scanError = $data['scanError'];
+$menuUrl = $data['menuUrl'];
+$panierUrl = $data['panierUrl'];
+$indexUrl = $data['indexUrl'];
+$contactRows = $data['contactRows'];
+$hasContactSection = $data['hasContactSection'];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -63,13 +29,13 @@ foreach ($contactRows as $row) {
 </head>
 <body class="client-site">
     <header class="navbar navbar-expand-lg navbar-dark px-4 py-3">
-        <a class="navbar-brand fw-bold text-white" href="<?php echo htmlspecialchars(table_link('index.php')); ?>">DynamoMenu</a>
+        <a class="navbar-brand fw-bold text-white" href="<?php echo htmlspecialchars($indexUrl); ?>">DynamoMenu</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navMenu">
             <ul class="navbar-nav ms-auto align-items-lg-center">
-                <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars(table_link('index.php')); ?>">Accueil</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars($indexUrl); ?>">Accueil</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars($menuUrl); ?>">Menu</a></li>
                 <li class="nav-item">
                     <a class="nav-link text-white position-relative" href="<?php echo htmlspecialchars($panierUrl); ?>">

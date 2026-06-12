@@ -1,46 +1,26 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/staff_auth.php';
-staff_require(['caissier']);
-
-$db_config = require '../config/db.php';
-require_once '../includes/dashboard_helpers.php';
 require_once __DIR__ . '/../includes/money.php';
 
-try {
-    $pdo = new PDO(
-        'mysql:host=' . $db_config['host'] . ';dbname=' . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion');
-}
+use App\Controller\Caissier\ReportController;
+use App\Service\ReportService;
 
-$period = dashboard_report_parse_period(
-    isset($_GET['annee']) ? (int) $_GET['annee'] : null,
-    isset($_GET['mois']) ? (int) $_GET['mois'] : null
-);
-$annee = $period['annee'];
-$moisNum = $period['mois'];
-$moisKey = $period['mois_key'];
+staff_require(['caissier']);
+$data = (new ReportController())->index($_GET);
+$rapport_mois = $data['rapport_mois'];
+$lignes_mois = $data['lignes_mois'];
+$annee = $data['annee'];
+$moisNum = $data['moisNum'];
+$moisLabel = $data['moisLabel'];
+$daysInMonth = $data['daysInMonth'];
+$jourExport = $data['jourExport'];
+$exportBase = $data['exportBase'];
+$annees = $data['annees'];
+$nomsMois = ReportService::MONTH_NAMES;
 
-$daysInMonth = (int) date('t', strtotime($moisKey . '-01'));
-$jourExport = isset($_GET['jour']) ? (int) $_GET['jour'] : min((int) date('j'), $daysInMonth);
-if ($moisKey !== date('Y-m')) {
-    $jourExport = min($jourExport, $daysInMonth);
-}
-$jourExport = max(1, min($daysInMonth, $jourExport));
-
-$rapport_mois = dashboard_sales_totals($pdo, 'month', $moisKey);
-$lignes_mois = dashboard_fetch_factures_lignes($pdo, $moisKey);
-
-$exportBase = 'annee=' . $annee . '&mois=' . $moisNum;
-$moisLabel = dashboard_report_month_label($annee, $moisNum);
-
-$anneeCourante = (int) date('Y');
-$annees = range($anneeCourante - 2, $anneeCourante + 1);
+require_once __DIR__ . '/../includes/dashboard_helpers.php';
 ?>
 <!doctype html>
 <html lang="fr">
@@ -92,14 +72,7 @@ $annees = range($anneeCourante - 2, $anneeCourante + 1);
                 <div class="col-md-4">
                     <label class="form-label text-secondary" for="filtreMois">Mois</label>
                     <select name="mois" id="filtreMois" class="form-select">
-                        <?php
-                        $nomsMois = [
-                            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-                            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
-                            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
-                        ];
-                        foreach ($nomsMois as $num => $nom):
-                        ?>
+                        <?php foreach ($nomsMois as $num => $nom): ?>
                         <option value="<?php echo $num; ?>"<?php echo $num === $moisNum ? ' selected' : ''; ?>><?php echo $nom; ?></option>
                         <?php endforeach; ?>
                     </select>

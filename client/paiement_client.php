@@ -1,95 +1,22 @@
 <?php
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/client_session.php';
-client_session_start();
-
-// Configuration de la base de données
-$db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/money.php';
-try {
-    $pdo = new PDO(
-        "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion: ' . $e->getMessage());
-}
 
-// Récupérer le numéro de commande
-$num_commande = $_GET['commande'] ?? null;
-$accessToken = trim((string) ($_GET['token'] ?? ''));
-if (!$num_commande) {
+use App\Controller\Client\PaymentController;
+use App\Service\ClientPaymentService;
+
+$data = (new PaymentController())->show($_GET);
+if ($data === null) {
     header('Location: index.php');
     exit;
 }
 
-// Vérifier si la colonne mode_paiement existe dans la table facture
-$factureColumns = array_column($pdo->query("SHOW COLUMNS FROM facture")->fetchAll(PDO::FETCH_ASSOC), 'Field');
-$factureSelect = "f.num_facture, f.total_paye, f.date_facture";
-if (in_array('mode_paiement', $factureColumns, true)) {
-    $factureSelect .= ", f.mode_paiement";
-}
-
-// Récupérer les détails de la commande
-$stmt = $pdo->prepare("
-    SELECT 
-        c.*,
-        cl.nom_client,
-        cl.prenom_client,
-        cl.email_client,
-        cl.telephone_client,
-        t.num_table,
-        $factureSelect
-    FROM commande c
-    LEFT JOIN client cl ON c.id_client = cl.id_client
-    LEFT JOIN table_restaurant t ON c.num_table = t.num_table
-    LEFT JOIN facture f ON c.num_commande = f.num_commande
-    WHERE c.num_commande = ?
-");
-$stmt->execute([$num_commande]);
-$commande = $stmt->fetch(PDO::FETCH_ASSOC);
-if ($commande && !array_key_exists('mode_paiement', $commande)) {
-    $commande['mode_paiement'] = null;
-}
-
-if (!$commande) {
-    header('Location: index.php');
-    exit;
-}
-
-client_require_order_access($commande, $accessToken !== '' ? $accessToken : null);
-
-// Récupérer les colonnes disponibles dans la table boisson
-$boissonColumns = array_column($pdo->query("SHOW COLUMNS FROM boisson")->fetchAll(PDO::FETCH_ASSOC), 'Field');
-$typeBoissonTableExists = count($pdo->query("SHOW TABLES LIKE 'type_boisson'")->fetchAll(PDO::FETCH_ASSOC)) > 0;
-$boissonSelect = "b.nom_boisson";
-$boissonJoin = "";
-if (in_array('type_boisson', $boissonColumns, true)) {
-    $boissonSelect .= ", b.type_boisson";
-} elseif ($typeBoissonTableExists && in_array('id_type', $boissonColumns, true)) {
-    $boissonSelect .= ", tb.nom_type AS type_boisson";
-    $boissonJoin = "LEFT JOIN type_boisson tb ON b.id_type = tb.id_type";
-}
-
-// Récupérer les détails des articles
-$stmt = $pdo->prepare("
-    SELECT 
-        d.*,
-        p.nom_plat,
-        p.prix_unitaire as prix_plat,
-        $boissonSelect
-    FROM contient d
-    LEFT JOIN plat p ON d.id_plat = p.id_plat
-    LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
-    $boissonJoin
-    WHERE d.num_commande = ?
-");
-$stmt->execute([$num_commande]);
-$articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Vérifier si la commande est déjà payée
-$est_payee = !empty($commande['num_facture']);
+$num_commande = $data['num_commande'];
+$commande = $data['commande'];
+$articles = $data['articles'];
+$est_payee = $data['est_payee'];
+$status_text = ClientPaymentService::statusLabels();
 ?>
 <!doctype html>
 <html lang="fr">
@@ -365,13 +292,6 @@ $est_payee = !empty($commande['num_facture']);
                     
                     <?php
                     $status_class = 'status-' . str_replace('_', '-', $commande['statut']);
-                    $status_text = [
-                        'en_attente' => '⏳ En attente',
-                        'en_preparation' => '🔥 En préparation',
-                        'prete' => '✅ Prête à servir',
-                        'livree' => '🍽️ Servie',
-                        'annulee' => '❌ Annulée'
-                    ];
                     ?>
                     <div class="status-badge <?php echo $status_class; ?>">
                         <?php echo $status_text[$commande['statut']] ?? $commande['statut']; ?>
@@ -455,13 +375,9 @@ $est_payee = !empty($commande['num_facture']);
                         <div class="info-item">
                             <div class="info-label">Mode de paiement</div>
                             <div class="info-value">
-                                <?php 
-                                $mode_icons = [
-                                    'carte' => '💳 Carte bancaire',
-                                    'especes' => '💵 Espèces',
-                                    'mobile' => '📱 Paiement mobile'
-                                ];
-                                echo $mode_icons[$commande['mode_paiement']] ?? ucfirst($commande['mode_paiement']);
+                                <?php
+                                $mode_icons = ClientPaymentService::modeIcons();
+                                echo $mode_icons[$commande['mode_paiement']] ?? ucfirst((string) $commande['mode_paiement']);
                                 ?>
                             </div>
                         </div>

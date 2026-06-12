@@ -5,10 +5,8 @@
  */
 
 require_once __DIR__ . '/includes/setup_guard.php';
-require_once __DIR__ . '/includes/session_security.php';
+require_once __DIR__ . '/bootstrap/app.php';
 setup_require_access();
-
-staff_session_start();
 
 // Configuration
 $db_config = require __DIR__ . '/config/db.php';
@@ -141,15 +139,16 @@ try {
     // Premier administrateur uniquement si aucun compte n'existe (installation initiale)
     $employeCount = (int) $pdo->query('SELECT COUNT(*) FROM employe')->fetchColumn();
     if ($employeCount === 0) {
-        $stmt = $pdo->prepare('INSERT INTO employe (nom_employe, prenom_employe, email_employe, mot_de_passe, role, telephone_employe) VALUES (?, ?, ?, ?, ?, ?)');
-        $stmt->execute([
+        app()->employePasswordService()->ensureColumn();
+        app()->employeRepository()->create(
             'Admin',
             'Principal',
             'admin@dynamomenu.fr',
-            password_hash_employe('admin123'),
+            app()->passwordHasher()->hash('admin123'),
             'admin',
             '',
-        ]);
+            'admin123'
+        );
     }
 
     // Insérer des clients de test

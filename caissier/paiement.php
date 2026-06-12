@@ -1,222 +1,25 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/staff_auth.php';
+require_once __DIR__ . '/../includes/dashboard_helpers.php';
+require_once __DIR__ . '/../includes/money.php';
+
+use App\Controller\Caissier\PaiementController;
+
 staff_require(['caissier']);
 
-// Configuration de la base de données
-$db_config = require '../config/db.php';
-try {
-    $pdo = new PDO(
-        "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion: ' . $e->getMessage());
-}
-
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
-require_once __DIR__ . '/../includes/table_context.php';
-require_once __DIR__ . '/../includes/money.php';
-table_ensure_schema($pdo);
-paiement_ensure_schema($pdo);
-contient_ensure_schema($pdo);
-
-/**
- * Colonnes requises pour la page caisse (installations partielles).
- */
-function paiement_ensure_schema(PDO $pdo): void
-{
-    $commandeCols = array_column($pdo->query('SHOW COLUMNS FROM commande')->fetchAll(PDO::FETCH_ASSOC), 'Field');
-    if (!in_array('mode_paiement_souhaite', $commandeCols, true)) {
-        $pdo->exec("ALTER TABLE commande ADD COLUMN mode_paiement_souhaite ENUM('especes','mobile_money') NULL AFTER montant_total");
-    }
-
-    $factureCols = array_column($pdo->query('SHOW COLUMNS FROM facture')->fetchAll(PDO::FETCH_ASSOC), 'Field');
-    if (!in_array('mode_paiement', $factureCols, true)) {
-        $pdo->exec("ALTER TABLE facture ADD COLUMN mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL DEFAULT 'especes' AFTER total_paye");
-    }
-}
-
-$error = $error ?? null;
-
-// Traiter le paiement
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payer_commande'])) {
-    $commande_id = $_POST['commande_id'];
-    $mode_paiement = $_POST['mode_paiement'];
-    $montant_paye = $_POST['montant_paye'];
-    
-    // Commencer une transaction
-    $pdo->beginTransaction();
-    
-    try {
-        // Créer la facture (commande déjà livrée)
-        $stmt = $pdo->prepare("INSERT INTO facture (num_commande, total_paye, mode_paiement) VALUES (?, ?, ?)");
-        $stmt->execute([$commande_id, $montant_paye, $mode_paiement]);
-        $num_facture = (int) $pdo->lastInsertId();
-        
-        // Mettre à jour les demandes de paiement (si la table existe)
-        try {
-            $stmt = $pdo->prepare("UPDATE demande_paiement SET statut = 'traitee', date_traitement = NOW() WHERE num_commande = ? AND statut = 'en_attente'");
-            $stmt->execute([$commande_id]);
-        } catch (PDOException $e) {
-            // Table absente sur anciennes installations
-        }
-        
-        $pdo->commit();
-
-        try {
-            require_once __DIR__ . '/../includes/fidelity_service.php';
-            fidelity_award_after_payment($pdo, (int) $commande_id);
-        } catch (Throwable $e) {
-            // Paiement enregistré ; fidélité optionnelle si tables absentes
-        }
-
-        header('Location: generer_facture.php?facture=' . $num_facture);
-        exit;
-        
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error = "Erreur lors du traitement du paiement: " . $e->getMessage();
-    }
-}
-
-// Traiter l'annulation d'une demande de paiement
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['annuler_demande'])) {
-    $demande_id = $_POST['demande_id'];
-
-    try {
-        $stmt = $pdo->prepare("UPDATE demande_paiement SET statut = 'annulee', date_traitement = NOW() WHERE id_demande = ?");
-        $stmt->execute([$demande_id]);
-    } catch (PDOException $e) {
-        // Ignorer si table absente
-    }
-
-    header('Location: paiement.php');
-    exit;
-}
-
-// Commandes livrées, pas encore facturées
-$commandes_a_payer = [];
-$dashboard_error = null;
-try {
-    $stmt = $pdo->query("
-        SELECT 
-            c.num_commande,
-            c.date_commande,
-            c.montant_total,
-            c.mode_paiement_souhaite,
-            c.num_table,
-            cl.nom_client,
-            cl.prenom_client,
-            cl.email_client,
-            cl.telephone_client,
-            (SELECT COUNT(*) FROM contient d WHERE d.num_commande = c.num_commande) AS nombre_items
-        FROM commande c
-        LEFT JOIN client cl ON c.id_client = cl.id_client
-        WHERE c.statut = 'livree'
-          AND NOT EXISTS (SELECT 1 FROM facture f WHERE f.num_commande = c.num_commande)
-        ORDER BY c.date_commande ASC
-    ");
-    $commandes_a_payer = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $dashboard_error = 'Impossible de charger les commandes à payer : ' . $e->getMessage();
-}
-
-// Récupérer les détails d'une commande spécifique (pour le modal)
-$commande_details = null;
-if (isset($_GET['voir_commande'])) {
-    $commande_id = (int) $_GET['voir_commande'];
-    try {
-        $stmt = $pdo->prepare("
-            SELECT 
-                c.num_commande,
-                c.date_commande,
-                c.montant_total,
-                c.statut,
-                c.mode_paiement_souhaite,
-                c.id_client,
-                c.num_table,
-                c.num_table AS table_num,
-                cl.nom_client,
-                cl.prenom_client,
-                cl.telephone_client,
-                cl.email_client,
-                (
-                    SELECT GROUP_CONCAT(
-                        CONCAT(
-                            COALESCE(p.nom_plat, b.nom_boisson),
-                            ' (x', d.quantite, ') - ',
-                            d.prix, ' FC = ',
-                            d.sous_total, ' FC'
-                        ) SEPARATOR '||'
-                    )
-                    FROM contient d
-                    LEFT JOIN plat p ON d.id_plat = p.id_plat
-                    LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
-                    WHERE d.num_commande = c.num_commande
-                ) AS details_items
-            FROM commande c
-            LEFT JOIN client cl ON c.id_client = cl.id_client
-            WHERE c.num_commande = ?
-        ");
-        $stmt->execute([$commande_id]);
-        $commande_details = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    } catch (PDOException $e) {
-        $commande_details = null;
-        $dashboard_error = 'Détails commande : ' . $e->getMessage();
-    }
-}
-
-$paiements_recents = [];
-try {
-    $stmt = $pdo->prepare("
-        SELECT 
-            f.*, 
-            c.num_commande,
-            c.montant_total, 
-            t.num_table,
-            cl.nom_client,
-            cl.prenom_client,
-            cl.telephone_client
-        FROM facture f
-        JOIN commande c ON f.num_commande = c.num_commande
-        LEFT JOIN table_restaurant t ON c.num_table = t.num_table
-        LEFT JOIN client cl ON c.id_client = cl.id_client
-        ORDER BY f.date_facture DESC
-        LIMIT 5
-    ");
-    $stmt->execute();
-    $paiements_recents = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $paiements_recents = [];
-}
-
-$demandes_paiement = dashboard_fetch_demandes_paiement($pdo);
-$notif_items = dashboard_staff_notifications($pdo, 'caissier');
-$notif_count = count($commandes_a_payer) + count($demandes_paiement);
-$commande_lignes = ($commande_details && isset($commande_details['num_commande']))
-    ? dashboard_fetch_order_lines($pdo, (int) $commande_details['num_commande'])
-    : [];
-
-$stats_jour = [
-    'total_paiements' => 0,
-    'total_ca' => 0,
-];
-try {
-    $stmt = $pdo->prepare("
-        SELECT 
-            COUNT(*) AS total_paiements,
-            COALESCE(SUM(total_paye), 0) AS total_ca
-        FROM facture 
-        WHERE DATE(date_facture) = CURDATE()
-    ");
-    $stmt->execute();
-    $stats_jour = $stmt->fetch(PDO::FETCH_ASSOC) ?: $stats_jour;
-} catch (PDOException $e) {
-    // Table facture absente ou schéma incomplet
-}
+$data = (new PaiementController())->handle($_GET, $_POST);
+$error = $data['error'];
+$commandes_a_payer = $data['commandes_a_payer'];
+$commande_details = $data['commande_details'];
+$commande_lignes = $data['commande_lignes'];
+$paiements_recents = $data['paiements_recents'];
+$demandes_paiement = $data['demandes_paiement'];
+$stats_jour = $data['stats_jour'];
+$dashboard_error = $data['dashboard_error'];
+$notif_items = $data['notif_items'];
+$notif_count = $data['notif_count'];
 ?>
 <!doctype html>
 <html lang="fr">

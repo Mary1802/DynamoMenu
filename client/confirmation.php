@@ -1,198 +1,18 @@
 <?php
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/client_session.php';
-client_session_start();
-
-if (empty($_SESSION['panier'])) {
-    header('Location: panier.php');
-    exit;
-}
-
-$db_config = require '../config/db.php';
-require_once __DIR__ . '/../includes/table_context.php';
-require_once __DIR__ . '/../includes/fidelity_service.php';
 require_once __DIR__ . '/../includes/money.php';
-try {
-    $pdo = new PDO(
-        "mysql:host=" . $db_config['host'] . ";dbname=" . $db_config['dbname'],
-        $db_config['user'],
-        $db_config['password'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Erreur de connexion: ' . $e->getMessage());
-}
 
-bootstrap_table_context($pdo);
-fidelity_ensure($pdo);
-contient_ensure_schema($pdo);
-$tableCtx = table_session();
-$recompenses_fidelite = fidelity_list_rewards($pdo);
-if (!$tableCtx) {
-    header('Location: index.php?err=table');
-    exit;
-}
+use App\Controller\Client\ConfirmationController;
 
-// Vérifier que les colonnes client attendues existent avant d’utiliser ALTER TABLE
-$clientColumns = array_column($pdo->query("SHOW COLUMNS FROM client")->fetchAll(PDO::FETCH_ASSOC), 'Field');
-if (!in_array('prenom_client', $clientColumns, true)) {
-    $pdo->exec("ALTER TABLE client ADD COLUMN prenom_client VARCHAR(100) NULL AFTER nom_client");
-    $clientColumns[] = 'prenom_client';
-}
-if (!in_array('email_client', $clientColumns, true)) {
-    $pdo->exec("ALTER TABLE client ADD COLUMN email_client VARCHAR(100) NULL AFTER prenom_client");
-    $clientColumns[] = 'email_client';
-}
-if (!in_array('telephone_client', $clientColumns, true)) {
-    $pdo->exec("ALTER TABLE client ADD COLUMN telephone_client VARCHAR(20) NULL AFTER email_client");
-}
-
-// Calculer le total
-$total_panier = 0;
-foreach ($_SESSION['panier'] as $item) {
-    $total_panier += $item['sous_total'];
-}
-$tva_rate = 0.16; // 16% de TVA
-$tva_amount = $total_panier * $tva_rate;
-$total_ttc = $total_panier + $tva_amount;
-
-$selected_table = (string) $tableCtx['num_table'];
-
-// Traiter la confirmation de commande
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])) {
-    client_verify_post_csrf();
-    // Récupérer les données du formulaire
-    $nom = trim($_POST['nom'] ?? '');
-    $prenom = trim($_POST['prenom'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $telephone = trim($_POST['telephone'] ?? '');
-    $num_table = $selected_table;
-    $mode_paiement = $_POST['mode_paiement_souhaite'] ?? '';
-    $instructions = mb_substr(trim((string) ($_POST['instructions'] ?? '')), 0, 1000);
-    
-    if (empty($nom) || empty($prenom) || empty($email) || empty($telephone) || empty($num_table)) {
-        $error = 'Veuillez remplir tous les champs obligatoires (nom, prénom, email, téléphone).';
-    } elseif (!in_array($mode_paiement, ['especes', 'mobile_money'], true)) {
-        $error = 'Veuillez choisir un mode de paiement.';
-    } else {
-        // Commencer une transaction
-        $pdo->beginTransaction();
-        
-        try {
-            // 1. Créer ou récupérer le client
-            $stmt = $pdo->prepare("SELECT id_client FROM client WHERE email_client = ?");
-            $stmt->execute([$email]);
-            $client = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($client) {
-                $id_client = $client['id_client'];
-                $stmt = $pdo->prepare('UPDATE client SET nom_client = ?, prenom_client = ?, telephone_client = ? WHERE id_client = ?');
-                $stmt->execute([$nom, $prenom, $telephone, $id_client]);
-            } else {
-                $stmt = $pdo->prepare('INSERT INTO client (nom_client, prenom_client, email_client, telephone_client) VALUES (?, ?, ?, ?)');
-                $stmt->execute([$nom, $prenom, $email, $telephone]);
-                $id_client = $pdo->lastInsertId();
-            }
-            
-            $remise = 0.0;
-            $id_recompense = null;
-            $points_utilises = 0;
-            $total_avant_remise = $total_panier + $tva_amount;
-
-            if (!empty($_POST['id_recompense'])) {
-                try {
-                    $applied = fidelity_apply_reward($pdo, (int) $id_client, (int) $_POST['id_recompense'], $total_avant_remise);
-                    $remise = $applied['remise'];
-                    $id_recompense = (int) $applied['reward']['id_recompense'];
-                    $points_utilises = $applied['points_requis'];
-                } catch (InvalidArgumentException $ex) {
-                    throw new RuntimeException($ex->getMessage());
-                }
-            }
-
-            $total_ttc = max(0, round($total_avant_remise - $remise, 2));
-
-            table_ensure_schema($pdo);
-            $stmt = $pdo->prepare("
-                INSERT INTO commande (id_client, num_table, montant_total, remise_montant, id_recompense, mode_paiement_souhaite, instructions_speciales, statut) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')
-            ");
-            $stmt->execute([$id_client, $num_table, $total_ttc, $remise, $id_recompense, $mode_paiement, $instructions !== '' ? $instructions : null]);
-            $num_commande = $pdo->lastInsertId();
-
-            if ($id_recompense && $points_utilises > 0) {
-                fidelity_redeem_reward($pdo, (int) $id_client, $id_recompense, (int) $num_commande, $points_utilises);
-            }
-            
-            // 3. Ajouter les détails de la commande
-            foreach ($_SESSION['panier'] as $item) {
-                if ($item['type'] === 'plat') {
-                    $stmt = $pdo->prepare("
-                        INSERT INTO contient (num_commande, id_plat, quantite, prix, sous_total, sauces)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ");
-                    $stmt->execute([
-                        $num_commande,
-                        $item['id'],
-                        $item['quantite'],
-                        $item['prix'],
-                        $item['sous_total'],
-                        $item['sauces'] ?? ''
-                    ]);
-                } elseif ($item['type'] === 'boisson') {
-                    $stmt = $pdo->prepare("
-                        INSERT INTO contient (num_commande, id_boisson, quantite, prix, sous_total, personnalisation_boisson)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ");
-                    $stmt->execute([
-                        $num_commande,
-                        $item['id'],
-                        $item['quantite'],
-                        $item['prix'],
-                        $item['sous_total'],
-                        $item['personnalisation'] ?? ''
-                    ]);
-                } elseif ($item['type'] === 'menu_item') {
-                    $label = $item['nom'];
-                    if (!empty($item['personnalisation'])) {
-                        $label .= ' — ' . $item['personnalisation'];
-                    }
-                    $stmt = $pdo->prepare("
-                        INSERT INTO contient (num_commande, id_plat, id_boisson, quantite, prix, sous_total, personnalisation_boisson)
-                        VALUES (?, NULL, NULL, ?, ?, ?, ?)
-                    ");
-                    $stmt->execute([
-                        $num_commande,
-                        $item['quantite'],
-                        $item['prix'],
-                        $item['sous_total'],
-                        $label,
-                    ]);
-                }
-            }
-            
-            // 4. Valider la transaction
-            $pdo->commit();
-            
-            // 5. Vider le panier et rediriger
-            $_SESSION['commande_confirmee'] = [
-                'num_commande' => $num_commande,
-                'total' => $total_ttc,
-                'table' => $num_table,
-                'remise' => $remise,
-            ];
-            $_SESSION['suivi_commande_id'] = $num_commande;
-            client_order_grant_access((int) $num_commande);
-            unset($_SESSION['panier']);
-            
-            header('Location: suivi_commande.php?commande=' . $num_commande);
-            exit;
-            
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $error = "Erreur lors de la création de la commande: " . $e->getMessage();
-        }
-    }
-}
+$data = (new ConfirmationController())->handle($_POST);
+$error = $data['error'];
+$tableCtx = $data['tableCtx'];
+$panier = $data['panier'];
+$total_panier = $data['total_panier'];
+$tva_amount = $data['tva_amount'];
+$total_ttc = $data['total_ttc'];
+$recompenses_fidelite = $data['recompenses_fidelite'];
 ?>
 <!doctype html>
 <html lang="fr">
@@ -397,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
             </p>
         </div>
         
-        <?php if (isset($error)): ?>
+        <?php if ($error !== null): ?>
         <div class="error-message">
             ❌ <?php echo htmlspecialchars($error); ?>
         </div>
@@ -501,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_commande'])
                     <h3 class="section-title">Récapitulatif</h3>
                     
                     <div class="recap-panier">
-                        <?php foreach ($_SESSION['panier'] as $item): ?>
+                        <?php foreach ($panier as $item): ?>
                         <div class="recap-item">
                             <div>
                                 <strong><?php echo htmlspecialchars($item['nom']); ?></strong>

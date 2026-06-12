@@ -1,56 +1,16 @@
 <?php
 
 require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../includes/notification_service.php';
 
-$pdo = admin_init();
-notification_ensure($pdo);
+use App\Controller\Admin\NotificationController;
 
-$annee = trim($_GET['annee'] ?? '');
-$mois = trim($_GET['mois'] ?? '');
-$recherche = trim($_GET['search'] ?? '');
-
-$message = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_promo'])) {
-    $titre = trim($_POST['titre'] ?? '');
-    $msg = trim($_POST['message'] ?? '');
-    if ($titre !== '' && $msg !== '') {
-        $clients = $pdo->query('SELECT id_client FROM client WHERE id_client IS NOT NULL')->fetchAll(PDO::FETCH_COLUMN);
-        $count = 0;
-        foreach ($clients as $idClient) {
-            notification_create($pdo, (int) $idClient, null, 'promo', $titre, $msg, 'in_app');
-            $count++;
-        }
-        admin_log($pdo, 'promo_broadcast', "Promo envoyée à {$count} clients : {$titre}", 'notifications');
-        $message = "Notification promo envoyée à {$count} client(s).";
-    }
-}
-
-$sql = '
-        SELECT n.*, cl.nom_client, cl.prenom_client, cl.email_client
-        FROM notification n
-        LEFT JOIN client cl ON n.id_client = cl.id_client
-        WHERE 1=1
-    ';
-$params = [];
-if ($annee !== '' && ctype_digit($annee)) {
-    $sql .= ' AND YEAR(n.date_creation) = ?';
-    $params[] = $annee;
-}
-if ($mois !== '' && preg_match('/^\d{1,2}$/', $mois)) {
-    $sql .= ' AND MONTH(n.date_creation) = ?';
-    $params[] = (int) $mois;
-}
-if ($recherche !== '') {
-    $sql .= ' AND (cl.nom_client LIKE ? OR cl.prenom_client LIKE ?)';
-    $params[] = '%' . $recherche . '%';
-    $params[] = '%' . $recherche . '%';
-}
-$sql .= ' ORDER BY n.date_creation DESC LIMIT 150';
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+admin_init();
+$result = (new NotificationController())->handle($_GET, $_POST);
+$message = $result['message'];
+$notifications = $result['notifications'];
+$annee = $result['annee'];
+$mois = $result['mois'];
+$recherche = $result['recherche'];
 
 admin_shell_start('Admin — Notifications', 'notifications', 'Communication', 'Notifications', 'Historique et envoi de messages promotionnels.');
 ?>

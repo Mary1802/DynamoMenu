@@ -1,8 +1,7 @@
 <?php
 
-require_once __DIR__ . '/includes/staff_auth.php';
+require_once __DIR__ . '/bootstrap/app.php';
 
-staff_logout();
+use App\Controller\Staff\LogoutController;
 
-header('Location: login.php?logout=1');
-exit;
+(new LogoutController())->handle('login.php?logout=1');

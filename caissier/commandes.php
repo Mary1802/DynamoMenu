@@ -1,67 +1,19 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap/app.php';
 require_once __DIR__ . '/../includes/staff_auth.php';
-staff_require(['caissier']);
-
-$db_config = require '../config/db.php';
 require_once __DIR__ . '/../includes/money.php';
 require_once __DIR__ . '/../includes/dashboard_helpers.php';
 
-$pdo = new PDO(
-    "mysql:host={$db_config['host']};dbname={$db_config['dbname']}",
-    $db_config['user'],
-    $db_config['password'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
+use App\Controller\Caissier\CommandeListController;
 
-contient_ensure_schema($pdo);
+staff_require(['caissier']);
 
-$statut_labels = [
-    'en_attente' => 'En attente',
-    'en_preparation' => 'En préparation',
-    'prete' => 'Prête',
-    'livree' => 'Livrée',
-    'annulee' => 'Annulée',
-];
-
-$commandes_a_encaisser = [];
-$commandes_payees = [];
-$dashboard_error = null;
-
-$commandeCols = array_column($pdo->query('SHOW COLUMNS FROM commande')->fetchAll(PDO::FETCH_ASSOC), 'Field');
-$modeSouhaiteSql = in_array('mode_paiement_souhaite', $commandeCols, true) ? 'c.mode_paiement_souhaite,' : '';
-
-try {
-    $stmt = $pdo->query("
-        SELECT c.num_commande, c.date_commande, c.montant_total, c.statut, c.num_table,
-               {$modeSouhaiteSql}
-               cl.nom_client, cl.prenom_client, cl.telephone_client
-        FROM commande c
-        LEFT JOIN client cl ON c.id_client = cl.id_client
-        WHERE c.statut = 'livree'
-          AND NOT EXISTS (SELECT 1 FROM facture f WHERE f.num_commande = c.num_commande)
-        ORDER BY c.date_commande ASC
-    ");
-    $commandes_a_encaisser = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $stmt = $pdo->query("
-        SELECT c.num_commande, c.date_commande, c.montant_total, c.statut, c.num_table,
-               {$modeSouhaiteSql}
-               cl.nom_client, cl.prenom_client, cl.telephone_client,
-               f.num_facture, f.total_paye, f.mode_paiement, f.date_facture AS date_paiement
-        FROM facture f
-        JOIN commande c ON f.num_commande = c.num_commande
-        LEFT JOIN client cl ON c.id_client = cl.id_client
-        ORDER BY f.date_facture DESC
-        LIMIT 80
-    ");
-    $commandes_payees = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $dashboard_error = 'Impossible de charger les commandes : ' . $e->getMessage();
-}
-
-dashboard_attach_order_lines($pdo, $commandes_a_encaisser);
-dashboard_attach_order_lines($pdo, $commandes_payees);
+$data = (new CommandeListController())->index();
+$commandes_a_encaisser = $data['commandes_a_encaisser'];
+$commandes_payees = $data['commandes_payees'];
+$statut_labels = $data['statut_labels'];
+$dashboard_error = $data['dashboard_error'];
 ?>
 <!doctype html>
 <html lang="fr">
