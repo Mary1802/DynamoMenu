@@ -1,17 +1,14 @@
 <?php
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
-require_once __DIR__ . '/../includes/money.php';
-require_once __DIR__ . '/../includes/client_header.php';
-require_once __DIR__ . '/../includes/client_footer.php';
 
-use App\Controller\Client\MenuController;
+use App\Http\ClientPage;
+use App\Http\Kernel;
+use App\Support\Money;
 
-$data = (new MenuController())->index();
-$tableCtx = $data['tableCtx'];
-$menuItems = $data['menuItems'];
-$menuImageIndex = $data['menuImageIndex'];
-$menuImagePlaceholder = $data['menuImagePlaceholder'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -22,7 +19,7 @@ $menuImagePlaceholder = $data['menuImagePlaceholder'];
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../assets/css/style.css?v=9">
-    <?php csrf_meta_tag(); ?>
+    <?php ClientPage::csrfMetaTag(); ?>
     <style>
         :root {
             --accent-color: #ff6f1f;
@@ -210,7 +207,7 @@ $menuImagePlaceholder = $data['menuImagePlaceholder'];
     </style>
 </head>
 <body class="client-site">
-    <?php render_client_nav('menu'); ?>
+    <?php ClientPage::nav('menu'); ?>
 
     <main class="container-fluid px-3 px-md-4 py-4 py-md-5 client-main-menu">
         <?php if (!$tableCtx): ?>
@@ -243,7 +240,7 @@ $menuImagePlaceholder = $data['menuImagePlaceholder'];
         </button>
 
         <!-- Floating quick cart -->
-                <a href="<?php echo htmlspecialchars(table_link('panier.php')); ?>" class="client-fab-cart position-fixed d-flex align-items-center justify-content-center rounded-circle" style="width:56px;height:56px;right:20px;bottom:20px;z-index:1070;">
+                <a href="<?php echo htmlspecialchars(ClientPage::tableLink('panier.php')); ?>" class="client-fab-cart position-fixed d-flex align-items-center justify-content-center rounded-circle" style="width:56px;height:56px;right:20px;bottom:20px;z-index:1070;">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16">
               <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .49.598l-1.5 6A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L1.01 1.607 1 1.5H.5zM5 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
             </svg>
@@ -251,11 +248,11 @@ $menuImagePlaceholder = $data['menuImagePlaceholder'];
         </a>
 
         <div class="text-center pb-4">
-            <a class="btn btn-primary btn-lg px-5" href="<?php echo htmlspecialchars(table_link('panier.php')); ?>">Voir mon panier</a>
+            <a class="btn btn-primary btn-lg px-5" href="<?php echo htmlspecialchars(ClientPage::tableLink('panier.php')); ?>">Voir mon panier</a>
         </div>
     </main>
 
-    <?php render_client_footer(); ?>
+    <?php ClientPage::footer(); ?>
 
     <!-- Modal boisson fruit -->
     <div class="modal fade drink-modal" id="fruitDrinkModal" tabindex="-1" aria-hidden="true">
@@ -317,7 +314,7 @@ $menuImagePlaceholder = $data['menuImagePlaceholder'];
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const MONEY = <?php echo json_encode(money_js_config(), JSON_UNESCAPED_UNICODE); ?>;
+        const MONEY = <?php echo json_encode(Money::jsConfig(), JSON_UNESCAPED_UNICODE); ?>;
         function menuUnitToCdf(unit) {
             return Math.round(Number(unit) * MONEY.multiplier);
         }

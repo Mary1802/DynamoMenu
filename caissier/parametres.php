@@ -1,21 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
 
-use App\Controller\Staff\ParametresController;
+use App\Http\Dashboard;
+use App\Http\Kernel;
 
-staff_require(['caissier']);
-$result = (new ParametresController())->index(staff_user());
-$account = $result['account'];
-$contacts = $result['contacts'];
-
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
-    <?php dashboard_asset_links('Caisse — Paramètres'); ?>
+    <?php Dashboard::assetLinks('Caisse — Paramètres'); ?>
 </head>
 <body class="dashboard-body">
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
@@ -37,7 +35,7 @@ require_once __DIR__ . '/../includes/dashboard_helpers.php';
                 <div class="nav-item"><a class="nav-link" href="rapports.php"><span class="nav-icon"><i class="bi bi-file-earmark-bar-graph"></i></span><span>Rapports</span></a></div>
                 <div class="nav-item"><a class="nav-link active" href="parametres.php"><span class="nav-icon"><i class="bi bi-gear"></i></span><span>Paramètres</span></a></div>
             </nav>
-            <div class="sidebar-footer"><?php dashboard_sidebar_user_footer('caissier'); ?></div>
+            <div class="sidebar-footer"><?php Dashboard::sidebarUserFooter('caissier'); ?></div>
         </aside>
         <main class="dashboard-main">
             <header class="dashboard-header">
@@ -86,6 +84,6 @@ require_once __DIR__ . '/../includes/dashboard_helpers.php';
             </div>
         </main>
     </div>
-    <?php dashboard_scripts(); ?>
+    <?php Dashboard::scripts(); ?>
 </body>
 </html>

@@ -1,14 +1,14 @@
 ﻿<?php
 
 require_once __DIR__ . '/bootstrap/app.php';
-require_once __DIR__ . '/includes/session_security.php';
 
-use App\Controller\Staff\LoginController;
+use App\Http\ClientPage;
+use App\Http\Kernel;
 
-$view = (new LoginController())->handle();
-$error = $view['error'];
-$success = $view['success'];
-$postRole = $view['postRole'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -21,7 +21,7 @@ $postRole = $view['postRole'];
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/login.css?v=3">
-    <?php csrf_meta_tag(); ?>
+    <?php ClientPage::csrfMetaTag(); ?>
 </head>
 <body class="login-page">
     <div class="login-theme-bar">
@@ -55,7 +55,7 @@ $postRole = $view['postRole'];
         <?php endif; ?>
 
         <form method="POST">
-            <?php csrf_field(); ?>
+            <?php ClientPage::csrfField(); ?>
             <div class="form-group">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" id="email" name="email" class="form-control" placeholder="votre@email.com" required>

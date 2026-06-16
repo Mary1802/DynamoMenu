@@ -1,24 +1,20 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
-require_once __DIR__ . '/../includes/money.php';
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
 
-use App\Controller\Caissier\CommandeListController;
+use App\Http\Dashboard;
+use App\Http\Kernel;
+use App\Support\Money;
 
-staff_require(['caissier']);
-
-$data = (new CommandeListController())->index();
-$commandes_a_encaisser = $data['commandes_a_encaisser'];
-$commandes_payees = $data['commandes_payees'];
-$statut_labels = $data['statut_labels'];
-$dashboard_error = $data['dashboard_error'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
-    <?php dashboard_asset_links('Caisse — Commandes'); ?>
+    <?php Dashboard::assetLinks('Caisse — Commandes'); ?>
 </head>
 <body class="dashboard-body">
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
@@ -40,7 +36,7 @@ $dashboard_error = $data['dashboard_error'];
                 <div class="nav-item"><a class="nav-link" href="rapports.php"><span class="nav-icon"><i class="bi bi-file-earmark-bar-graph"></i></span><span>Rapports</span></a></div>
                 <div class="nav-item"><a class="nav-link" href="parametres.php"><span class="nav-icon"><i class="bi bi-gear"></i></span><span>Paramètres</span></a></div>
             </nav>
-            <div class="sidebar-footer"><?php dashboard_sidebar_user_footer('caissier'); ?></div>
+            <div class="sidebar-footer"><?php Dashboard::sidebarUserFooter('caissier'); ?></div>
         </aside>
         <main class="dashboard-main">
             <header class="dashboard-header dashboard-header--kitchen">
@@ -73,13 +69,13 @@ $dashboard_error = $data['dashboard_error'];
                             <div class="empty-state"><p>Aucune commande à encaisser.</p></div>
                             <?php else: ?>
                             <?php foreach ($commandes_a_encaisser as $c): ?>
-                            <div class="commande-item mb-3" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($c)); ?>">
+                            <div class="commande-item mb-3" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($c)); ?>">
                                 <div class="commande-header">
                                     <div class="commande-id">#<?php echo str_pad((string) $c['num_commande'], 5, '0', STR_PAD_LEFT); ?></div>
-                                    <div class="commande-montant"><?php echo format_money((float) $c['montant_total']); ?></div>
+                                    <div class="commande-montant"><?php echo Money::format((float) $c['montant_total']); ?></div>
                                 </div>
                                 <div class="commande-detail-expanded mt-2">
-                                    <?php dashboard_render_caissier_commande_detail($c, $statut_labels); ?>
+                                    <?php Dashboard::renderCaissierCommandeDetail($c, $statut_labels); ?>
                                 </div>
                                 <a href="paiement.php?voir_commande=<?php echo (int) $c['num_commande']; ?>" class="btn-payer btn-sm mt-2 d-inline-block">
                                     <i class="bi bi-cash-coin" aria-hidden="true"></i> Encaisser
@@ -102,16 +98,16 @@ $dashboard_error = $data['dashboard_error'];
                             <div class="empty-state"><p>Aucune commande payée récente.</p></div>
                             <?php else: ?>
                             <?php foreach ($commandes_payees as $c): ?>
-                            <div class="commande-item mb-3" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($c) . ' ' . ($c['num_facture'] ?? '')); ?>">
+                            <div class="commande-item mb-3" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($c) . ' ' . ($c['num_facture'] ?? '')); ?>">
                                 <div class="commande-header">
                                     <div class="commande-id">
                                         #<?php echo str_pad((string) $c['num_commande'], 5, '0', STR_PAD_LEFT); ?>
                                         <span class="text-secondary small"> — Facture #<?php echo str_pad((string) $c['num_facture'], 4, '0', STR_PAD_LEFT); ?></span>
                                     </div>
-                                    <div class="commande-montant"><?php echo format_money((float) ($c['total_paye'] ?? $c['montant_total'])); ?></div>
+                                    <div class="commande-montant"><?php echo Money::format((float) ($c['total_paye'] ?? $c['montant_total'])); ?></div>
                                 </div>
                                 <div class="commande-detail-expanded mt-2">
-                                    <?php dashboard_render_caissier_commande_detail($c, $statut_labels); ?>
+                                    <?php Dashboard::renderCaissierCommandeDetail($c, $statut_labels); ?>
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -122,6 +118,6 @@ $dashboard_error = $data['dashboard_error'];
             </div>
         </main>
     </div>
-    <?php dashboard_scripts(); ?>
+    <?php Dashboard::scripts(); ?>
 </body>
 </html>

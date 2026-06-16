@@ -1,8 +1,7 @@
 <?php
 
 require_once dirname(__DIR__, 2) . '/bootstrap/app.php';
-require_once dirname(__DIR__, 2) . '/includes/client_session.php';
 
-use App\Controller\Api\Client\CommandeStatutController;
+use App\Http\Kernel;
 
-(new CommandeStatutController())->handle($_GET);
+Kernel::forFile(__FILE__);

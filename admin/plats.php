@@ -1,20 +1,18 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Admin\PlatController;
+use App\Http\AdminPage;
+use App\Http\Dashboard;
+use App\Http\Kernel;
+use App\Support\MenuImageIndex;
 
-$pdo = admin_init();
-$result = (new PlatController())->handle($_GET, $_POST, $_FILES);
-$message = $result['message'];
-$error = $result['error'];
-$q = $result['q'];
-$plats = $result['plats'];
-$boissons = $result['boissons'];
-$categoriePlatOptions = $result['categoriePlatOptions'];
-$typesBoissonOptions = $result['typesBoissonOptions'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 
-admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gérez les articles en base (le menu client peut rester synchronisé manuellement).');
+AdminPage::shellStart('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gérez les articles en base (le menu client peut rester synchronisé manuellement).');
 ?>
 <?php if ($message): ?><div class="success-message"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
 <?php if ($error): ?><div class="success-message" style="color:#dc3545;border-color:rgba(220,53,69,.3);"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
@@ -46,7 +44,7 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
             <input type="number" step="0.01" name="prix_unitaire" class="form-control" placeholder="Prix (FC)" required>
         </div>
         <div class="col-6 col-lg-2">
-            <?php dashboard_render_plat_categorie_select('categorie', '', $categoriePlatOptions, false, true); ?>
+            <?php Dashboard::renderPlatCategorieSelect('categorie', '', $categoriePlatOptions, false, true); ?>
         </div>
         <div class="col-6 col-lg-1">
             <input type="number" name="quantite_plat" class="form-control" placeholder="Stock" value="0" min="0">
@@ -67,13 +65,13 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
         <div class="menu-edit-card">
             <form method="post" enctype="multipart/form-data">
                 <?php if (!empty($p['image_url'])): ?>
-                <img src="../<?php echo htmlspecialchars(ltrim((string) normalize_menu_image_path($p['image_url'] ?? ''), '/')); ?>" alt="" class="menu-edit-thumb" width="120" height="72">
+                <img src="../<?php echo htmlspecialchars(ltrim((string) MenuImageIndex::normalizePath($p['image_url'] ?? ''), '/')); ?>" alt="" class="menu-edit-thumb" width="120" height="72">
                 <?php endif; ?>
                 <div class="mb-2"><label class="form-label text-secondary small">Nom</label><input type="text" name="nom_plat" class="form-control form-control-sm" value="<?php echo htmlspecialchars($p['nom_plat']); ?>"></div>
                 <div class="mb-2"><label class="form-label text-secondary small">Prix (FC)</label><input type="number" step="1" name="prix_unitaire" class="form-control form-control-sm" value="<?php echo htmlspecialchars((string) $p['prix_unitaire']); ?>"></div>
                 <div class="mb-2">
                     <label class="form-label text-secondary small">Catégorie</label>
-                    <?php dashboard_render_plat_categorie_select('categorie', (string) ($p['categorie'] ?? ''), $categoriePlatOptions, true); ?>
+                    <?php Dashboard::renderPlatCategorieSelect('categorie', (string) ($p['categorie'] ?? ''), $categoriePlatOptions, true); ?>
                 </div>
                 <div class="mb-2"><input type="file" name="image_plat" class="file-input-btn-only file-input-btn-only--sm" accept="image/*"></div>
                 <input type="hidden" name="id_plat" value="<?php echo (int) $p['id_plat']; ?>">
@@ -94,12 +92,12 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
                 <form method="post" enctype="multipart/form-data">
                         <td class="menu-edit-img-cell">
                             <?php if (!empty($p['image_url'])): ?>
-                            <img src="../<?php echo htmlspecialchars(ltrim((string) normalize_menu_image_path($p['image_url'] ?? ''), '/')); ?>" alt="" class="menu-edit-thumb" width="56" height="56">
+                            <img src="../<?php echo htmlspecialchars(ltrim((string) MenuImageIndex::normalizePath($p['image_url'] ?? ''), '/')); ?>" alt="" class="menu-edit-thumb" width="56" height="56">
                             <?php endif; ?>
                             <input type="file" name="image_plat" class="file-input-btn-only file-input-btn-only--sm mt-1" accept="image/*">
                         </td>
                         <td><input type="text" name="nom_plat" class="form-control form-control-sm" value="<?php echo htmlspecialchars($p['nom_plat']); ?>"></td>
-                        <td><?php dashboard_render_plat_categorie_select('categorie', (string) ($p['categorie'] ?? ''), $categoriePlatOptions, true); ?></td>
+                        <td><?php Dashboard::renderPlatCategorieSelect('categorie', (string) ($p['categorie'] ?? ''), $categoriePlatOptions, true); ?></td>
                         <td><input type="number" name="quantite_plat" class="form-control form-control-sm" value="<?php echo htmlspecialchars((string)($p['quantite_plat'] ?? 0)); ?>"></td>
                         <td><input type="number" step="0.01" name="prix_unitaire" class="form-control form-control-sm" value="<?php echo htmlspecialchars((string) $p['prix_unitaire']); ?>"></td>
                         <td class="d-flex gap-1">
@@ -122,7 +120,7 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
             <input type="text" name="nom_boisson" class="form-control" placeholder="Nom" required>
         </div>
         <div class="col-6 col-lg-2">
-            <?php dashboard_render_boisson_type_select('type_boisson', '', $typesBoissonOptions, false, true); ?>
+            <?php Dashboard::renderBoissonTypeSelect('type_boisson', '', $typesBoissonOptions, false, true); ?>
         </div>
         <div class="col-6 col-lg-2">
             <input type="text" name="dosage" class="form-control" placeholder="Dosage">
@@ -149,13 +147,13 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
         <div class="menu-edit-card">
             <form method="post" enctype="multipart/form-data">
                 <?php if (!empty($b['image_url'])): ?>
-                <img src="../<?php echo htmlspecialchars(ltrim((string) normalize_menu_image_path($b['image_url'] ?? ''), '/')); ?>" alt="" class="menu-edit-thumb" width="120" height="72">
+                <img src="../<?php echo htmlspecialchars(ltrim((string) MenuImageIndex::normalizePath($b['image_url'] ?? ''), '/')); ?>" alt="" class="menu-edit-thumb" width="120" height="72">
                 <?php endif; ?>
                 <div class="mb-2"><input type="text" name="nom_boisson" class="form-control form-control-sm" value="<?php echo htmlspecialchars($b['nom_boisson']); ?>"></div>
                 <div class="mb-2"><input type="number" step="0.01" name="prix_unitaire" class="form-control form-control-sm" value="<?php echo htmlspecialchars((string)($b['prix_unitaire'] ?? 0)); ?>" placeholder="Prix (FC)"></div>
                 <div class="mb-2">
                     <label class="form-label text-secondary small">Type</label>
-                    <?php dashboard_render_boisson_type_select('type_boisson', (string) ($b['type_boisson'] ?? ''), $typesBoissonOptions, true); ?>
+                    <?php Dashboard::renderBoissonTypeSelect('type_boisson', (string) ($b['type_boisson'] ?? ''), $typesBoissonOptions, true); ?>
                 </div>
                 <div class="mb-2"><input type="text" name="dosage" class="form-control form-control-sm" value="<?php echo htmlspecialchars($b['dosage'] ?? ''); ?>" placeholder="Dosage"></div>
                 <div class="mb-2"><input type="number" name="quantite_boisson" class="form-control form-control-sm" value="<?php echo (int) $b['quantite_boisson']; ?>" placeholder="Stock"></div>
@@ -179,13 +177,13 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
                 <form method="post" enctype="multipart/form-data">
                     <td class="menu-edit-img-cell">
                         <?php if (!empty($b['image_url'])): ?>
-                        <img src="../<?php echo htmlspecialchars(ltrim((string) normalize_menu_image_path($b['image_url'] ?? ''), '/')); ?>" alt="" class="menu-edit-thumb" width="56" height="56">
+                        <img src="../<?php echo htmlspecialchars(ltrim((string) MenuImageIndex::normalizePath($b['image_url'] ?? ''), '/')); ?>" alt="" class="menu-edit-thumb" width="56" height="56">
                         <?php endif; ?>
                         <input type="file" name="image_boisson" class="file-input-btn-only file-input-btn-only--sm mt-1" accept="image/*">
                     </td>
                     <td><input type="text" name="nom_boisson" class="form-control form-control-sm" value="<?php echo htmlspecialchars($b['nom_boisson']); ?>"></td>
                     <td><input type="number" step="0.01" name="prix_unitaire" class="form-control form-control-sm" value="<?php echo htmlspecialchars((string)($b['prix_unitaire'] ?? 0)); ?>"></td>
-                    <td><?php dashboard_render_boisson_type_select('type_boisson', (string) ($b['type_boisson'] ?? ''), $typesBoissonOptions, true); ?></td>
+                    <td><?php Dashboard::renderBoissonTypeSelect('type_boisson', (string) ($b['type_boisson'] ?? ''), $typesBoissonOptions, true); ?></td>
                     <td><input type="text" name="dosage" class="form-control form-control-sm" value="<?php echo htmlspecialchars($b['dosage'] ?? ''); ?>"></td>
                     <td><input type="number" name="quantite_boisson" class="form-control form-control-sm" value="<?php echo (int) $b['quantite_boisson']; ?>"></td>
                     <td class="d-flex gap-1 flex-wrap">
@@ -201,4 +199,4 @@ admin_shell_start('Admin — Menu', 'plats', 'Carte', 'Plats & boissons', 'Gére
         </table>
     </div>
 </div>
-<?php admin_shell_end(); ?>
+<?php AdminPage::shellEnd(); ?>

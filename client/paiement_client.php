@@ -1,21 +1,19 @@
 <?php
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
-require_once __DIR__ . '/../includes/money.php';
 
-use App\Controller\Client\PaymentController;
+use App\Http\ClientPage;
+use App\Http\Kernel;
 use App\Service\ClientPaymentService;
+use App\Support\Money;
 
-$data = (new PaymentController())->show($_GET);
-if ($data === null) {
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
+if ($result === null || empty($result)) {
     header('Location: index.php');
     exit;
 }
-
-$num_commande = $data['num_commande'];
-$commande = $data['commande'];
-$articles = $data['articles'];
-$est_payee = $data['est_payee'];
 $status_text = ClientPaymentService::statusLabels();
 ?>
 <!doctype html>
@@ -26,7 +24,7 @@ $status_text = ClientPaymentService::statusLabels();
     <title>Paiement - Commande #<?php echo str_pad($num_commande, 5, '0', STR_PAD_LEFT); ?> - DynamoMenu</title>
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
-    <?php csrf_meta_tag(); ?>
+    <?php ClientPage::csrfMetaTag(); ?>
     <style>
         .paiement-container {
             max-width: 1000px;
@@ -347,7 +345,7 @@ $status_text = ClientPaymentService::statusLabels();
                         </div>
                     </div>
                     <div class="article-price">
-                        <?php echo format_money((float) $article['sous_total']); ?>
+                        <?php echo Money::format((float) $article['sous_total']); ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -356,7 +354,7 @@ $status_text = ClientPaymentService::statusLabels();
             <!-- Total -->
             <div class="total-section">
                 <div>Total à payer</div>
-                <div><?php echo format_money((float) $commande['montant_total']); ?></div>
+                <div><?php echo Money::format((float) $commande['montant_total']); ?></div>
             </div>
             
             <?php if ($est_payee): ?>
@@ -383,7 +381,7 @@ $status_text = ClientPaymentService::statusLabels();
                         </div>
                         <div class="info-item">
                             <div class="info-label">Montant payé</div>
-                            <div class="info-value"><?php echo format_money((float) $commande['total_paye']); ?></div>
+                            <div class="info-value"><?php echo Money::format((float) $commande['total_paye']); ?></div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Date du paiement</div>
@@ -428,7 +426,7 @@ $status_text = ClientPaymentService::statusLabels();
             </div>
             
             <form id="paiementForm" method="POST" action="traitement_paiement.php">
-                <?php csrf_field(); ?>
+                <?php ClientPage::csrfField(); ?>
                 <input type="hidden" name="commande_id" value="<?php echo $num_commande; ?>">
                 <input type="hidden" name="mode_paiement" id="selectedMode" value="">
                 <input type="hidden" name="montant" value="<?php echo $commande['montant_total']; ?>">
@@ -502,7 +500,7 @@ $status_text = ClientPaymentService::statusLabels();
                 
                 // Afficher un message de confirmation
                 const confirmation = confirm(
-                    `Confirmez-vous le paiement de <?php echo json_encode(format_money((float) $commande['montant_total']), JSON_UNESCAPED_UNICODE); ?> par ${mode} ?\n\n` +
+                    `Confirmez-vous le paiement de <?php echo json_encode(Money::format((float) $commande['montant_total']), JSON_UNESCAPED_UNICODE); ?> par ${mode} ?\n\n` +
                     'Le caissier viendra à votre table pour finaliser la transaction.'
                 );
                 

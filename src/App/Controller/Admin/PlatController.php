@@ -40,8 +40,7 @@ final class PlatController
      */
     public function handle(array $get, array $post, array $files): array
     {
-        require_once dirname(__DIR__, 4) . '/includes/schema_upgrade.php';
-        schema_upgrade(Application::getInstance()->db());
+        Application::getInstance()->schemaUpgrade()->run();
 
         $message = '';
         $error = '';
@@ -57,8 +56,7 @@ final class PlatController
                         (int) ($post['quantite_plat'] ?? 0),
                         $imagePath
                     );
-                    require_once dirname(__DIR__, 4) . '/includes/admin_layout.php';
-                    admin_log(Application::getInstance()->db(), 'plat_create', 'Plat ajouté : ' . $post['nom_plat']);
+                    Application::getInstance()->activityLog()->log('plat_create', 'Plat ajouté : ' . $post['nom_plat'], 'admin');
                     $message = 'Plat ajouté.';
                 }
                 if (isset($post['update_plat'])) {

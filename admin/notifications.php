@@ -1,18 +1,16 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Admin\NotificationController;
+use App\Http\AdminPage;
+use App\Http\Kernel;
 
-admin_init();
-$result = (new NotificationController())->handle($_GET, $_POST);
-$message = $result['message'];
-$notifications = $result['notifications'];
-$annee = $result['annee'];
-$mois = $result['mois'];
-$recherche = $result['recherche'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 
-admin_shell_start('Admin — Notifications', 'notifications', 'Communication', 'Notifications', 'Historique et envoi de messages promotionnels.');
+AdminPage::shellStart('Admin — Notifications', 'notifications', 'Communication', 'Notifications', 'Historique et envoi de messages promotionnels.');
 ?>
 <?php if ($message): ?><div class="success-message"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
 
@@ -90,4 +88,4 @@ admin_shell_start('Admin — Notifications', 'notifications', 'Communication', '
         </table>
     </div>
 </div>
-<?php admin_shell_end(); ?>
+<?php AdminPage::shellEnd(); ?>

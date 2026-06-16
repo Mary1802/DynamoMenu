@@ -6,9 +6,7 @@ namespace App\Service;
 
 use App\Core\Application;
 use App\Repository\ClientRepository;
-use InvalidArgumentException;
 use PDO;
-use RuntimeException;
 use Throwable;
 
 final class OrderCreationService
@@ -16,7 +14,6 @@ final class OrderCreationService
     public function __construct(
         private readonly PDO $pdo,
         private readonly ClientRepository $clients,
-        private readonly FidelityService $fidelity,
     ) {
     }
 
@@ -26,8 +23,7 @@ final class OrderCreationService
 
         return new self(
             $app->db(),
-            $app->clientRepository(),
-            $app->fidelityService()
+            $app->clientRepository()
         );
     }
 
@@ -63,55 +59,28 @@ final class OrderCreationService
         }
 
         $this->clients->ensureSchema();
-        $this->fidelity->ensureSchema();
         Application::getInstance()->tableRepository()->ensureSchema();
 
         $tvaAmount = $totalPanier * $tvaRate;
-        $totalAvantRemise = $totalPanier + $tvaAmount;
-        $remise = 0.0;
-        $idRecompense = null;
-        $pointsUtilises = 0;
+        $totalTtc = round($totalPanier + $tvaAmount, 2);
 
         $this->pdo->beginTransaction();
 
         try {
             $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
 
-            if (!empty($post['id_recompense'])) {
-                try {
-                    $applied = $this->fidelity->applyReward(
-                        $idClient,
-                        (int) $post['id_recompense'],
-                        $totalAvantRemise
-                    );
-                    $remise = $applied['remise'];
-                    $idRecompense = (int) $applied['reward']['id_recompense'];
-                    $pointsUtilises = $applied['points_requis'];
-                } catch (InvalidArgumentException $ex) {
-                    throw new RuntimeException($ex->getMessage());
-                }
-            }
-
-            $totalTtc = max(0, round($totalAvantRemise - $remise, 2));
-
             $stmt = $this->pdo->prepare("
-                INSERT INTO commande (id_client, num_table, montant_total, remise_montant, id_recompense, mode_paiement_souhaite, instructions_speciales, statut)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')
+                INSERT INTO commande (id_client, num_table, montant_total, mode_paiement_souhaite, instructions_speciales, statut)
+                VALUES (?, ?, ?, ?, ?, 'en_attente')
             ");
             $stmt->execute([
                 $idClient,
                 $numTable,
                 $totalTtc,
-                $remise,
-                $idRecompense,
                 $modePaiement,
                 $instructions !== '' ? $instructions : null,
             ]);
             $numCommande = (int) $this->pdo->lastInsertId();
-
-            if ($idRecompense && $pointsUtilises > 0) {
-                $this->fidelity->redeemReward($idClient, $idRecompense, $numCommande, $pointsUtilises);
-            }
 
             $this->insertCartLines($numCommande, $cartItems);
 
@@ -121,7 +90,7 @@ final class OrderCreationService
                 'success' => true,
                 'num_commande' => $numCommande,
                 'total_ttc' => $totalTtc,
-                'remise' => $remise,
+                'remise' => 0.0,
                 'num_table' => $numTable,
             ];
         } catch (Throwable $e) {

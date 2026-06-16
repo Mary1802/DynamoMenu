@@ -1,30 +1,21 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
-require_once __DIR__ . '/../includes/money.php';
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
 
-use App\Controller\Cuisine\KitchenDashboardController;
+use App\Http\Dashboard;
+use App\Http\Kernel;
+use App\Support\Money;
 
-staff_require(['cuisinier']);
-
-$kitchen = new KitchenDashboardController();
-$kitchen->handlePost($_POST);
-$data = $kitchen->index();
-
-$stats = $data['stats'];
-$commandes_actives = $data['commandes_actives'];
-$commandes_terminees = $data['commandes_terminees'];
-$dashboard_error = $data['dashboard_error'];
-$notif_count = $data['notif_count'];
-$notif_items = $data['notif_items'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 
 <!doctype html>
 <html lang="fr">
 <head>
-    <?php dashboard_asset_links('Cuisinier - Dashboard'); ?>
+    <?php Dashboard::assetLinks('Cuisinier - Dashboard'); ?>
 </head>
 <body class="dashboard-body">
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
@@ -67,7 +58,7 @@ $notif_items = $data['notif_items'];
             </nav>
             
             <div class="sidebar-footer">
-                <?php dashboard_sidebar_user_footer('cuisinier'); ?>
+                <?php Dashboard::sidebarUserFooter('cuisinier'); ?>
             </div>
         </aside>
 
@@ -83,7 +74,7 @@ $notif_items = $data['notif_items'];
                 
                 <div class="header-actions">
                     <div class="header-actions-top">
-                        <?php dashboard_render_notifications('cuisinier', $notif_items, $notif_count); ?>
+                        <?php Dashboard::renderNotifications('cuisinier', $notif_items, $notif_count); ?>
                     </div>
                     <div class="search-box search-box--mobile-visible">
                         <input type="search" class="search-input" data-dashboard-search placeholder="Nom, tél., table, n° commande…" aria-label="Rechercher une commande">
@@ -143,7 +134,7 @@ $notif_items = $data['notif_items'];
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($commandes_actives as $commande): ?>
-                                    <div class="order-card" id="cmd-<?php echo (int) $commande['num_commande']; ?>" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($commande)); ?>">
+                                    <div class="order-card" id="cmd-<?php echo (int) $commande['num_commande']; ?>" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($commande)); ?>">
                                         <div class="order-header">
                                             <div>
                                                 <div class="order-time">
@@ -169,7 +160,7 @@ $notif_items = $data['notif_items'];
                                         <div class="order-details">
                                             <span class="order-meta"><i class="bi bi-table" aria-hidden="true"></i> Table <?php echo htmlspecialchars((string) ($commande['num_table'] ?? '—')); ?></span>
                                             <span class="order-meta"><i class="bi bi-box-seam" aria-hidden="true"></i> <?php echo (int) $commande['nombre_items']; ?> article(s)</span>
-                                            <span class="order-meta"><?php echo format_money((float) $commande['montant_total']); ?></span>
+                                            <span class="order-meta"><?php echo Money::format((float) $commande['montant_total']); ?></span>
                                             <?php if (!empty($commande['nom_client']) || !empty($commande['prenom_client'])): ?>
                                             <span class="order-meta"><i class="bi bi-person" aria-hidden="true"></i> <?php echo htmlspecialchars(trim(($commande['prenom_client'] ?? '') . ' ' . ($commande['nom_client'] ?? ''))); ?></span>
                                             <?php endif; ?>
@@ -178,10 +169,10 @@ $notif_items = $data['notif_items'];
                                             <?php endif; ?>
                                         </div>
                                         
-                                        <?php dashboard_render_kitchen_instructions($commande['instructions_speciales'] ?? null); ?>
+                                        <?php Dashboard::renderKitchenInstructions($commande['instructions_speciales'] ?? null); ?>
                                         
                                         <div class="order-items kitchen-order-items">
-                                            <?php dashboard_render_kitchen_order_details($commande['lignes'] ?? []); ?>
+                                            <?php Dashboard::renderKitchenOrderDetails($commande['lignes'] ?? []); ?>
                                         </div>
                                         
                                         <div class="order-actions">
@@ -228,7 +219,7 @@ $notif_items = $data['notif_items'];
                         <?php else: ?>
                             <div class="order-timeline order-scroll-panel kitchen-scroll-panel">
                                 <?php foreach ($commandes_terminees as $cmd): ?>
-                                    <div class="order-card" style="margin-bottom: 0.75rem;" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($cmd)); ?>">
+                                    <div class="order-card" style="margin-bottom: 0.75rem;" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($cmd)); ?>">
                                         <div class="order-header">
                                             <div class="order-id">#<?php echo str_pad($cmd['num_commande'],5,'0',STR_PAD_LEFT); ?></div>
                                             <span class="order-status status-prete">Prêt</span>
@@ -237,9 +228,9 @@ $notif_items = $data['notif_items'];
                                             <span class="order-meta"><i class="bi bi-table" aria-hidden="true"></i> Table <?php echo htmlspecialchars((string) ($cmd['num_table'] ?? '—')); ?></span>
                                             <span class="order-meta"><i class="bi bi-box-seam" aria-hidden="true"></i> <?php echo (int) $cmd['nombre_items']; ?> article(s)</span>
                                         </div>
-                                        <?php dashboard_render_kitchen_instructions($cmd['instructions_speciales'] ?? null); ?>
+                                        <?php Dashboard::renderKitchenInstructions($cmd['instructions_speciales'] ?? null); ?>
                                         <div class="order-items kitchen-order-items">
-                                            <?php dashboard_render_kitchen_order_details($cmd['lignes'] ?? []); ?>
+                                            <?php Dashboard::renderKitchenOrderDetails($cmd['lignes'] ?? []); ?>
                                         </div>
                                         <div class="order-actions">
                                             <form method="POST" class="w-100">
@@ -261,6 +252,6 @@ $notif_items = $data['notif_items'];
         </main>
     </div>
 
-    <?php dashboard_scripts(); ?>
+    <?php Dashboard::scripts(); ?>
 </body>
 </html>

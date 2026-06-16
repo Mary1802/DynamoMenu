@@ -43,8 +43,7 @@ final class CartController
         $this->session->start();
         $this->tables->bootstrap();
 
-        require_once dirname(__DIR__, 4) . '/includes/money.php';
-        contient_ensure_schema($this->pdo);
+        Application::getInstance()->schemaUpgrade()->run();
 
         if (isset($get['action']) && $get['action'] === 'add') {
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {

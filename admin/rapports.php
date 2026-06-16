@@ -1,26 +1,20 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../includes/money.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Admin\ReportController;
+use App\Http\AdminPage;
+use App\Http\Dashboard;
+use App\Http\Kernel;
 use App\Service\ReportService;
+use App\Support\Money;
 
-admin_init();
-$data = (new ReportController())->index($_GET);
-$rapport_jour = $data['rapport_jour'];
-$rapport_mois = $data['rapport_mois'];
-$lignes_mois = $data['lignes_mois'];
-$annee = $data['annee'];
-$moisNum = $data['moisNum'];
-$moisLabel = $data['moisLabel'];
-$daysInMonth = $data['daysInMonth'];
-$jourExport = $data['jourExport'];
-$exportBase = $data['exportBase'];
-$annees = $data['annees'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 $nomsMois = ReportService::MONTH_NAMES;
 
-admin_shell_start(
+AdminPage::shellStart(
     'Admin — Rapports ventes',
     'rapports',
     'Administration',
@@ -30,19 +24,19 @@ admin_shell_start(
 ?>
 <div class="stats-row mb-4">
     <div class="stat-box dashboard-card">
-        <div class="stat-value"><?php echo format_money((float) $rapport_jour['ca']); ?></div>
+        <div class="stat-value"><?php echo Money::format((float) $rapport_jour['ca']); ?></div>
         <div class="stat-label">CA aujourd'hui</div>
         <div class="payment-split-row">
-            <div class="payment-split-box"><div class="label">Cash</div><div class="value"><?php echo format_money((float) $rapport_jour['ca_especes']); ?></div></div>
-            <div class="payment-split-box"><div class="label">Mobile money</div><div class="value"><?php echo format_money((float) $rapport_jour['ca_mobile']); ?></div></div>
+            <div class="payment-split-box"><div class="label">Cash</div><div class="value"><?php echo Money::format((float) $rapport_jour['ca_especes']); ?></div></div>
+            <div class="payment-split-box"><div class="label">Mobile money</div><div class="value"><?php echo Money::format((float) $rapport_jour['ca_mobile']); ?></div></div>
         </div>
     </div>
     <div class="stat-box dashboard-card">
-        <div class="stat-value"><?php echo format_money((float) $rapport_mois['ca']); ?></div>
+        <div class="stat-value"><?php echo Money::format((float) $rapport_mois['ca']); ?></div>
         <div class="stat-label">CA — <?php echo htmlspecialchars($moisLabel); ?></div>
         <div class="payment-split-row">
-            <div class="payment-split-box"><div class="label">Cash</div><div class="value"><?php echo format_money((float) $rapport_mois['ca_especes']); ?></div></div>
-            <div class="payment-split-box"><div class="label">Mobile money</div><div class="value"><?php echo format_money((float) $rapport_mois['ca_mobile']); ?></div></div>
+            <div class="payment-split-box"><div class="label">Cash</div><div class="value"><?php echo Money::format((float) $rapport_mois['ca_especes']); ?></div></div>
+            <div class="payment-split-box"><div class="label">Mobile money</div><div class="value"><?php echo Money::format((float) $rapport_mois['ca_mobile']); ?></div></div>
         </div>
     </div>
 </div>
@@ -136,8 +130,8 @@ admin_shell_start(
                     <td>#<?php echo str_pad((string) $l['num_commande'], 5, '0', STR_PAD_LEFT); ?></td>
                     <td><?php echo htmlspecialchars(trim(($l['prenom_client'] ?? '') . ' ' . ($l['nom_client'] ?? ''))); ?></td>
                     <td><?php echo htmlspecialchars((string) ($l['num_table'] ?? '')); ?></td>
-                    <td><?php echo htmlspecialchars(dashboard_mode_paiement_label((string) $l['mode_paiement'])); ?></td>
-                    <td><?php echo format_money((float) $l['total_paye']); ?></td>
+                    <td><?php echo htmlspecialchars(Dashboard::modePaiementLabel((string) $l['mode_paiement'])); ?></td>
+                    <td><?php echo Money::format((float) $l['total_paye']); ?></td>
                 </tr>
             <?php endforeach; endif; ?>
             </tbody>
@@ -162,4 +156,4 @@ admin_shell_start(
 })();
 </script>
 
-<?php admin_shell_end(); ?>
+<?php AdminPage::shellEnd(); ?>

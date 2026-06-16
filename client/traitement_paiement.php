@@ -1,8 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
 
-use App\Controller\Client\PaymentRequestController;
+use App\Http\Kernel;
 
-(new PaymentRequestController())->handle($_POST);
+Kernel::forFile(__FILE__);

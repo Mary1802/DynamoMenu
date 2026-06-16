@@ -2,6 +2,6 @@
 
 require_once __DIR__ . '/bootstrap/app.php';
 
-use App\Controller\Staff\LogoutController;
+use App\Http\Kernel;
 
-(new LogoutController())->handle('login.php?logout=1');
+Kernel::forFile(__FILE__);

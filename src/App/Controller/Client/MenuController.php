@@ -15,10 +15,12 @@ final class MenuController
     private ClientSessionService $session;
     private TableContextService $tables;
     private MenuService $menu;
+    private Application $app;
 
     public function __construct(?Application $app = null)
     {
         $app ??= Application::getInstance();
+        $this->app = $app;
         $this->session = $app->clientSession();
         $this->tables = $app->tableContextService();
         $this->menu = $app->menuService();
@@ -37,7 +39,7 @@ final class MenuController
         $this->session->start();
 
         try {
-            app()->schemaUpgrade()->run();
+            $this->app->schemaUpgrade()->run();
             $this->tables->bootstrap();
         } catch (PDOException) {
             die('Erreur de connexion');

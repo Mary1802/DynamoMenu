@@ -1,8 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
 
-use App\Controller\Client\NouvelleCommandeController;
+use App\Http\Kernel;
 
-(new NouvelleCommandeController())->handle();
+Kernel::forFile(__FILE__);

@@ -131,13 +131,11 @@ final class CartService
             return ['success' => false, 'message' => 'Session expirée. Rechargez la page.'];
         }
 
-        require_once dirname(__DIR__, 3) . '/includes/money.php';
-
         $type = (string) ($post['type'] ?? 'menu_item');
         $name = trim((string) ($post['name'] ?? ''));
         $price = (float) ($post['price'] ?? 0);
         if ($price > 0 && $price < 500) {
-            $price = money_from_menu_unit($price);
+            $price = Application::getInstance()->moneyFormatter()->fromMenuUnit($price);
         }
         $quantite = max(1, (int) ($post['quantite'] ?? 1));
         $img = (string) ($post['img'] ?? '');

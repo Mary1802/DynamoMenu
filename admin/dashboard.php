@@ -1,25 +1,21 @@
 <?php
 
-require_once __DIR__ . '/../includes/staff_auth.php';
-staff_require(['admin']);
+require_once __DIR__ . '/../bootstrap/app.php';
 
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
-require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../includes/money.php';
+use App\Http\AdminPage;
+use App\Http\Dashboard;
+use App\Http\Kernel;
+use App\Support\Money;
 
-use App\Controller\Admin\DashboardController;
-
-$data = (new DashboardController())->index();
-$stats = $data['stats'];
-$recent_orders = $data['recent_orders'];
-$top_plats = $data['top_plats'];
-$ca_jour = $data['ca_jour'];
-$ca_mois = $data['ca_mois'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
-    <?php dashboard_asset_links('Admin - Tableau de bord'); ?>
+    <?php Dashboard::assetLinks('Admin - Tableau de bord'); ?>
 </head>
 <body class="dashboard-body">
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
@@ -32,7 +28,7 @@ $ca_mois = $data['ca_mois'];
         <div style="width: 42px;"></div>
     </header>
 
-    <?php admin_sidebar('dashboard'); ?>
+    <?php AdminPage::sidebar('dashboard'); ?>
 
     <div class="dashboard-shell">
         <main class="dashboard-main">
@@ -61,12 +57,12 @@ $ca_mois = $data['ca_mois'];
             <div class="admin-metrics-row">
                 <div class="metric-card dashboard-card">
                     <div class="metric-label">CA journalier</div>
-                    <div class="metric-value"><?php echo format_money((float) $stats['revenue_day']); ?></div>
+                    <div class="metric-value"><?php echo Money::format((float) $stats['revenue_day']); ?></div>
                     <div class="stat-change"><?php echo (int) $ca_jour['nb']; ?> facture(s)</div>
                 </div>
                 <div class="metric-card dashboard-card">
                     <div class="metric-label">CA mensuel</div>
-                    <div class="metric-value"><?php echo format_money((float) $stats['revenue_month']); ?></div>
+                    <div class="metric-value"><?php echo Money::format((float) $stats['revenue_month']); ?></div>
                     <div class="stat-change"><?php echo (int) $ca_mois['nb']; ?> facture(s)</div>
                 </div>
                 <div class="metric-card dashboard-card">
@@ -109,7 +105,7 @@ $ca_mois = $data['ca_mois'];
                                     <tr data-searchable data-search="<?php echo htmlspecialchars(mb_strtolower(($order['nom_client'] ?? '') . ' ' . $order['num_commande'])); ?>">
                                         <td>#<?php echo str_pad($order['num_commande'], 5, '0', STR_PAD_LEFT); ?></td>
                                         <td><?php echo htmlspecialchars($order['nom_client'] ?? 'Client'); ?></td>
-                                        <td><?php echo format_money((float) $order['montant_total']); ?></td>
+                                        <td><?php echo Money::format((float) $order['montant_total']); ?></td>
                                         <td>
                                             <?php
                                             $status_labels = [
@@ -179,7 +175,7 @@ $ca_mois = $data['ca_mois'];
                                     <tr>
                                         <td><?php echo htmlspecialchars($plat['nom_plat']); ?></td>
                                         <td><?php echo $plat['ventes']; ?></td>
-                                        <td><?php echo format_money((float) $plat['revenu']); ?></td>
+                                        <td><?php echo Money::format((float) $plat['revenu']); ?></td>
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php endif; ?>
@@ -276,7 +272,7 @@ $ca_mois = $data['ca_mois'];
         </main>
     </div>
 
-    <?php dashboard_scripts(); ?>
+    <?php Dashboard::scripts(); ?>
     <script>
         // Animation des barres du graphique horaire
         document.addEventListener('DOMContentLoaded', function() {

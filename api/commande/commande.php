@@ -2,6 +2,6 @@
 
 require_once dirname(__DIR__, 2) . '/bootstrap/app.php';
 
-use App\Controller\Api\Commande\CommandeController;
+use App\Http\Kernel;
 
-(new CommandeController())->handle($_GET);
+Kernel::forFile(__FILE__);

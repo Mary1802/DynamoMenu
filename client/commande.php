@@ -2,6 +2,6 @@
 
 require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Client\CommandeController;
+use App\Http\Kernel;
 
-(new CommandeController())->redirect();
+Kernel::forFile(__FILE__);

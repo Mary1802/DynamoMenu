@@ -1,19 +1,18 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
-require_once __DIR__ . '/../includes/money.php';
 
-use App\Controller\Client\OrderSuccessController;
+use App\Http\Kernel;
+use App\Support\Money;
 
-$data = (new OrderSuccessController())->show($_GET);
-if ($data === null) {
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
+if ($result === null || empty($result)) {
     header('Location: index.php');
     exit;
 }
-
-$num_commande = $data['num_commande'];
-$commande = $data['commande'];
 ?>
 <!doctype html>
 <html lang="fr">
@@ -266,7 +265,7 @@ $commande = $data['commande'];
                 </div>
                 <div class="info-row">
                     <span>Total à payer</span>
-                    <strong><?php echo format_money((float) $commande['total']); ?></strong>
+                    <strong><?php echo Money::format((float) $commande['total']); ?></strong>
                 </div>
             </div>
 

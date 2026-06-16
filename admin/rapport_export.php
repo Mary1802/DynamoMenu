@@ -1,8 +1,7 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Admin\ReportController;
+use App\Http\Kernel;
 
-admin_require_auth();
-(new ReportController())->export($_GET, false);
+Kernel::forFile(__FILE__);

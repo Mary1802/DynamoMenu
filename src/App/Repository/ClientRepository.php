@@ -57,23 +57,22 @@ final class ClientRepository extends BaseRepository
     }
 
     /** @return list<array<string, mixed>> */
-    public function findWithFidelity(?string $query = null, int $limit = 300): array
+    public function findForAdmin(?string $query = null, int $limit = 300): array
     {
         $sql = '
-            SELECT id_client, nom_client, prenom_client, email_client, telephone_client,
-                   points, niveau_fidelite, date_inscription
+            SELECT id_client, nom_client, prenom_client, email_client, telephone_client, date_inscription
             FROM client
             WHERE 1=1
         ';
         $params = [];
 
         if ($query !== null && $query !== '') {
-            $sql .= ' AND (nom_client LIKE ? OR prenom_client LIKE ? OR email_client LIKE ?)';
+            $sql .= ' AND (nom_client LIKE ? OR prenom_client LIKE ? OR email_client LIKE ? OR telephone_client LIKE ?)';
             $pattern = '%' . $query . '%';
-            $params = [$pattern, $pattern, $pattern];
+            $params = [$pattern, $pattern, $pattern, $pattern];
         }
 
-        $sql .= ' ORDER BY points DESC, nom_client LIMIT ' . (int) $limit;
+        $sql .= ' ORDER BY nom_client, prenom_client LIMIT ' . (int) $limit;
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
 

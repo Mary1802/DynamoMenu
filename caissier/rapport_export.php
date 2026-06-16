@@ -1,9 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
 
-use App\Controller\Caissier\ReportController;
+use App\Http\Kernel;
 
-staff_require(['caissier']);
-(new ReportController())->export($_GET, false);
+Kernel::forFile(__FILE__);

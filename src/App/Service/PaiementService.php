@@ -50,6 +50,25 @@ final class PaiementService
         $this->pdo->beginTransaction();
 
         try {
+            $lock = $this->pdo->prepare('SELECT num_commande FROM commande WHERE num_commande = ? FOR UPDATE');
+            $lock->execute([$numCommande]);
+            if (!$lock->fetch(PDO::FETCH_ASSOC)) {
+                $this->pdo->rollBack();
+
+                return ['success' => false, 'error' => 'Commande introuvable.'];
+            }
+
+            if ($this->factures->hasFacture($numCommande)) {
+                $existing = $this->factures->findByCommande($numCommande);
+                $this->pdo->commit();
+
+                return [
+                    'success' => true,
+                    'num_facture' => (int) ($existing['num_facture'] ?? 0),
+                    'already_paid' => true,
+                ];
+            }
+
             $numFacture = $this->factures->create($numCommande, $montantPaye, $modePaiement);
             $this->factures->markDemandesTraitees($numCommande);
             $this->pdo->commit();
@@ -59,12 +78,6 @@ final class PaiementService
             }
 
             return ['success' => false, 'error' => 'Erreur lors du traitement du paiement: ' . $e->getMessage()];
-        }
-
-        try {
-            Application::getInstance()->fidelityService()->awardAfterPayment($numCommande);
-        } catch (Throwable) {
-            // Paiement enregistré ; fidélité optionnelle
         }
 
         return ['success' => true, 'num_facture' => $numFacture];

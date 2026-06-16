@@ -1,21 +1,18 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
 use App\Controller\Admin\EmployeController;
+use App\Http\AdminPage;
+use App\Http\Kernel;
 
-admin_init();
-
-$result = (new EmployeController())->handle($_GET, $_POST, $_SESSION);
-$message = $result['message'];
-$error = $result['error'];
-$employes = $result['employes'];
-$q = $result['q'];
-$passwordHasher = $result['passwordHasher'];
-$passwordService = $result['passwordService'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 $roles = EmployeController::ROLES;
 
-admin_shell_start(
+AdminPage::shellStart(
     'Admin — Employés',
     'employes',
     'Équipe',
@@ -156,4 +153,4 @@ html.theme-light .staff-credential {
     letter-spacing: 0.02em;
 }
 </style>
-<?php admin_shell_end(); ?>
+<?php AdminPage::shellEnd(); ?>

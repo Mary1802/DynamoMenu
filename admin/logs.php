@@ -1,15 +1,16 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Admin\LogController;
+use App\Http\AdminPage;
+use App\Http\Kernel;
 
-admin_init();
-$result = (new LogController())->handle($_GET);
-$logs = $result['logs'];
-$q = $result['q'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 
-admin_shell_start('Admin — Journaux', 'logs', 'Audit', 'Journaux d\'activité', 'Historique des actions enregistrées.');
+AdminPage::shellStart('Admin — Journaux', 'logs', 'Audit', 'Journaux d\'activité', 'Historique des actions enregistrées.');
 ?>
 
 <div class="chart-container mb-4">
@@ -58,4 +59,4 @@ admin_shell_start('Admin — Journaux', 'logs', 'Audit', 'Journaux d\'activité'
         </table>
     </div>
 </div>
-<?php admin_shell_end(); ?>
+<?php AdminPage::shellEnd(); ?>

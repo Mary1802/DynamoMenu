@@ -1,21 +1,13 @@
 <?php
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
-require_once __DIR__ . '/../includes/client_footer.php';
-require_once __DIR__ . '/../includes/client_header.php';
 
-use App\Controller\Client\HomeController;
+use App\Http\ClientPage;
+use App\Http\Kernel;
 
-$data = (new HomeController())->index();
-$tableCtx = $data['tableCtx'];
-$tableError = $data['tableError'];
-$scanError = $data['scanError'];
-$menuUrl = $data['menuUrl'];
-$panierUrl = $data['panierUrl'];
-$indexUrl = $data['indexUrl'];
-$contactRows = $data['contactRows'];
-$hasContactSection = $data['hasContactSection'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -51,9 +43,9 @@ $hasContactSection = $data['hasContactSection'];
 
     <main class="container-fluid px-4 py-5 hero-section">
         <?php if ($tableError || $scanError): ?>
-            <?php render_client_table_error($tableError ?: 'QR code invalide. Rescannez le code affiché sur votre table.'); ?>
+            <?php ClientPage::tableError($tableError ?: 'QR code invalide. Rescannez le code affiché sur votre table.'); ?>
         <?php elseif ($tableCtx): ?>
-            <?php render_client_table_welcome($tableCtx); ?>
+            <?php ClientPage::tableWelcome($tableCtx); ?>
         <?php endif; ?>
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
@@ -226,7 +218,7 @@ $hasContactSection = $data['hasContactSection'];
     </section>
     <?php endif; ?>
 
-    <?php render_client_footer(); ?>
+    <?php ClientPage::footer(); ?>
 
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
     <script>

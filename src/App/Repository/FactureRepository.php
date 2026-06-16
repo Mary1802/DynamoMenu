@@ -13,8 +13,7 @@ final class FactureRepository extends BaseRepository
     public function ensureSchema(): void
     {
         Application::getInstance()->tableRepository()->ensureSchema();
-        require_once dirname(__DIR__, 3) . '/includes/money.php';
-        contient_ensure_schema($this->pdo);
+        Application::getInstance()->schemaUpgrade()->run();
 
         $commandeCols = $this->columnNames('commande');
         if (!in_array('mode_paiement_souhaite', $commandeCols, true)) {

@@ -1,24 +1,20 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
-require_once __DIR__ . '/../includes/money.php';
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
 
-use App\Controller\Cuisine\CommandeListController;
+use App\Http\Dashboard;
+use App\Http\Kernel;
+use App\Support\Money;
 
-staff_require(['cuisinier']);
-
-$data = (new CommandeListController())->index($_GET);
-$filtre = $data['filtre'];
-$commandes = $data['commandes'];
-$commandes_recentes = $data['commandes_recentes'];
-$statut_labels = $data['statut_labels'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
-    <?php dashboard_asset_links('Cuisine — Commandes'); ?>
+    <?php Dashboard::assetLinks('Cuisine — Commandes'); ?>
 </head>
 <body class="dashboard-body">
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -39,7 +35,7 @@ $statut_labels = $data['statut_labels'];
                 <div class="nav-item"><a class="nav-link active" href="commandes.php"><span class="nav-icon"><i class="bi bi-receipt"></i></span><span>Commandes</span></a></div>
                 <div class="nav-item"><a class="nav-link" href="parametres.php"><span class="nav-icon"><i class="bi bi-gear"></i></span><span>Paramètres</span></a></div>
             </nav>
-            <div class="sidebar-footer"><?php dashboard_sidebar_user_footer('cuisinier'); ?></div>
+            <div class="sidebar-footer"><?php Dashboard::sidebarUserFooter('cuisinier'); ?></div>
         </aside>
         <main class="dashboard-main">
             <header class="dashboard-header dashboard-header--kitchen">
@@ -69,19 +65,19 @@ $statut_labels = $data['statut_labels'];
                         <div class="empty-state"><p>Aucune commande pour ce filtre.</p></div>
                         <?php else: ?>
                         <?php foreach ($commandes as $c): ?>
-                        <div class="commande-item" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($c)); ?>">
+                        <div class="commande-item" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($c)); ?>">
                             <div class="commande-header">
                                 <div class="commande-id">#<?php echo str_pad((string) $c['num_commande'], 5, '0', STR_PAD_LEFT); ?> — Table <?php echo htmlspecialchars((string) ($c['num_table'] ?? '—')); ?></div>
-                                <div class="commande-montant"><?php echo format_money((float) $c['montant_total']); ?></div>
+                                <div class="commande-montant"><?php echo Money::format((float) $c['montant_total']); ?></div>
                             </div>
                             <div class="commande-details">
                                 <span><?php echo htmlspecialchars(trim(($c['prenom_client'] ?? '') . ' ' . ($c['nom_client'] ?? ''))); ?></span>
                                 <span><?php echo htmlspecialchars($statut_labels[$c['statut']] ?? $c['statut']); ?></span>
                                 <span><?php echo date('d/m H:i', strtotime($c['date_commande'])); ?></span>
                             </div>
-                            <?php dashboard_render_kitchen_instructions($c['instructions_speciales'] ?? null); ?>
+                            <?php Dashboard::renderKitchenInstructions($c['instructions_speciales'] ?? null); ?>
                             <div class="order-items kitchen-order-items mb-2">
-                                <?php dashboard_render_kitchen_order_details($c['lignes'] ?? []); ?>
+                                <?php Dashboard::renderKitchenOrderDetails($c['lignes'] ?? []); ?>
                             </div>
                             <?php if (($c['statut'] ?? '') !== 'livree'): ?>
                             <a href="dashboard.php#cmd-<?php echo (int) $c['num_commande']; ?>" class="btn-details btn-sm">Ouvrir sur le dashboard</a>
@@ -102,7 +98,7 @@ $statut_labels = $data['statut_labels'];
                         <p class="text-secondary small mb-0">Aucune commande récente.</p>
                         <?php else: ?>
                         <?php foreach ($commandes_recentes as $r): ?>
-                        <div class="commande-item" style="margin-bottom:0.65rem;" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($r)); ?>">
+                        <div class="commande-item" style="margin-bottom:0.65rem;" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($r)); ?>">
                             <div class="commande-header">
                                 <div class="commande-id" style="font-size:0.9rem;">#<?php echo str_pad((string) $r['num_commande'], 5, '0', STR_PAD_LEFT); ?></div>
                                 <?php
@@ -127,7 +123,7 @@ $statut_labels = $data['statut_labels'];
                                 Voir
                             </button>
                             <div id="<?php echo $detailId; ?>" class="commande-detail-panel" hidden>
-                                <?php dashboard_render_cuisine_commande_full_detail($r, $statut_labels); ?>
+                                <?php Dashboard::renderCuisineCommandeFullDetail($r, $statut_labels); ?>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -137,7 +133,7 @@ $statut_labels = $data['statut_labels'];
             </div>
         </main>
     </div>
-    <?php dashboard_scripts(); ?>
+    <?php Dashboard::scripts(); ?>
     <script>
     (function () {
         document.querySelectorAll('.btn-toggle-commande-detail').forEach(function (btn) {

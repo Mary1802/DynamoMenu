@@ -1750,6 +1750,10 @@ html.theme-light .admin-tables-actions-row + .admin-tables-actions-row {
     padding: 1rem;
 }
 
+.modal-overlay.is-open {
+    display: flex;
+}
+
 .modal-content {
     background: rgba(15, 15, 16, 0.98);
     border: 1px solid var(--panel-border);

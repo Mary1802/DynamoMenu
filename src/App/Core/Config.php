@@ -94,4 +94,9 @@ final class Config
     {
         return (int) $this->get('client_session_lifetime', 14400);
     }
+
+    public function allowWebSetup(): bool
+    {
+        return (bool) $this->get('allow_web_setup', false);
+    }
 }

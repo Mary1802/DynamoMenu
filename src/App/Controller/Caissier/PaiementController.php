@@ -10,6 +10,8 @@ use App\Service\PaiementService;
 
 final class PaiementController
 {
+    private const SESSION_ENCAISSE_KEY = 'caisse_encaisse';
+
     private Application $app;
     private PaiementService $paiement;
     private CommandeService $commandes;
@@ -33,7 +35,11 @@ final class PaiementController
      *   stats_jour: array{total_paiements:int, total_ca:float},
      *   dashboard_error: string|null,
      *   notif_items: list<array<string,mixed>>,
-     *   notif_count: int
+     *   notif_count: int,
+     *   payment_completed: bool,
+     *   num_facture_encaisse: int,
+     *   mode_paiement_encaisse: string|null,
+     *   show_payment_modal: bool
      * }
      */
     public function handle(array $get, array $post): array
@@ -41,34 +47,88 @@ final class PaiementController
         $this->paiement->ensureSchema();
 
         $error = null;
+        $paymentCompleted = false;
+        $numFactureEncaisse = 0;
+        $voirCommande = null;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($post['payer_commande'])) {
-            $result = $this->paiement->processPayment(
-                (int) ($post['commande_id'] ?? 0),
-                (string) ($post['mode_paiement'] ?? 'especes'),
-                (float) ($post['montant_paye'] ?? 0)
-            );
+            $numCommande = (int) ($post['commande_id'] ?? 0);
+            if ($numCommande <= 0) {
+                $error = 'Commande invalide.';
+            } else {
+                $result = $this->paiement->processPayment(
+                    $numCommande,
+                    (string) ($post['mode_paiement'] ?? 'especes'),
+                    (float) ($post['montant_paye'] ?? 0)
+                );
 
-            if ($result['success']) {
-                header('Location: generer_facture.php?facture=' . $result['num_facture']);
-                exit;
+                if ($result['success'] && !empty($result['num_facture'])) {
+                    $this->redirectToEncaisseSummary($numCommande, (int) $result['num_facture']);
+                }
+
+                $error = $result['error'] ?? 'Erreur inconnue.';
+                $voirCommande = $numCommande;
             }
-
-            $error = $result['error'] ?? 'Erreur inconnue.';
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($post['annuler_demande'])) {
             $this->paiement->cancelDemande((int) ($post['demande_id'] ?? 0));
-            header('Location: paiement.php');
+            header('Location: paiement.php', true, 303);
             exit;
         }
 
-        $voirCommande = isset($get['voir_commande']) ? (int) $get['voir_commande'] : null;
-        $data = $this->paiement->paymentPageData($voirCommande);
+        $flash = $this->consumeEncaisseFlash();
+        if ($flash !== null) {
+            $paymentCompleted = true;
+            $voirCommande = (int) ($flash['commande'] ?? 0);
+            $numFactureEncaisse = (int) ($flash['facture'] ?? 0);
+        } elseif (!empty($get['encaisse'])) {
+            $paymentCompleted = true;
+            $voirCommande = (int) ($get['commande'] ?? 0);
+            $numFactureEncaisse = (int) ($get['facture'] ?? 0);
+        } elseif (isset($get['voir_commande'])) {
+            $voirCommande = (int) $get['voir_commande'];
+            if ($voirCommande > 0 && $this->app->factureRepository()->hasFacture($voirCommande)) {
+                $existing = $this->app->factureRepository()->findByCommande($voirCommande);
+                if ($existing !== null) {
+                    $this->redirectToEncaisseSummary($voirCommande, (int) $existing['num_facture']);
+                }
+            }
+        }
 
+        if ($paymentCompleted && $voirCommande <= 0) {
+            header('Location: paiement.php', true, 303);
+            exit;
+        }
+
+        $data = $this->paiement->paymentPageData($paymentCompleted ? null : $voirCommande);
+
+        $commandeDetails = null;
         $commandeLignes = [];
-        if ($data['commande_details'] !== null) {
-            $num = (int) ($data['commande_details']['num_commande'] ?? 0);
+        $modePaiementEncaisse = null;
+
+        if ($paymentCompleted && $voirCommande > 0) {
+            $commandeDetails = $this->commandes->repository()->findReceiptDetails($voirCommande);
+            $facture = $this->app->factureRepository()->findByCommande($voirCommande);
+            if ($facture !== null) {
+                $modePaiementEncaisse = (string) ($facture['mode_paiement'] ?? '');
+                if ($numFactureEncaisse <= 0) {
+                    $numFactureEncaisse = (int) ($facture['num_facture'] ?? 0);
+                }
+            }
+            if ($commandeDetails === null || $numFactureEncaisse <= 0) {
+                header('Location: paiement.php', true, 303);
+                exit;
+            }
+        } elseif ($voirCommande !== null && $voirCommande > 0) {
+            $commandeDetails = $this->commandes->repository()->findPaymentDetails($voirCommande)
+                ?? $data['commande_details'];
+        } elseif ($data['commande_details'] !== null) {
+            $commandeDetails = $data['commande_details'];
+        }
+
+        if ($commandeDetails !== null) {
+            $num = (int) ($commandeDetails['num_commande'] ?? 0);
             if ($num > 0) {
                 $lines = $this->commandes->repository()->fetchLines($num);
                 $commandeLignes = array_map(static fn($l): array => $l->toArray(), $lines);
@@ -78,10 +138,13 @@ final class PaiementController
         $notifItems = $this->app->staffNotificationService()->forRole('caissier');
         $notifCount = count($data['commandes_a_payer']) + count($data['demandes_paiement']);
 
+        $showPaymentModal = $commandeDetails !== null
+            && ($paymentCompleted || isset($get['voir_commande']) || ($error !== null && $voirCommande !== null));
+
         return [
             'error' => $error,
             'commandes_a_payer' => $data['commandes_a_payer'],
-            'commande_details' => $data['commande_details'],
+            'commande_details' => $commandeDetails,
             'commande_lignes' => $commandeLignes,
             'paiements_recents' => $data['paiements_recents'],
             'demandes_paiement' => $data['demandes_paiement'],
@@ -89,6 +152,41 @@ final class PaiementController
             'dashboard_error' => $data['dashboard_error'],
             'notif_items' => $notifItems,
             'notif_count' => $notifCount,
+            'payment_completed' => $paymentCompleted,
+            'num_facture_encaisse' => $numFactureEncaisse,
+            'mode_paiement_encaisse' => $modePaiementEncaisse,
+            'show_payment_modal' => $showPaymentModal,
         ];
+    }
+
+    /** @return array{commande:int,facture:int}|null */
+    private function consumeEncaisseFlash(): ?array
+    {
+        if (empty($_SESSION[self::SESSION_ENCAISSE_KEY]) || !is_array($_SESSION[self::SESSION_ENCAISSE_KEY])) {
+            return null;
+        }
+
+        $flash = $_SESSION[self::SESSION_ENCAISSE_KEY];
+        unset($_SESSION[self::SESSION_ENCAISSE_KEY]);
+
+        return [
+            'commande' => (int) ($flash['commande'] ?? 0),
+            'facture' => (int) ($flash['facture'] ?? 0),
+        ];
+    }
+
+    private function redirectToEncaisseSummary(int $numCommande, int $numFacture): never
+    {
+        $_SESSION[self::SESSION_ENCAISSE_KEY] = [
+            'commande' => $numCommande,
+            'facture' => $numFacture,
+        ];
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        header('Location: paiement.php', true, 303);
+        exit;
     }
 }

@@ -1,30 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
-require_once __DIR__ . '/../includes/money.php';
 
-use App\Controller\Client\OrderTrackingController;
+use App\Http\ClientPage;
+use App\Http\Kernel;
+use App\Support\Money;
 
-$data = (new OrderTrackingController())->show($_GET);
-if ($data === null) {
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
+if ($result === null || empty($result)) {
     header('Location: index.php');
     exit;
 }
-
-$num_commande = $data['num_commande'];
-$commande = $data['commande'];
-$lignes = $data['lignes'];
-$facture = $data['facture'];
-$statutInitial = $data['statutInitial'];
-$tableLabel = $data['tableLabel'];
-$clientNom = $data['clientNom'];
-$modePaiement = $data['modePaiement'];
-$remise = $data['remise'];
-$sousTotalLignes = $data['sousTotalLignes'];
-$indexUrl = $data['indexUrl'];
-
-require_once __DIR__ . '/../includes/table_context.php';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -145,7 +134,7 @@ require_once __DIR__ . '/../includes/table_context.php';
                 </div>
                 <div class="meta-box">
                     <div class="meta-label">Montant payé</div>
-                    <div class="meta-value"><?php echo format_money((float) $facture['total_paye']); ?></div>
+                    <div class="meta-value"><?php echo Money::format((float) $facture['total_paye']); ?></div>
                 </div>
                 <?php endif; ?>
             </div>
@@ -158,32 +147,21 @@ require_once __DIR__ . '/../includes/table_context.php';
                         <?php echo htmlspecialchars($l['nom']); ?>
                         <small>× <?php echo (int) $l['quantite']; ?></small>
                     </span>
-                    <span><?php echo format_money((float) $l['sous_total']); ?></span>
+                    <span><?php echo Money::format((float) $l['sous_total']); ?></span>
                 </div>
                 <?php endforeach; ?>
             </div>
 
-            <?php if ($remise > 0): ?>
-            <div class="d-flex justify-content-between text-secondary small mb-1">
-                <span>Sous-total articles</span>
-                <span><?php echo format_money($sousTotalLignes); ?></span>
-            </div>
-            <div class="d-flex justify-content-between text-success small mb-2">
-                <span>Réduction fidélité</span>
-                <span>− <?php echo format_money($remise); ?></span>
-            </div>
-            <?php endif; ?>
-
             <div class="total-row">
                 <span>Total TTC</span>
-                <span><?php echo format_money((float) $commande['montant_total']); ?></span>
+                <span><?php echo Money::format((float) $commande['montant_total']); ?></span>
             </div>
 
             <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
                 <a href="<?php echo htmlspecialchars($indexUrl); ?>" class="btn btn-outline-light flex-fill">
                     <i class="bi bi-house-door"></i> Retour à l'accueil
                 </a>
-                <a href="<?php echo htmlspecialchars(table_link('nouvelle_commande.php')); ?>" class="btn btn-primary flex-fill" style="background:#ff6f1f;border-color:#ff6f1f;">
+                <a href="<?php echo htmlspecialchars(ClientPage::tableLink('nouvelle_commande.php')); ?>" class="btn btn-primary flex-fill" style="background:#ff6f1f;border-color:#ff6f1f;">
                     <i class="bi bi-plus-circle"></i> Commander à nouveau
                 </a>
             </div>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Data\MenuSeed;
+use App\Support\MenuImageIndex;
 use PDO;
 use PDOException;
 use RecursiveDirectoryIterator;
@@ -28,9 +29,7 @@ final class MenuService
     /** @return array<string, string> */
     public function buildImageIndex(): array
     {
-        require_once $this->projectRoot . '/includes/menu_image_index.php';
-
-        return build_menu_image_index($this->projectRoot . '/assets/images');
+        return MenuImageIndex::build($this->projectRoot . '/assets/images');
     }
 
     public function seedStaticItems(): void
@@ -84,8 +83,6 @@ final class MenuService
     /** @return list<array<string, mixed>> */
     public function buildMenuItems(): array
     {
-        require_once $this->projectRoot . '/includes/menu_image_index.php';
-
         $menuItems = [];
 
         try {
@@ -98,7 +95,7 @@ final class MenuService
                     'name' => $r['nom_plat'],
                     'desc' => '',
                     'price' => isset($r['prix_unitaire']) ? (float) $r['prix_unitaire'] : 0.0,
-                    'img' => normalize_menu_image_path($r['image_url'] ?: null),
+                    'img' => MenuImageIndex::normalizePath($r['image_url'] ?: null),
                 ];
             }
 
@@ -139,7 +136,7 @@ final class MenuService
                     'name' => $r['nom_boisson'],
                     'desc' => $desc,
                     'price' => isset($r['prix_unitaire']) ? (float) $r['prix_unitaire'] : 0.0,
-                    'img' => normalize_menu_image_path($r['image_url'] ?: null),
+                    'img' => MenuImageIndex::normalizePath($r['image_url'] ?: null),
                 ];
             }
         } catch (PDOException) {
@@ -173,8 +170,6 @@ final class MenuService
 
     private function normalizeImagePath(?string $path): ?string
     {
-        require_once $this->projectRoot . '/includes/menu_image_index.php';
-
-        return normalize_menu_image_path($path);
+        return MenuImageIndex::normalizePath($path);
     }
 }

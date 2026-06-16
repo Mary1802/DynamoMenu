@@ -37,8 +37,6 @@ final class OrderTrackingController
      *   tableLabel: string,
      *   clientNom: string,
      *   modePaiement: string,
-     *   remise: float,
-     *   sousTotalLignes: float,
      *   indexUrl: string
      * }|null
      */
@@ -92,8 +90,6 @@ final class OrderTrackingController
             'tableLabel' => $tableLabel,
             'clientNom' => $clientNom,
             'modePaiement' => $modePaiement,
-            'remise' => (float) ($commande['remise_montant'] ?? 0),
-            'sousTotalLignes' => array_sum(array_column($lignes, 'sous_total')),
             'indexUrl' => $this->tables->link('index.php'),
         ];
     }

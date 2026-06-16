@@ -1,31 +1,22 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
-require_once __DIR__ . '/../includes/money.php';
 
-use App\Controller\Caissier\ReportController;
+use App\Http\Dashboard;
+use App\Http\Kernel;
 use App\Service\ReportService;
+use App\Support\Money;
 
-staff_require(['caissier']);
-$data = (new ReportController())->index($_GET);
-$rapport_mois = $data['rapport_mois'];
-$lignes_mois = $data['lignes_mois'];
-$annee = $data['annee'];
-$moisNum = $data['moisNum'];
-$moisLabel = $data['moisLabel'];
-$daysInMonth = $data['daysInMonth'];
-$jourExport = $data['jourExport'];
-$exportBase = $data['exportBase'];
-$annees = $data['annees'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 $nomsMois = ReportService::MONTH_NAMES;
-
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
-    <?php dashboard_asset_links('Caissier — Rapports'); ?>
+    <?php Dashboard::assetLinks('Caissier — Rapports'); ?>
 </head>
 <body class="dashboard-body">
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
@@ -48,7 +39,7 @@ require_once __DIR__ . '/../includes/dashboard_helpers.php';
                 <div class="nav-item"><a class="nav-link" href="parametres.php"><span class="nav-icon"><i class="bi bi-gear"></i></span><span>Paramètres</span></a></div>
             </nav>
             <div class="sidebar-footer">
-                <?php dashboard_sidebar_user_footer('caissier'); ?>
+                <?php Dashboard::sidebarUserFooter('caissier'); ?>
             </div>
         </aside>
         <main class="dashboard-main">
@@ -84,17 +75,17 @@ require_once __DIR__ . '/../includes/dashboard_helpers.php';
 
             <div class="stats-row stats-row--3 mb-4">
                 <div class="stat-box">
-                    <div class="stat-value"><?php echo format_money((float) $rapport_mois['ca']); ?></div>
+                    <div class="stat-value"><?php echo Money::format((float) $rapport_mois['ca']); ?></div>
                     <div class="stat-label">CA — <?php echo htmlspecialchars($moisLabel); ?></div>
                     <div class="small text-secondary mt-1"><?php echo (int) $rapport_mois['nb']; ?> paiements</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Cash</div>
-                    <div class="stat-value" style="font-size:1.35rem;"><?php echo format_money((float) $rapport_mois['ca_especes']); ?></div>
+                    <div class="stat-value" style="font-size:1.35rem;"><?php echo Money::format((float) $rapport_mois['ca_especes']); ?></div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Mobile money</div>
-                    <div class="stat-value" style="font-size:1.35rem;"><?php echo format_money((float) $rapport_mois['ca_mobile']); ?></div>
+                    <div class="stat-value" style="font-size:1.35rem;"><?php echo Money::format((float) $rapport_mois['ca_mobile']); ?></div>
                 </div>
             </div>
 
@@ -165,8 +156,8 @@ require_once __DIR__ . '/../includes/dashboard_helpers.php';
                                 <td>#<?php echo str_pad((string) $l['num_commande'], 5, '0', STR_PAD_LEFT); ?></td>
                                 <td><?php echo htmlspecialchars(trim(($l['prenom_client'] ?? '') . ' ' . ($l['nom_client'] ?? ''))); ?></td>
                                 <td><?php echo htmlspecialchars((string) ($l['num_table'] ?? '')); ?></td>
-                                <td><?php echo htmlspecialchars(dashboard_mode_paiement_label((string) $l['mode_paiement'])); ?></td>
-                                <td><?php echo format_money((float) $l['total_paye']); ?></td>
+                                <td><?php echo htmlspecialchars(Dashboard::modePaiementLabel((string) $l['mode_paiement'])); ?></td>
+                                <td><?php echo Money::format((float) $l['total_paye']); ?></td>
                             </tr>
                         <?php endforeach; endif; ?>
                         </tbody>
@@ -175,7 +166,7 @@ require_once __DIR__ . '/../includes/dashboard_helpers.php';
             </div>
         </main>
     </div>
-    <?php dashboard_scripts(); ?>
+    <?php Dashboard::scripts(); ?>
     <script>
     (function () {
         var jourSelect = document.getElementById('jourExport');

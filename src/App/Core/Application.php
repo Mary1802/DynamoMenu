@@ -24,7 +24,6 @@ use App\Service\CartService;
 use App\Service\ClientPaymentService;
 use App\Service\CommandeService;
 use App\Service\EmployePasswordService;
-use App\Service\FidelityService;
 use App\Service\MenuImageUploadService;
 use App\Service\MenuService;
 use App\Service\NotificationService;
@@ -58,7 +57,6 @@ final class Application
     private ?FactureRepository $factureRepository = null;
     private ?PaiementService $paiementService = null;
     private ?NotificationService $notificationService = null;
-    private ?FidelityService $fidelityService = null;
     private ?CartService $cartService = null;
     private ?TableContextService $tableContextService = null;
     private ?ContactRepository $contactRepository = null;
@@ -245,15 +243,6 @@ final class Application
         }
 
         return $this->notificationService;
-    }
-
-    public function fidelityService(): FidelityService
-    {
-        if ($this->fidelityService === null) {
-            $this->fidelityService = new FidelityService($this->db());
-        }
-
-        return $this->fidelityService;
     }
 
     public function cartService(): CartService

@@ -2,6 +2,6 @@
 
 require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Api\Client\CartCountController;
+use App\Http\Kernel;
 
-(new CartCountController())->handle();
+Kernel::forFile(__FILE__);

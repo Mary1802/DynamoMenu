@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Core\Application;
+use App\Support\MenuImageIndex;
 use PDO;
 use PDOException;
 
@@ -26,15 +27,12 @@ final class SchemaUpgradeService
     public function run(): void
     {
         $this->ensureContientSchema();
-        $this->ensureFidelityTables();
         $this->ensureNotificationTable();
         $this->ensureCommandeColumns();
         $this->ensurePlatColumns();
         $this->ensureBoissonColumns();
         $this->ensureTypeBoisson();
         $this->normalizeMenuImages();
-        $this->ensureClientFidelityColumn();
-        $this->seedDefaultRewards();
         $this->app->menuService()->seedStaticItems();
         $this->app->employePasswordService()->upgradePlaintextPasswords();
     }
@@ -51,32 +49,6 @@ final class SchemaUpgradeService
             $after = in_array('sauces', $cols, true) ? 'sauces' : 'sous_total';
             $this->pdo->exec("ALTER TABLE contient ADD COLUMN personnalisation_boisson VARCHAR(255) NOT NULL DEFAULT '' AFTER {$after}");
         }
-    }
-
-    private function ensureFidelityTables(): void
-    {
-        $this->pdo->exec("CREATE TABLE IF NOT EXISTS recompense_fidelite (
-            id_recompense INT PRIMARY KEY AUTO_INCREMENT,
-            libelle VARCHAR(120) NOT NULL,
-            description VARCHAR(255) NULL,
-            points_requis INT NOT NULL DEFAULT 0,
-            type_recompense ENUM('pourcentage', 'montant_fixe', 'cadeau') NOT NULL DEFAULT 'pourcentage',
-            valeur DECIMAL(10,2) NOT NULL DEFAULT 0,
-            actif TINYINT(1) NOT NULL DEFAULT 1,
-            date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )");
-
-        $this->pdo->exec("CREATE TABLE IF NOT EXISTS historique_points (
-            id_historique INT PRIMARY KEY AUTO_INCREMENT,
-            id_client INT NOT NULL,
-            points INT NOT NULL,
-            type_operation ENUM('gain', 'echange', 'ajustement', 'annulation') NOT NULL,
-            description VARCHAR(255) NULL,
-            num_commande INT NULL,
-            id_recompense INT NULL,
-            date_operation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (id_client) REFERENCES client(id_client) ON DELETE CASCADE
-        )");
     }
 
     private function ensureNotificationTable(): void
@@ -100,15 +72,6 @@ final class SchemaUpgradeService
     private function ensureCommandeColumns(): void
     {
         $commandeCols = array_column($this->pdo->query('SHOW COLUMNS FROM commande')->fetchAll(PDO::FETCH_ASSOC), 'Field');
-        if (!in_array('remise_montant', $commandeCols, true)) {
-            $this->pdo->exec('ALTER TABLE commande ADD COLUMN remise_montant DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER montant_total');
-        }
-        if (!in_array('id_recompense', $commandeCols, true)) {
-            $this->pdo->exec('ALTER TABLE commande ADD COLUMN id_recompense INT NULL AFTER remise_montant');
-        }
-        if (!in_array('points_gagnes', $commandeCols, true)) {
-            $this->pdo->exec('ALTER TABLE commande ADD COLUMN points_gagnes INT NOT NULL DEFAULT 0 AFTER id_recompense');
-        }
         if (!in_array('instructions_speciales', $commandeCols, true)) {
             $after = in_array('mode_paiement_souhaite', $commandeCols, true) ? 'mode_paiement_souhaite' : 'montant_total';
             $this->pdo->exec("ALTER TABLE commande ADD COLUMN instructions_speciales TEXT NULL AFTER {$after}");
@@ -215,7 +178,6 @@ final class SchemaUpgradeService
     private function normalizeMenuImages(): void
     {
         try {
-            require_once dirname(__DIR__, 3) . '/includes/menu_image_index.php';
             $tables = ['plat' => 'id_plat', 'boisson' => 'id_boisson'];
             foreach ($tables as $tableName => $idCol) {
                 if ($this->pdo->query('SHOW TABLES LIKE ' . $this->pdo->quote($tableName))->fetchColumn() === false) {
@@ -235,7 +197,7 @@ final class SchemaUpgradeService
                 $stmt = $this->pdo->query("SELECT {$idCol}, image_url FROM {$tableName} WHERE image_url IS NOT NULL AND image_url <> ''");
                 $update = $this->pdo->prepare("UPDATE {$tableName} SET image_url = ? WHERE {$idCol} = ?");
                 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $normalized = normalize_menu_image_path((string) $row['image_url']);
+                    $normalized = MenuImageIndex::normalizePath((string) $row['image_url']);
                     if ($normalized !== null && $normalized !== $row['image_url']) {
                         $update->execute([$normalized, (int) $row[$idCol]]);
                     }
@@ -243,34 +205,6 @@ final class SchemaUpgradeService
             }
         } catch (PDOException) {
             // ignore
-        }
-    }
-
-    private function ensureClientFidelityColumn(): void
-    {
-        $clientCols = array_column($this->pdo->query('SHOW COLUMNS FROM client')->fetchAll(PDO::FETCH_ASSOC), 'Field');
-        if (!in_array('niveau_fidelite', $clientCols, true)) {
-            $this->pdo->exec("ALTER TABLE client ADD COLUMN niveau_fidelite ENUM('bronze','argent','or') NOT NULL DEFAULT 'bronze' AFTER points");
-        }
-    }
-
-    private function seedDefaultRewards(): void
-    {
-        $count = (int) $this->pdo->query('SELECT COUNT(*) FROM recompense_fidelite')->fetchColumn();
-        if ($count > 0) {
-            return;
-        }
-
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO recompense_fidelite (libelle, description, points_requis, type_recompense, valeur, actif) VALUES (?, ?, ?, ?, ?, 1)'
-        );
-        foreach ([
-            ['5 % de réduction', 'Sur la commande en cours', 25, 'pourcentage', 5],
-            ['10 % de réduction', 'Réservé aux clients fidèles', 50, 'pourcentage', 10],
-            ['5 600 FC offerts', 'Remise fixe immédiate', 30, 'montant_fixe', 5600],
-            ['Dessert offert', 'Cadeau maison', 80, 'cadeau', 0],
-        ] as $row) {
-            $stmt->execute($row);
         }
     }
 }

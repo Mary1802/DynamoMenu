@@ -1,17 +1,16 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../services/qr_service.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Admin\TableController;
+use App\Http\AdminPage;
+use App\Http\Kernel;
 
-admin_init();
-$result = (new TableController())->handle($_POST);
-$message = $result['message'];
-$error = $result['error'];
-$tables = $result['tables'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 
-admin_shell_start(
+AdminPage::shellStart(
     'Admin — Tables & QR',
     'tables',
     'Configuration',
@@ -107,10 +106,9 @@ admin_shell_start(
             <tbody>
 
             <?php foreach ($tables as $t):
-
-                $url = qr_table_entry_url($t['code_table']);
-
-                $qrImg = qr_image_url($url);
+                $qr = \App\Core\Application::getInstance()->qrService();
+                $url = $qr->tableEntryUrl((string) $t['code_table']);
+                $qrImg = \App\Service\QrService::imageUrl($url);
 
                 $formId = 'edit-table-' . (int) $t['num_table'];
 
@@ -197,5 +195,5 @@ admin_shell_start(
 
 
 
-<?php admin_shell_end(); ?>
+<?php AdminPage::shellEnd(); ?>
 

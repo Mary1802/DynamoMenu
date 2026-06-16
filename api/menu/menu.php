@@ -2,6 +2,6 @@
 
 require_once dirname(__DIR__, 2) . '/bootstrap/app.php';
 
-use App\Controller\Api\Menu\MenuController;
+use App\Http\Kernel;
 
-(new MenuController())->handle();
+Kernel::forFile(__FILE__);

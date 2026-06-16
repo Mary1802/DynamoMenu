@@ -1,21 +1,18 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
-require_once __DIR__ . '/../services/qr_service.php';
 
-use App\Controller\Admin\TableController;
+use App\Http\Kernel;
 
-staff_require(['admin']);
-
-$result = (new TableController())->printStickers($_GET);
-if ($result === null) {
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
+if ($result === null || empty($stickers)) {
     header('Location: tables.php');
     exit;
 }
 
-$stickers = $result['stickers'];
-$printAll = $result['printAll'];
 $pageTitle = $printAll
     ? 'QR codes — toutes les tables'
     : 'QR code — ' . ($stickers[0]['label'] ?? 'table');

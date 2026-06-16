@@ -1,20 +1,14 @@
 <?php
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
-require_once __DIR__ . '/../includes/money.php';
-require_once __DIR__ . '/../includes/client_header.php';
-require_once __DIR__ . '/../includes/client_footer.php';
 
-use App\Controller\Client\CartController;
+use App\Http\ClientPage;
+use App\Http\Kernel;
+use App\Support\Money;
 
-$data = (new CartController())->handle($_GET, $_POST);
-$tableCtx = $data['tableCtx'];
-$panier = $data['panier'];
-$total_panier = $data['total_panier'];
-$nombre_articles = $data['nombre_articles'];
-$tva_rate = $data['tva_rate'];
-$tva_amount = $data['tva_amount'];
-$total_ttc = $data['total_ttc'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!doctype html>
 <html lang="fr">
@@ -25,7 +19,7 @@ $total_ttc = $data['total_ttc'];
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../assets/css/style.css?v=7">
-    <?php csrf_meta_tag(); ?>
+    <?php ClientPage::csrfMetaTag(); ?>
     <style>
         body {
             background: radial-gradient(circle at top left, rgba(255,111,31,0.16), transparent 28%),
@@ -285,7 +279,7 @@ $total_ttc = $data['total_ttc'];
     </style>
 </head>
 <body class="client-site">
-    <?php render_client_nav('panier'); ?>
+    <?php ClientPage::nav('panier'); ?>
 
     <main class="container-fluid px-3 px-md-4 py-4 py-md-5">
         <div class="row">
@@ -300,7 +294,7 @@ $total_ttc = $data['total_ttc'];
         <div class="empty-panier">
             <h3>Votre panier est vide</h3>
             <p>Ajoutez des plats et boissons pour commencer votre commande</p>
-            <a href="<?php echo htmlspecialchars(table_link('menu.php')); ?>" class="btn btn-primary mt-3" style="background: #ff6f1f; border-color: #ff6f1f;">
+            <a href="<?php echo htmlspecialchars(ClientPage::tableLink('menu.php')); ?>" class="btn btn-primary mt-3" style="background: #ff6f1f; border-color: #ff6f1f;">
                 Voir le menu
             </a>
         </div>
@@ -338,7 +332,7 @@ $total_ttc = $data['total_ttc'];
                         </div>
                         
                         <div class="col-2 text-center">
-                            <div style="font-weight: 600; color: #fff; font-size: 1.1rem;"><?php echo format_money((float) $item['prix']); ?></div>
+                            <div style="font-weight: 600; color: #fff; font-size: 1.1rem;"><?php echo Money::format((float) $item['prix']); ?></div>
                             <div style="font-size: 0.8rem; color: rgba(229,231,235,0.85);">Prix unitaire</div>
                         </div>
                         
@@ -366,7 +360,7 @@ $total_ttc = $data['total_ttc'];
                     <div class="row mt-2 mb-4">
                         <div class="col-10">
                             <div style="border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 0.5rem; font-size: 0.9rem; color: rgba(229,231,235,0.75);">
-                                <strong>Calcul :</strong> <?php echo format_money((float) $item['prix']); ?> × <?php echo $item['quantite']; ?> = <?php echo format_money((float) $item['sous_total']); ?>
+                                <strong>Calcul :</strong> <?php echo Money::format((float) $item['prix']); ?> × <?php echo $item['quantite']; ?> = <?php echo Money::format((float) $item['sous_total']); ?>
                             </div>
                         </div>
                         <div class="col-2 text-center">
@@ -389,26 +383,26 @@ $total_ttc = $data['total_ttc'];
                         
                         <div class="summary-row">
                             <span>Sous-total des articles</span>
-                            <span><?php echo format_money($total_panier); ?></span>
+                            <span><?php echo Money::format($total_panier); ?></span>
                         </div>
                         
                         <div class="summary-row">
                             <span>TVA (16%)</span>
-                            <span><?php echo format_money($tva_amount); ?></span>
+                            <span><?php echo Money::format($tva_amount); ?></span>
                         </div>
                         
                         <div class="summary-row" style="background: rgba(255,255,255,0.08); border-radius: 6px; padding: 1rem; color: #e5e7eb;">
                             <span style="font-size: 1.2rem; font-weight: 700;">Total TTC à payer</span>
-                            <span style="font-size: 1.4rem; font-weight: 700; color: #ff6f1f;"><?php echo format_money($total_ttc); ?></span>
+                            <span style="font-size: 1.4rem; font-weight: 700; color: #ff6f1f;"><?php echo Money::format($total_ttc); ?></span>
                         </div>
                         
                         <div class="text-center mt-5 pt-4" style="border-top: 1px solid #eee;">
                             <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
-                                <a href="<?php echo htmlspecialchars(table_link('menu.php')); ?>" class="btn btn-outline-light btn-lg px-4 px-md-5">
+                                <a href="<?php echo htmlspecialchars(ClientPage::tableLink('menu.php')); ?>" class="btn btn-outline-light btn-lg px-4 px-md-5">
                                     ← Continuer mes achats
                                 </a>
                                 <?php if ($tableCtx): ?>
-                                <a href="<?php echo htmlspecialchars(table_link('confirmation.php')); ?>" class="btn btn-primary btn-lg px-4 px-md-5" style="background: #ff6f1f; border-color: #ff6f1f;">
+                                <a href="<?php echo htmlspecialchars(ClientPage::tableLink('confirmation.php')); ?>" class="btn btn-primary btn-lg px-4 px-md-5" style="background: #ff6f1f; border-color: #ff6f1f;">
                                     Confirmer la commande
                                 </a>
                                 <?php else: ?>
@@ -431,7 +425,7 @@ $total_ttc = $data['total_ttc'];
         </div>
     </main>
 
-    <?php render_client_footer(); ?>
+    <?php ClientPage::footer(); ?>
 
     <script src="../assets/js/csrf.js?v=1"></script>
     <script src="../assets/js/bootstrap.bundle.min.js"></script>

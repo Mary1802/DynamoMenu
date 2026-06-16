@@ -13,8 +13,7 @@ final class DashboardLayoutView
     {
         View::render('staff/asset-links', ['pageTitle' => $pageTitle]);
         Application::getInstance()->staffAuth()->startSession();
-        require_once dirname(__DIR__, 4) . '/includes/session_security.php';
-        csrf_meta_tag();
+        Application::getInstance()->csrf()->metaTag();
     }
 
     public static function scripts(): void
@@ -24,11 +23,11 @@ final class DashboardLayoutView
 
     public static function sidebarUserFooter(string $context): void
     {
-        require_once dirname(__DIR__, 4) . '/includes/staff_auth.php';
-        $user = staff_user();
+        $auth = Application::getInstance()->staffAuth();
+        $user = $auth->user();
         View::render('staff/sidebar-user-footer', [
             'nom' => (string) ($user['nom'] ?? $_SESSION['nom'] ?? 'Utilisateur'),
-            'roleLabel' => staff_role_label((string) ($user['role'] ?? $context)),
+            'roleLabel' => $auth->roleLabel((string) ($user['role'] ?? $context)),
         ]);
     }
 

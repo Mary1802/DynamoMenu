@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Core\Application;
 use App\Model\CommandeLine;
 use App\Model\CommandeStatut;
 use PDO;
@@ -135,8 +136,7 @@ final class CommandeRepository extends BaseRepository
     /** @return list<CommandeLine> */
     public function fetchLines(int $numCommande): array
     {
-        require_once dirname(__DIR__, 3) . '/includes/money.php';
-        contient_ensure_schema($this->pdo);
+        Application::getInstance()->schemaUpgrade()->run();
 
         $stmt = $this->pdo->prepare("
             SELECT
@@ -290,6 +290,40 @@ final class CommandeRepository extends BaseRepository
             FROM commande c
             LEFT JOIN client cl ON c.id_client = cl.id_client
             WHERE c.num_commande = ?
+              AND c.statut = 'livree'
+              AND NOT EXISTS (SELECT 1 FROM facture f WHERE f.num_commande = c.num_commande)
+        ");
+        $stmt->execute([$numCommande]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    /** Détails commande après encaissement (lecture seule, facture déjà émise). */
+    /** @return array<string, mixed>|null */
+    public function findReceiptDetails(int $numCommande): ?array
+    {
+        $modeSql = $this->hasColumn('commande', 'mode_paiement_souhaite')
+            ? 'c.mode_paiement_souhaite,'
+            : '';
+
+        $stmt = $this->pdo->prepare("
+            SELECT
+                c.num_commande,
+                c.date_commande,
+                c.montant_total,
+                c.statut,
+                {$modeSql}
+                c.id_client,
+                c.num_table,
+                c.num_table AS table_num,
+                cl.nom_client,
+                cl.prenom_client,
+                cl.telephone_client,
+                cl.email_client
+            FROM commande c
+            LEFT JOIN client cl ON c.id_client = cl.id_client
+            WHERE c.num_commande = ?
         ");
         $stmt->execute([$numCommande]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -360,8 +394,7 @@ final class CommandeRepository extends BaseRepository
     /** @return list<array<string, mixed>> */
     public function findTrackingLines(int $numCommande): array
     {
-        require_once dirname(__DIR__, 3) . '/includes/money.php';
-        contient_ensure_schema($this->pdo);
+        Application::getInstance()->schemaUpgrade()->run();
 
         $stmt = $this->pdo->prepare("
             SELECT COALESCE(p.nom_plat, b.nom_boisson, d.personnalisation_boisson) AS nom,

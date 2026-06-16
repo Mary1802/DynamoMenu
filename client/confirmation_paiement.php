@@ -1,21 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
-require_once __DIR__ . '/../includes/money.php';
 
-use App\Controller\Client\PaymentConfirmationController;
+use App\Http\Kernel;
 use App\Service\ClientPaymentService;
+use App\Support\Money;
 
-$data = (new PaymentConfirmationController())->show($_GET);
-if ($data === null) {
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
+if ($result === null || empty($result)) {
     header('Location: index.php');
     exit;
 }
-
-$commande_id = $data['commande_id'];
-$demande = $data['demande'];
-$commande = $data['commande'];
 $mode_icons = ['carte' => '💳', 'especes' => '💵', 'mobile' => '📱'];
 $mode_labels = ClientPaymentService::modeIcons();
 ?>
@@ -145,7 +143,7 @@ $mode_labels = ClientPaymentService::modeIcons();
                 </div>
                 <div class="info-row">
                     <span>Montant à payer</span>
-                    <span><strong><?php echo format_money((float) $demande['montant']); ?></strong></span>
+                    <span><strong><?php echo Money::format((float) $demande['montant']); ?></strong></span>
                 </div>
                 <div class="info-row">
                     <span>Mode de paiement choisi</span>

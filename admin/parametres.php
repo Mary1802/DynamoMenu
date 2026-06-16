@@ -1,18 +1,16 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Admin\ParametresController;
+use App\Http\AdminPage;
+use App\Http\Kernel;
 
-admin_init();
-$result = (new ParametresController())->handle($_GET, $_POST, staff_user());
-$message = $result['message'];
-$contactList = $result['contactList'];
-$currentContact = $result['currentContact'];
-$account = $result['account'];
-$editingId = $result['editingId'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 
-admin_shell_start(
+AdminPage::shellStart(
     'Admin — Paramètres',
     'parametres',
     'Administration',
@@ -119,4 +117,4 @@ admin_shell_start(
     </section>
 </div>
 
-<?php admin_shell_end(); ?>
+<?php AdminPage::shellEnd(); ?>

@@ -7,7 +7,6 @@ namespace App\Controller\Client;
 use App\Auth\ClientSessionService;
 use App\Core\Application;
 use App\Service\CartService;
-use App\Service\FidelityService;
 use App\Service\OrderCreationService;
 use App\Service\TableContextService;
 
@@ -16,7 +15,6 @@ final class ConfirmationController
     private ClientSessionService $session;
     private CartService $cart;
     private TableContextService $tables;
-    private FidelityService $fidelity;
     private OrderCreationService $orders;
 
     public function __construct(?Application $app = null)
@@ -25,7 +23,6 @@ final class ConfirmationController
         $this->session = $app->clientSession();
         $this->cart = $app->cartService();
         $this->tables = $app->tableContextService();
-        $this->fidelity = $app->fidelityService();
         $this->orders = $app->orderCreationService();
     }
 
@@ -36,15 +33,13 @@ final class ConfirmationController
      *   panier: list<array<string,mixed>>,
      *   total_panier: float,
      *   tva_amount: float,
-     *   total_ttc: float,
-     *   recompenses_fidelite: list<array<string,mixed>>
+     *   total_ttc: float
      * }|null null when redirect occurred
      */
     public function handle(array $post): ?array
     {
         $this->session->start();
         $this->tables->bootstrap();
-        $this->fidelity->ensureSchema();
 
         $totals = $this->cart->totals();
         if ($totals['panier'] === []) {
@@ -75,7 +70,6 @@ final class ConfirmationController
                     'num_commande' => $result['num_commande'],
                     'total' => $result['total_ttc'],
                     'table' => $result['num_table'],
-                    'remise' => $result['remise'],
                 ];
                 $_SESSION['suivi_commande_id'] = $result['num_commande'];
                 Application::getInstance()->orderAccess()->grant($result['num_commande']);
@@ -95,7 +89,6 @@ final class ConfirmationController
             'total_panier' => $totals['total_panier'],
             'tva_amount' => $totals['tva_amount'],
             'total_ttc' => $totals['total_ttc'],
-            'recompenses_fidelite' => Application::getInstance()->fidelityService()->listRewards(),
         ];
     }
 }

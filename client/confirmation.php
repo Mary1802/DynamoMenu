@@ -1,18 +1,14 @@
 <?php
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/client_session.php';
-require_once __DIR__ . '/../includes/money.php';
 
-use App\Controller\Client\ConfirmationController;
+use App\Http\ClientPage;
+use App\Http\Kernel;
+use App\Support\Money;
 
-$data = (new ConfirmationController())->handle($_POST);
-$error = $data['error'];
-$tableCtx = $data['tableCtx'];
-$panier = $data['panier'];
-$total_panier = $data['total_panier'];
-$tva_amount = $data['tva_amount'];
-$total_ttc = $data['total_ttc'];
-$recompenses_fidelite = $data['recompenses_fidelite'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!doctype html>
 <html lang="fr">
@@ -22,7 +18,7 @@ $recompenses_fidelite = $data['recompenses_fidelite'];
     <title>Confirmation de Commande - DynamoMenu</title>
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
-    <?php csrf_meta_tag(); ?>
+    <?php ClientPage::csrfMetaTag(); ?>
     <style>
         body {
             background: radial-gradient(circle at top left, rgba(255,111,31,0.14), transparent 22%),
@@ -229,7 +225,7 @@ $recompenses_fidelite = $data['recompenses_fidelite'];
                     <h3 class="section-title">Informations personnelles</h3>
                     
                     <form method="POST">
-                        <?php csrf_field(); ?>
+                        <?php ClientPage::csrfField(); ?>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -269,22 +265,6 @@ $recompenses_fidelite = $data['recompenses_fidelite'];
                             <input type="text" class="form-control" readonly
                                    value="<?php echo htmlspecialchars($tableCtx['label']); ?>">
                             <input type="hidden" name="num_table" value="<?php echo (int) $tableCtx['num_table']; ?>">
-                        </div>
-
-                        <div class="form-group" id="fidelityBlock">
-                            <label class="form-label">Programme fidélité</label>
-                            <p class="small text-secondary mb-2" id="fidelityInfo">Saisissez votre email pour voir vos points.</p>
-                            <select name="id_recompense" id="id_recompense" class="form-control">
-                                <option value="">Aucune récompense</option>
-                                <?php foreach ($recompenses_fidelite as $r): ?>
-                                <option value="<?php echo (int) $r['id_recompense']; ?>"
-                                    data-points="<?php echo (int) $r['points_requis']; ?>"
-                                    data-type="<?php echo htmlspecialchars($r['type_recompense']); ?>"
-                                    data-value="<?php echo (float) $r['valeur']; ?>">
-                                    <?php echo htmlspecialchars($r['libelle']); ?> (<?php echo (int) $r['points_requis']; ?> pts)
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
                         </div>
 
                         <div class="form-group">
@@ -334,27 +314,22 @@ $recompenses_fidelite = $data['recompenses_fidelite'];
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <div><?php echo format_money((float) $item['sous_total']); ?></div>
+                            <div><?php echo Money::format((float) $item['sous_total']); ?></div>
                         </div>
                         <?php endforeach; ?>
                         
                         <div class="recap-item">
                             <div>Sous-total</div>
-                            <div><?php echo format_money($total_panier); ?></div>
+                            <div><?php echo Money::format($total_panier); ?></div>
                         </div>
                         
                         <div class="recap-item">
                             <div>TVA (16%)</div>
-                            <div><?php echo format_money($tva_amount); ?></div>
-                        </div>
-                        
-                        <div class="recap-item" id="recapRemiseRow" style="display:none;">
-                            <div>Réduction fidélité</div>
-                            <div id="recapRemise">- 0 FC</div>
+                            <div><?php echo Money::format($tva_amount); ?></div>
                         </div>
                         <div class="recap-total">
                             <div>Total TTC</div>
-                            <div id="recapTotal"><?php echo format_money($total_ttc); ?></div>
+                            <div id="recapTotal"><?php echo Money::format($total_ttc); ?></div>
                         </div>
                     </div>
                 </div>
@@ -386,69 +361,6 @@ $recompenses_fidelite = $data['recompenses_fidelite'];
             firstTable.checked = true;
             firstTable.dispatchEvent(new Event('change'));
         }
-
-        const MONEY = <?php echo json_encode(money_js_config(), JSON_UNESCAPED_UNICODE); ?>;
-        const totalAvantRemise = <?php echo json_encode(round($total_ttc, 0)); ?>;
-        function fmtMoney(cdf) {
-            return new Intl.NumberFormat('fr-CD', { maximumFractionDigits: MONEY.decimals }).format(Math.round(cdf)) + ' ' + MONEY.symbol;
-        }
-        const emailEl = document.getElementById('email');
-        const rewardSelect = document.getElementById('id_recompense');
-        const fidelityInfo = document.getElementById('fidelityInfo');
-        let clientPoints = 0;
-
-        function computeRemise() {
-            const opt = rewardSelect.options[rewardSelect.selectedIndex];
-            if (!opt || !opt.value) return 0;
-            const type = opt.dataset.type;
-            const value = parseFloat(opt.dataset.value || '0');
-            if (type === 'pourcentage') return Math.round(totalAvantRemise * (value / 100));
-            if (type === 'montant_fixe') return Math.min(totalAvantRemise, value);
-            return 0;
-        }
-
-        function refreshRecap() {
-            const remise = computeRemise();
-            const row = document.getElementById('recapRemiseRow');
-            const totalEl = document.getElementById('recapTotal');
-            if (remise > 0) {
-                row.style.display = 'flex';
-                document.getElementById('recapRemise').textContent = '- ' + fmtMoney(remise);
-                totalEl.textContent = fmtMoney(Math.max(0, totalAvantRemise - remise));
-            } else {
-                row.style.display = 'none';
-                totalEl.textContent = fmtMoney(totalAvantRemise);
-            }
-        }
-
-        function filterRewards() {
-            Array.from(rewardSelect.options).forEach((opt, i) => {
-                if (i === 0) return;
-                const need = parseInt(opt.dataset.points || '0', 10);
-                opt.disabled = clientPoints < need;
-            });
-        }
-
-        async function loadFidelity() {
-            const email = (emailEl?.value || '').trim();
-            if (!email) return;
-            try {
-                const res = await fetch('../api/fidelite/fidelite.php?email=' + encodeURIComponent(email));
-                const data = await res.json();
-                if (data.error) return;
-                clientPoints = data.points || 0;
-                if (data.exists) {
-                    fidelityInfo.textContent = clientPoints + ' points — niveau ' + (data.niveau_label || data.niveau) + '.';
-                } else {
-                    fidelityInfo.textContent = 'Nouveau client : vous gagnerez des points après paiement.';
-                }
-                filterRewards();
-            } catch (e) {}
-        }
-
-        emailEl?.addEventListener('blur', loadFidelity);
-        rewardSelect?.addEventListener('change', refreshRecap);
-        refreshRecap();
     </script>
 </body>
 </html>

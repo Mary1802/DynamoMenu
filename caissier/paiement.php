@@ -1,30 +1,20 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
-require_once __DIR__ . '/../includes/money.php';
 
-use App\Controller\Caissier\PaiementController;
+use App\Http\Dashboard;
+use App\Http\Kernel;
+use App\Support\Money;
 
-staff_require(['caissier']);
-
-$data = (new PaiementController())->handle($_GET, $_POST);
-$error = $data['error'];
-$commandes_a_payer = $data['commandes_a_payer'];
-$commande_details = $data['commande_details'];
-$commande_lignes = $data['commande_lignes'];
-$paiements_recents = $data['paiements_recents'];
-$demandes_paiement = $data['demandes_paiement'];
-$stats_jour = $data['stats_jour'];
-$dashboard_error = $data['dashboard_error'];
-$notif_items = $data['notif_items'];
-$notif_count = $data['notif_count'];
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
-    <?php dashboard_asset_links('Caissier - Paiement des commandes'); ?>
+    <?php Dashboard::assetLinks('Caissier - Paiement des commandes'); ?>
 </head>
 <body class="dashboard-body">
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
@@ -73,7 +63,7 @@ $notif_count = $data['notif_count'];
             </nav>
             
             <div class="sidebar-footer">
-                <?php dashboard_sidebar_user_footer('caissier'); ?>
+                <?php Dashboard::sidebarUserFooter('caissier'); ?>
             </div>
         </aside>
 
@@ -93,7 +83,7 @@ $notif_count = $data['notif_count'];
                         <span class="search-icon"><i class="bi bi-search" aria-hidden="true"></i></span>
                     </div>
                     
-                    <?php dashboard_render_notifications('caissier', $notif_items, $notif_count); ?>
+                    <?php Dashboard::renderNotifications('caissier', $notif_items, $notif_count); ?>
                 </div>
             </header>
 
@@ -126,7 +116,7 @@ $notif_count = $data['notif_count'];
                     <div class="stat-label">À Payer</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-value"><?php echo format_money((float) ($stats_jour['total_ca'] ?? 0)); ?></div>
+                    <div class="stat-value"><?php echo Money::format((float) ($stats_jour['total_ca'] ?? 0)); ?></div>
                     <div class="stat-label">CA Aujourd'hui</div>
                 </div>
                 <div class="stat-box">
@@ -148,7 +138,7 @@ $notif_count = $data['notif_count'];
                     <div class="row g-3">
                         <?php foreach ($demandes_paiement as $demande): ?>
                         <div class="col-12">
-                            <div class="commande-item demande-highlight" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($demande)); ?>">
+                            <div class="commande-item demande-highlight" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($demande)); ?>">
                                 <div class="commande-header">
                                     <div class="commande-id">
                                         Demande #<?php echo str_pad($demande['id_demande'], 4, '0', STR_PAD_LEFT); ?>
@@ -156,7 +146,7 @@ $notif_count = $data['notif_count'];
                                             (Commande #<?php echo str_pad($demande['num_commande'], 5, '0', STR_PAD_LEFT); ?>)
                                         </span>
                                     </div>
-                                    <div class="commande-montant"><?php echo format_money((float) $demande['montant']); ?></div>
+                                    <div class="commande-montant"><?php echo Money::format((float) $demande['montant']); ?></div>
                                 </div>
                                 
                                 <div class="commande-details">
@@ -188,7 +178,8 @@ $notif_count = $data['notif_count'];
                                     <a href="?voir_commande=<?php echo $demande['num_commande']; ?>" class="btn-payer">
                                         <i class="bi bi-cash-coin" aria-hidden="true"></i> Traiter le paiement
                                     </a>
-                                    <form method="POST" class="d-flex flex-grow-1">
+                                    <form method="POST" class="d-flex flex-grow-1" action="paiement.php">
+                                        <?php Dashboard::csrfField(); ?>
                                         <input type="hidden" name="demande_id" value="<?php echo $demande['id_demande']; ?>">
                                         <button type="submit" name="annuler_demande" class="btn-details btn-danger-outline w-100">
                                             <i class="bi bi-x-lg" aria-hidden="true"></i> Annuler
@@ -219,10 +210,10 @@ $notif_count = $data['notif_count'];
                     <div class="row g-3">
                         <?php foreach ($commandes_a_payer as $commande): ?>
                         <div class="col-12">
-                            <div class="commande-item" data-commande-id="<?php echo $commande['num_commande']; ?>" data-searchable data-search="<?php echo htmlspecialchars(dashboard_order_search_blob($commande)); ?>">
+                            <div class="commande-item" data-commande-id="<?php echo $commande['num_commande']; ?>" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($commande)); ?>">
                                 <div class="commande-header">
                                     <div class="commande-id">Commande #<?php echo str_pad($commande['num_commande'], 5, '0', STR_PAD_LEFT); ?></div>
-                                    <div class="commande-montant"><?php echo format_money((float) $commande['montant_total']); ?></div>
+                                    <div class="commande-montant"><?php echo Money::format((float) $commande['montant_total']); ?></div>
                                 </div>
                                 
                                 <div class="commande-details">
@@ -273,10 +264,10 @@ $notif_count = $data['notif_count'];
                     <div class="row g-2">
                         <?php foreach ($paiements_recents as $paiement): ?>
                         <div class="col-12">
-                            <div class="paiement-item" data-searchable data-search="<?php echo htmlspecialchars(dashboard_paiement_search_blob($paiement)); ?>">
+                            <div class="paiement-item" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::paiementSearchBlob($paiement)); ?>">
                                 <div class="paiement-header">
                                     <div class="paiement-id">Facture #F-<?php echo str_pad($paiement['num_facture'], 4, '0', STR_PAD_LEFT); ?></div>
-                                    <div class="paiement-montant"><?php echo format_money((float) $paiement['total_paye']); ?></div>
+                                    <div class="paiement-montant"><?php echo Money::format((float) $paiement['total_paye']); ?></div>
                                 </div>
                                 
                                 <div class="paiement-details">
@@ -309,10 +300,14 @@ $notif_count = $data['notif_count'];
     </div><!-- /.dashboard-shell -->
 
     <!-- Modal de paiement -->
-    <div class="modal-overlay" id="paiementModal">
+    <?php
+    $openPaymentModal = !empty($commande_details)
+        && (!empty($show_payment_modal) || !empty($payment_completed) || isset($_GET['voir_commande']));
+    ?>
+    <div class="modal-overlay<?php echo $openPaymentModal ? ' is-open' : ''; ?>" id="paiementModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title">Paiement de la commande</div>
+                <div class="modal-title"><?php echo !empty($payment_completed) ? 'Commande encaissée' : 'Paiement de la commande'; ?></div>
                 <button class="modal-close" onclick="closeModal()">×</button>
             </div>
             
@@ -353,10 +348,10 @@ $notif_count = $data['notif_count'];
                     <tbody>
                     <?php foreach ($commande_lignes as $ligne): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars(dashboard_line_label($ligne)); ?></td>
+                            <td><?php echo htmlspecialchars(Dashboard::lineLabel($ligne)); ?></td>
                             <td><?php echo (int) $ligne['quantite']; ?></td>
-                            <td><?php echo format_money((float) $ligne['prix']); ?></td>
-                            <td><?php echo format_money((float) $ligne['sous_total']); ?></td>
+                            <td><?php echo Money::format((float) $ligne['prix']); ?></td>
+                            <td><?php echo Money::format((float) $ligne['sous_total']); ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -369,24 +364,45 @@ $notif_count = $data['notif_count'];
                 ?>
                 <div class="total-row">
                     <div>Total HT</div>
-                    <div><?php echo format_money($ht); ?></div>
+                    <div><?php echo Money::format($ht); ?></div>
                 </div>
                 <div class="total-row">
                     <div>TVA (20 %)</div>
-                    <div><?php echo format_money($tva); ?></div>
+                    <div><?php echo Money::format($tva); ?></div>
                 </div>
                 <div class="total-row">
                     <div><strong>Total TTC</strong></div>
-                    <div><strong><?php echo format_money($ttc); ?></strong></div>
+                    <div><strong><?php echo Money::format($ttc); ?></strong></div>
                 </div>
-                
+
+                <?php if (!empty($payment_completed)): ?>
+                <div class="success-message mt-3" role="status">
+                    <i class="bi bi-check-circle" aria-hidden="true"></i>
+                    Paiement enregistré — facture #F-<?php echo str_pad((string) $num_facture_encaisse, 4, '0', STR_PAD_LEFT); ?>
+                    <?php if (!empty($mode_paiement_encaisse)): ?>
+                    <span class="ms-1">(<?php echo htmlspecialchars(Dashboard::modePaiementLabel($mode_paiement_encaisse)); ?>)</span>
+                    <?php endif; ?>
+                </div>
+                <div class="commande-actions mt-3">
+                    <a href="generer_facture.php?facture=<?php echo (int) $num_facture_encaisse; ?>" target="_blank" rel="noopener" class="btn-details">
+                        <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Voir / imprimer la facture
+                    </a>
+                </div>
+                <?php else: ?>
+                <?php if (!empty($error)): ?>
+                <div class="success-message mt-3" style="color: var(--danger-color); border-color: rgba(220,53,69,0.35); background: rgba(220,53,69,0.1);" role="alert">
+                    <?php echo htmlspecialchars($error); ?>
+                </div>
+                <?php endif; ?>
+                <div id="paymentFormBlock">
                 <?php
                 $defaultMode = 'especes';
                 if (!empty($commande_details['mode_paiement_souhaite'])) {
                     $defaultMode = $commande_details['mode_paiement_souhaite'] === 'mobile_money' ? 'mobile' : 'especes';
                 }
                 ?>
-                <form method="POST" id="paiementForm">
+                <form method="POST" id="paiementForm" data-payment-form action="paiement.php">
+                    <?php Dashboard::csrfField(); ?>
                     <input type="hidden" name="commande_id" value="<?php echo $commande_details['num_commande']; ?>">
                     <input type="hidden" name="montant_paye" value="<?php echo $commande_details['montant_total']; ?>">
                     <input type="hidden" name="mode_paiement" value="<?php echo htmlspecialchars($defaultMode); ?>" id="selectedMode">
@@ -402,11 +418,16 @@ $notif_count = $data['notif_count'];
                         </div>
                     </div>
                     
-                    <button type="submit" name="payer_commande" class="btn-confirm">
+                    <button type="submit" name="payer_commande" value="1" class="btn-confirm" id="paiementSubmitBtn">
                         <i class="bi bi-check-lg" aria-hidden="true"></i>
-                        Confirmer le paiement de <?php echo format_money((float) $commande_details['montant_total']); ?>
+                        Confirmer le paiement de <?php echo Money::format((float) $commande_details['montant_total']); ?>
                     </button>
                 </form>
+                </div>
+                <div id="paymentProcessing" class="success-message mt-3" hidden role="status">
+                    <i class="bi bi-hourglass-split" aria-hidden="true"></i> Traitement du paiement en cours…
+                </div>
+                <?php endif; ?>
                 <?php else: ?>
                 <div class="empty-state">
                     <div class="empty-icon"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></div>
@@ -417,12 +438,15 @@ $notif_count = $data['notif_count'];
         </div>
     </div>
 
-    <?php dashboard_scripts(); ?>
+    <?php Dashboard::scripts(); ?>
     <script>
         function closeModal() {
-            document.getElementById('paiementModal').style.display = 'none';
-            // Rediriger pour fermer le paramètre URL
-            window.history.replaceState({}, document.title, window.location.pathname);
+            var modal = document.getElementById('paiementModal');
+            modal.classList.remove('is-open');
+            modal.style.removeProperty('display');
+            if (window.location.search) {
+                window.location.replace(window.location.pathname);
+            }
         }
         
         // Fermer le modal en cliquant à l'extérieur
@@ -446,11 +470,31 @@ $notif_count = $data['notif_count'];
                     });
                 });
             }
-            
-            // Ouvrir le modal si on a un paramètre dans l'URL
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('voir_commande')) {
-                document.getElementById('paiementModal').style.display = 'flex';
+
+            const paymentForm = document.getElementById('paiementForm');
+            const submitBtn = document.getElementById('paiementSubmitBtn');
+            const paymentFormBlock = document.getElementById('paymentFormBlock');
+            const paymentProcessing = document.getElementById('paymentProcessing');
+            if (paymentForm && submitBtn) {
+                paymentForm.addEventListener('submit', function (e) {
+                    if (paymentForm.dataset.submitting === '1') {
+                        e.preventDefault();
+                        return;
+                    }
+                    paymentForm.dataset.submitting = '1';
+                    submitBtn.setAttribute('aria-busy', 'true');
+                    if (paymentFormBlock) {
+                        paymentFormBlock.hidden = true;
+                    }
+                    if (paymentProcessing) {
+                        paymentProcessing.hidden = false;
+                    }
+                });
+            }
+
+            const modal = document.getElementById('paiementModal');
+            if (modal && modal.classList.contains('is-open')) {
+                modal.style.removeProperty('display');
             }
         });
     </script>

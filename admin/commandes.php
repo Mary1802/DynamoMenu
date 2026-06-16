@@ -1,22 +1,17 @@
 <?php
 
-require_once __DIR__ . '/../includes/admin_layout.php';
-require_once __DIR__ . '/../includes/schema_upgrade.php';
-require_once __DIR__ . '/../includes/money.php';
+require_once __DIR__ . '/../bootstrap/app.php';
 
-use App\Controller\Admin\CommandeController;
+use App\Http\AdminPage;
+use App\Http\Kernel;
+use App\Support\Money;
 
-$pdo = admin_init();
-schema_upgrade($pdo);
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
 
-$result = (new CommandeController())->handle($_GET, $_POST);
-$message = $result['message'];
-$statuts = $result['statuts'];
-$commandes = $result['commandes'];
-$filter = $result['filter'];
-$q = $result['q'];
-
-admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes', 'Suivi et modification des statuts.');
+AdminPage::shellStart('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes', 'Suivi et modification des statuts.');
 ?>
 <?php if ($message): ?><div class="success-message"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
 
@@ -64,7 +59,6 @@ admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes
                     <th>Client</th>
                     <th>Table</th>
                     <th>Total</th>
-                    <th>Remise</th>
                     <th>Statut</th>
                     <th>Action</th>
                 </tr>
@@ -76,8 +70,7 @@ admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes
                     <td><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($c['date_commande']))); ?></td>
                     <td><?php echo htmlspecialchars(trim(($c['prenom_client'] ?? '') . ' ' . ($c['nom_client'] ?? '—'))); ?></td>
                     <td><?php echo (int) $c['num_table']; ?></td>
-                    <td><?php echo format_money((float) $c['montant_total']); ?></td>
-                    <td><?php echo format_money((float) ($c['remise_montant'] ?? 0)); ?></td>
+                    <td><?php echo Money::format((float) $c['montant_total']); ?></td>
                     <td><span class="status-badge"><?php echo htmlspecialchars($statuts[$c['statut']] ?? $c['statut']); ?></span></td>
                     <td>
                         <form method="post" class="d-flex gap-1 flex-wrap" style="align-items:flex-end;">
@@ -96,4 +89,4 @@ admin_shell_start('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes
         </table>
     </div>
 </div>
-<?php admin_shell_end(); ?>
+<?php AdminPage::shellEnd(); ?>

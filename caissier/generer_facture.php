@@ -1,25 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../bootstrap/app.php';
-require_once __DIR__ . '/../includes/staff_auth.php';
-require_once __DIR__ . '/../includes/money.php';
-require_once __DIR__ . '/../includes/dashboard_helpers.php';
 
-use App\Controller\Caissier\FactureController;
+use App\Http\Dashboard;
+use App\Http\Kernel;
+use App\Support\Money;
 
-staff_require(['caissier']);
-
-$result = (new FactureController())->show($_GET);
-if ($result === null) {
+$result = Kernel::forFile(__FILE__);
+if ($result !== null) {
+    extract($result, EXTR_SKIP);
+}
+if ($result === null || empty($result)) {
     header('Location: paiement.php');
     exit;
 }
-
-$num_facture = $result['num_facture'];
-$facture = $result['facture'];
-$articles = $result['articles'];
-$ht = $result['ht'];
-$tva = $result['tva'];
 ?>
 <!doctype html>
 <html lang="fr">
@@ -286,7 +280,7 @@ $tva = $result['tva'];
     </style>
 </head>
 <body>
-    <button type="button" class="screen-only back-btn" onclick="window.location.href='paiement.php'">← Retour au dashboard</button>
+    <button type="button" class="screen-only back-btn" onclick="window.location.replace('paiement.php')">← Retour aux paiements</button>
     <button type="button" class="screen-only print-btn" onclick="window.print()">🖨️ Imprimer la facture</button>
     
     <div class="facture-container">
@@ -374,8 +368,8 @@ $tva = $result['tva'];
                         ?>
                     </td>
                     <td class="text-center"><?php echo $article['quantite']; ?></td>
-                    <td class="text-right"><?php echo format_money((float) $article['prix']); ?></td>
-                    <td class="text-right"><?php echo format_money((float) $article['sous_total']); ?></td>
+                    <td class="text-right"><?php echo Money::format((float) $article['prix']); ?></td>
+                    <td class="text-right"><?php echo Money::format((float) $article['sous_total']); ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -385,15 +379,15 @@ $tva = $result['tva'];
         <div class="total-section">
             <div class="total-row">
                 <span>Total HT</span>
-                <span><?php echo format_money((float) $ht); ?></span>
+                <span><?php echo Money::format((float) $ht); ?></span>
             </div>
             <div class="total-row">
                 <span>TVA (20%)</span>
-                <span><?php echo format_money((float) $tva); ?></span>
+                <span><?php echo Money::format((float) $tva); ?></span>
             </div>
             <div class="total-row total">
                 <span>TOTAL TTC</span>
-                <span><?php echo format_money((float) $facture['total_paye']); ?></span>
+                <span><?php echo Money::format((float) $facture['total_paye']); ?></span>
             </div>
         </div>
         
@@ -402,7 +396,7 @@ $tva = $result['tva'];
             <div class="section-title">MODE DE PAIEMENT</div>
             <div style="font-size: 14px;">
                 <?php 
-                echo htmlspecialchars(dashboard_mode_paiement_label((string) ($facture['mode_paiement'] ?? 'especes')));
+                echo htmlspecialchars(Dashboard::modePaiementLabel((string) ($facture['mode_paiement'] ?? 'especes')));
                 ?>
             </div>
         </div>
@@ -433,6 +427,24 @@ $tva = $result['tva'];
         if (urlParams.has('print')) {
             window.print();
         }
+
+        (function () {
+            var facture = urlParams.get('facture');
+            if (!facture) {
+                return;
+            }
+
+            var cleanUrl = 'generer_facture.php?facture=' + encodeURIComponent(facture);
+            if (urlParams.has('encaisse') && window.history.replaceState) {
+                history.replaceState({ caisseEncaisse: true }, document.title, cleanUrl);
+            }
+
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) {
+                    window.location.replace('paiement.php');
+                }
+            });
+        })();
     </script>
 </body>
 </html>
