@@ -17,7 +17,7 @@ if ($result !== null) {
     <title>DynamoMenu - Accueil</title>
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css?v=7">
+    <link rel="stylesheet" href="../assets/css/style.css?v=10">
 </head>
 <body class="client-site">
     <header class="navbar navbar-expand-lg navbar-dark px-4 py-3">
@@ -29,6 +29,9 @@ if ($result !== null) {
             <ul class="navbar-nav ms-auto align-items-lg-center">
                 <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars($indexUrl); ?>">Accueil</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars($menuUrl); ?>">Menu</a></li>
+                <?php if (!empty($recentOrders)): ?>
+                <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars($mesCommandesUrl); ?>">Mes commandes</a></li>
+                <?php endif; ?>
                 <li class="nav-item">
                     <a class="nav-link text-white position-relative" href="<?php echo htmlspecialchars($panierUrl); ?>">
                         Panier
@@ -42,11 +45,67 @@ if ($result !== null) {
     </header>
 
     <main class="container-fluid px-4 py-5 hero-section">
-        <?php if ($tableError || $scanError): ?>
+        <?php if (($tableError || $scanError) && empty($tableCtx)): ?>
             <?php ClientPage::tableError($tableError ?: 'QR code invalide. Rescannez le code affiché sur votre table.'); ?>
         <?php elseif ($tableCtx): ?>
             <?php ClientPage::tableWelcome($tableCtx); ?>
         <?php endif; ?>
+
+        <?php if (!empty($recentOrders)): ?>
+        <section class="client-recent-orders mb-4" aria-labelledby="recent-orders-title">
+            <div class="client-recent-orders__accent" aria-hidden="true"></div>
+            <div class="client-recent-orders__inner">
+                <header class="client-recent-orders__header">
+                    <span class="client-recent-orders__header-icon" aria-hidden="true">
+                        <i class="bi bi-receipt"></i>
+                    </span>
+                    <div>
+                        <h2 id="recent-orders-title" class="client-recent-orders__title">Vos commandes récentes</h2>
+                        <p class="client-recent-orders__subtitle">Suivez l'état de vos dernières commandes</p>
+                    </div>
+                </header>
+
+                <div class="client-recent-orders__grid">
+                    <?php foreach ($recentOrders as $ro):
+                        $countdownActive = !empty($ro['countdown_active']);
+                        $prepEndUnix = isset($ro['prep_end_unix']) && $ro['prep_end_unix'] !== null ? (int) $ro['prep_end_unix'] : 0;
+                        $remainingSec = (int) ($ro['prep_remaining_seconds'] ?? 0);
+                        $mins = (int) floor($remainingSec / 60);
+                        $secs = $remainingSec % 60;
+                        $initialCountdown = $countdownActive ? sprintf('%02d:%02d', $mins, $secs) : '';
+                    ?>
+                    <a href="<?php echo htmlspecialchars($ro['detail_url']); ?>"
+                       class="client-order-tile<?php echo $countdownActive ? ' has-countdown' : ''; ?>"
+                       data-commande="<?php echo (int) $ro['num_commande']; ?>"
+                       data-countdown-active="<?php echo $countdownActive ? '1' : '0'; ?>"
+                       data-prep-end="<?php echo $prepEndUnix > 0 ? $prepEndUnix : ''; ?>"
+                       <?php if (!empty($ro['server_unix'])): ?>data-server-unix="<?php echo (int) $ro['server_unix']; ?>"<?php endif; ?>>
+                        <div class="client-order-tile__content">
+                            <div class="client-order-tile__head">
+                                <span class="client-order-tile__label">Commande</span>
+                                <span class="client-order-tile__num">#<?php echo str_pad((string) $ro['num_commande'], 5, '0', STR_PAD_LEFT); ?></span>
+                            </div>
+                            <span class="client-order-tile__statut <?php echo htmlspecialchars($ro['statut_class'] ?? ''); ?>">
+                                <?php echo htmlspecialchars($ro['statut_label']); ?>
+                            </span>
+                        </div>
+                        <div class="client-order-tile__timer-pill" data-role="countdown-wrap"<?php echo $countdownActive ? '' : ' hidden'; ?>>
+                            <span class="client-order-tile__timer-label">Reste</span>
+                            <span class="client-order-tile__timer" data-role="countdown"><?php echo htmlspecialchars($initialCountdown ?: '--:--'); ?></span>
+                        </div>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="client-recent-orders__footer">
+                    <a href="<?php echo htmlspecialchars($mesCommandesUrl); ?>" class="btn btn-primary btn-sm" style="background:#ff6f1f;border-color:#ff6f1f;">
+                        Toutes mes commandes
+                    </a>
+                </div>
+            </div>
+        </section>
+        <?php endif; ?>
+
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
                 <p class="text-uppercase text-warning mb-3">Commandez. Mangez. Profitez !</p>
@@ -73,6 +132,32 @@ if ($result !== null) {
             </div>
         </div>
 
+        <?php if (!empty($horairesLines)): ?>
+        <div class="row g-4 justify-content-center mb-4 mb-lg-5">
+            <div class="col-md-6 col-lg-4">
+                <article class="home-info-card h-100">
+                    <div class="home-info-card-accent" aria-hidden="true"></div>
+                    <div class="home-info-card-body">
+                        <header class="home-info-card-header">
+                            <span class="home-info-card-icon"><i class="bi bi-clock" aria-hidden="true"></i></span>
+                            <div>
+                                <p class="home-info-card-label">Ouverture</p>
+                                <h3 class="home-info-card-title">Horaires</h3>
+                            </div>
+                        </header>
+                        <div class="home-info-card-content">
+                            <ul class="home-info-schedule">
+                                <?php foreach ($horairesLines as $line): ?>
+                                <li><?php echo htmlspecialchars($line); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php foreach ($contactRows as $contactIndex => $contacts):
             $contactNom = trim((string) ($contacts['nom'] ?? $contacts['nom_etablissement'] ?? 'DynamoMenu'));
             $contactInfos = trim((string) ($contacts['infos'] ?? $contacts['description'] ?? ''));
@@ -80,25 +165,12 @@ if ($result !== null) {
                 $contactInfos = 'Restaurant avec service sur place. Commandez depuis votre table via le menu digital.';
             }
             $contactAdresse = trim((string) ($contacts['adresse'] ?? ''));
-            $contactHoraires = trim((string) ($contacts['horaires'] ?? ''));
             $contactTel = trim((string) ($contacts['telephone'] ?? ''));
             $contactEmail = trim((string) ($contacts['email'] ?? ''));
             $contactWhatsapp = trim((string) ($contacts['whatsapp'] ?? ''));
-            if ($contactNom === '' && $contactAdresse === '' && $contactHoraires === ''
+            if ($contactNom === '' && $contactAdresse === ''
                 && $contactTel === '' && $contactEmail === '' && $contactWhatsapp === '') {
                 continue;
-            }
-            $horairesLines = [];
-            if ($contactHoraires !== '') {
-                foreach (preg_split('/[\n;|]+/', $contactHoraires) as $line) {
-                    $line = trim($line);
-                    if ($line !== '') {
-                        $horairesLines[] = $line;
-                    }
-                }
-                if ($horairesLines === []) {
-                    $horairesLines[] = $contactHoraires;
-                }
             }
             $rowClass = 'row g-4 g-lg-4 justify-content-center';
             if ($contactIndex > 0) {
@@ -111,7 +183,7 @@ if ($result !== null) {
                 <h3 class="h5 text-warning mb-0"><?php echo htmlspecialchars($contactNom); ?></h3>
             </div>
             <?php endif; ?>
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-6">
                 <article class="home-info-card h-100">
                     <div class="home-info-card-accent" aria-hidden="true"></div>
                     <div class="home-info-card-body">
@@ -138,33 +210,7 @@ if ($result !== null) {
                 </article>
             </div>
 
-            <div class="col-md-6 col-lg-4">
-                <article class="home-info-card h-100">
-                    <div class="home-info-card-accent" aria-hidden="true"></div>
-                    <div class="home-info-card-body">
-                        <header class="home-info-card-header">
-                            <span class="home-info-card-icon"><i class="bi bi-clock" aria-hidden="true"></i></span>
-                            <div>
-                                <p class="home-info-card-label">Ouverture</p>
-                                <h3 class="home-info-card-title">Horaires</h3>
-                            </div>
-                        </header>
-                        <div class="home-info-card-content">
-                            <?php if ($horairesLines !== []): ?>
-                            <ul class="home-info-schedule">
-                                <?php foreach ($horairesLines as $line): ?>
-                                <li><?php echo htmlspecialchars($line); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                            <?php else: ?>
-                            <p class="home-info-desc mb-0">Horaires communiqués à l'accueil du restaurant.</p>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </article>
-            </div>
-
-            <div class="col-md-12 col-lg-4">
+            <div class="col-md-6 col-lg-6">
                 <article class="home-info-card h-100">
                     <div class="home-info-card-accent" aria-hidden="true"></div>
                     <div class="home-info-card-body">
@@ -235,6 +281,104 @@ if ($result !== null) {
         }
         document.addEventListener('DOMContentLoaded', updateCartBadge);
         setInterval(updateCartBadge, 5000);
+
+        <?php if (!empty($tableCtx) && !empty($indexUrl)): ?>
+        if (window.history.replaceState && /[?&]err=/.test(window.location.search)) {
+            window.history.replaceState(null, '', <?php echo json_encode($indexUrl, JSON_UNESCAPED_SLASHES); ?>);
+        }
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted && /[?&]err=/.test(window.location.search)) {
+                window.location.replace(<?php echo json_encode($indexUrl, JSON_UNESCAPED_SLASHES); ?>);
+            }
+        });
+        <?php endif; ?>
     </script>
+    <?php if (!empty($recentOrders)): ?>
+    <script>
+        (function () {
+            const tiles = document.querySelectorAll('.client-order-tile[data-commande]');
+            if (tiles.length === 0) return;
+
+            let serverClockOffset = 0;
+            const firstWithServer = document.querySelector('.client-order-tile[data-server-unix]');
+            if (firstWithServer) {
+                serverClockOffset = parseInt(firstWithServer.dataset.serverUnix, 10) - Math.floor(Date.now() / 1000);
+            }
+
+            function serverNowUnix() {
+                return Math.floor(Date.now() / 1000) + serverClockOffset;
+            }
+
+            function formatCountdown(sec) {
+                sec = Math.max(0, Math.floor(sec));
+                const h = Math.floor(sec / 3600);
+                const m = Math.floor((sec % 3600) / 60);
+                const s = sec % 60;
+                if (h > 0) {
+                    return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+                }
+                return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            }
+
+            function applyStatutClass(el, statut) {
+                el.classList.remove('is-ready', 'is-done');
+                if (statut === 'prete') {
+                    el.classList.add('is-ready');
+                } else if (statut === 'livree' || statut === 'annulee') {
+                    el.classList.add('is-done');
+                }
+            }
+
+            function updateTileCountdown(tile) {
+                const active = tile.dataset.countdownActive === '1';
+                const prepEnd = parseInt(tile.dataset.prepEnd || '0', 10);
+                const wrap = tile.querySelector('[data-role="countdown-wrap"]');
+                const display = tile.querySelector('[data-role="countdown"]');
+
+                if (!active || !prepEnd || !wrap || !display) {
+                    wrap?.setAttribute('hidden', '');
+                    tile.classList.remove('has-countdown');
+                    return;
+                }
+
+                wrap.removeAttribute('hidden');
+                tile.classList.add('has-countdown');
+                display.textContent = formatCountdown(prepEnd - serverNowUnix());
+            }
+
+            function refreshOrderFromApi(tile) {
+                const id = tile.dataset.commande;
+                if (!id) return;
+
+                fetch('../api/client/commande_statut.php?commande=' + encodeURIComponent(id))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.error) return;
+
+                        tile.dataset.countdownActive = data.countdown_active ? '1' : '0';
+                        tile.dataset.prepEnd = data.prep_end_unix ? String(data.prep_end_unix) : '';
+
+                        if (data.server_unix) {
+                            serverClockOffset = parseInt(data.server_unix, 10) - Math.floor(Date.now() / 1000);
+                        }
+
+                        const statutEl = tile.querySelector('.client-order-tile__statut');
+                        if (statutEl && data.statut_label) {
+                            statutEl.textContent = data.statut_label;
+                            applyStatutClass(statutEl, data.statut);
+                        }
+
+                        updateTileCountdown(tile);
+                    })
+                    .catch(function () {});
+            }
+
+            tiles.forEach(updateTileCountdown);
+            setInterval(function () { tiles.forEach(updateTileCountdown); }, 1000);
+            tiles.forEach(refreshOrderFromApi);
+            setInterval(function () { tiles.forEach(refreshOrderFromApi); }, 8000);
+        })();
+    </script>
+    <?php endif; ?>
 </body>
 </html>

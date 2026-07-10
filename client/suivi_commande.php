@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../bootstrap/app.php';
 
+use App\Core\Application;
 use App\Http\ClientPage;
 use App\Http\Kernel;
 use App\Support\Money;
@@ -11,8 +12,7 @@ if ($result !== null) {
     extract($result, EXTR_SKIP);
 }
 if ($result === null || empty($result)) {
-    header('Location: index.php');
-    exit;
+    Application::getInstance()->tableContextService()->redirectToIndex();
 }
 ?>
 <!DOCTYPE html>
@@ -57,12 +57,15 @@ if ($result === null || empty($result)) {
         .meta-value { font-weight: 600; color: #fff; margin-top: 0.2rem; }
         .status-pill {
             display: inline-block;
-            padding: 0.5rem 1rem;
+            padding: 0.3rem 0.65rem;
             border-radius: 999px;
             background: rgba(255,111,31,0.15);
             color: #f4c95a;
+            font-size: 0.78rem;
             font-weight: 600;
+            line-height: 1.3;
             margin: 0.5rem 0 1rem;
+            max-width: 100%;
         }
         .status-pill.is-ready {
             background: rgba(40,167,69,0.2);
@@ -91,6 +94,25 @@ if ($result === null || empty($result)) {
         }
         #notifyBanner { display: none; }
         #notifyBanner.show { display: block; }
+        #countdownBlock { display: none; }
+        #countdownBlock.is-active { display: block; }
+        .countdown-ring {
+            text-align: center;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            border-radius: 16px;
+            background: rgba(255,111,31,0.08);
+            border: 1px solid rgba(255,111,31,0.22);
+        }
+        .countdown-time {
+            font-size: 2.5rem;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            color: #ff6f1f;
+            letter-spacing: 0.04em;
+        }
+        .countdown-label { color: rgba(255,255,255,0.65); font-size: 0.9rem; margin-top: 0.35rem; }
+        .prep-badge { color: rgba(255,255,255,0.5); font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -104,11 +126,17 @@ if ($result === null || empty($result)) {
             <p class="text-secondary mb-0">Merci pour votre commande</p>
 
             <div id="notifyBanner" class="alert alert-success mt-3 mb-0 py-2" role="alert">
-                <strong>Votre commande est prête.</strong> Elle va vous être apportée à table.
+                <strong><i class="bi bi-check-circle"></i> Votre commande est prête !</strong> Elle va vous être apportée à table.
             </div>
             <div id="notifList" class="mt-3" style="display:none;"></div>
 
-            <p class="status-pill" id="statusPill"><?php echo htmlspecialchars($statutInitial); ?></p>
+            <div id="countdownBlock" class="countdown-ring<?php echo !empty($countdown['countdown_active']) ? ' is-active' : ''; ?>">
+                <div class="countdown-label">Temps estimé restant</div>
+                <div class="countdown-time" id="countdownDisplay">--:--</div>
+                <div class="countdown-label">La cuisine prépare votre commande</div>
+            </div>
+
+            <p class="status-pill<?php echo ($statutCode ?? '') === 'prete' ? ' is-ready' : ''; ?>" id="statusPill"><?php echo htmlspecialchars($statutInitial); ?></p>
 
             <div class="suivi-meta">
                 <div class="meta-box">
@@ -122,6 +150,10 @@ if ($result === null || empty($result)) {
                 <div class="meta-box">
                     <div class="meta-label">Client</div>
                     <div class="meta-value"><?php echo htmlspecialchars($clientNom ?: '—'); ?></div>
+                </div>
+                <div class="meta-box">
+                    <div class="meta-label">Temps estimé</div>
+                    <div class="meta-value">~<?php echo (int) ($prepEstimeMinutes ?? 15); ?> min</div>
                 </div>
                 <div class="meta-box">
                     <div class="meta-label">Moyen de paiement</div>
@@ -145,7 +177,11 @@ if ($result === null || empty($result)) {
                 <div class="line-item">
                     <span>
                         <?php echo htmlspecialchars($l['nom']); ?>
-                        <small>× <?php echo (int) $l['quantite']; ?></small>
+                        <small>× <?php echo (int) $l['quantite']; ?>
+                        <?php if (!empty($l['temps_preparation_min'])): ?>
+                            · <?php echo (int) $l['temps_preparation_min']; ?> min / unité
+                        <?php endif; ?>
+                        </small>
                     </span>
                     <span><?php echo Money::format((float) $l['sous_total']); ?></span>
                 </div>
@@ -158,6 +194,9 @@ if ($result === null || empty($result)) {
             </div>
 
             <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+                <a href="<?php echo htmlspecialchars($mesCommandesUrl ?? 'mes_commandes.php'); ?>" class="btn btn-outline-light flex-fill">
+                    <i class="bi bi-list-ul"></i> Mes commandes
+                </a>
                 <a href="<?php echo htmlspecialchars($indexUrl); ?>" class="btn btn-outline-light flex-fill">
                     <i class="bi bi-house-door"></i> Retour à l'accueil
                 </a>
@@ -170,7 +209,83 @@ if ($result === null || empty($result)) {
 
     <script>
         const commandeId = <?php echo (int) $num_commande; ?>;
-        let notifiedReady = false;
+        let notifiedReady = <?php echo ($statutCode ?? '') === 'prete' ? 'true' : 'false'; ?>;
+        let countdownActive = <?php echo !empty($countdown['countdown_active']) ? 'true' : 'false'; ?>;
+        let prepEndUnix = <?php echo isset($countdown['prep_end_unix']) && $countdown['prep_end_unix'] !== null ? (int) $countdown['prep_end_unix'] : 'null'; ?>;
+        let serverClockOffset = 0;
+        <?php if (!empty($countdown['server_unix'])): ?>
+        serverClockOffset = <?php echo (int) $countdown['server_unix']; ?> - Math.floor(Date.now() / 1000);
+        <?php endif; ?>
+        let countdownTimer = null;
+
+        function serverNowUnix() {
+            return Math.floor(Date.now() / 1000) + serverClockOffset;
+        }
+
+        function getRemainingSeconds() {
+            if (!prepEndUnix) return 0;
+            return Math.max(0, prepEndUnix - serverNowUnix());
+        }
+
+        function formatCountdown(sec) {
+            sec = Math.max(0, Math.floor(sec));
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            if (h > 0) {
+                return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            }
+            return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        }
+
+        function updateCountdownDisplay() {
+            const block = document.getElementById('countdownBlock');
+            const display = document.getElementById('countdownDisplay');
+            if (!countdownActive || !prepEndUnix) {
+                block.classList.remove('is-active');
+                return;
+            }
+            block.classList.add('is-active');
+            display.textContent = formatCountdown(getRemainingSeconds());
+        }
+
+        function ensureCountdownTimer() {
+            if (countdownTimer || !countdownActive) return;
+            updateCountdownDisplay();
+            countdownTimer = setInterval(updateCountdownDisplay, 1000);
+        }
+
+        function stopCountdown() {
+            countdownActive = false;
+            prepEndUnix = null;
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
+            document.getElementById('countdownBlock').classList.remove('is-active');
+        }
+
+        function applyCountdownFromServer(data) {
+            if (!data.countdown_active || !data.prep_end_unix) {
+                stopCountdown();
+                return;
+            }
+            countdownActive = true;
+            prepEndUnix = parseInt(data.prep_end_unix, 10);
+            if (data.server_unix) {
+                serverClockOffset = parseInt(data.server_unix, 10) - Math.floor(Date.now() / 1000);
+            }
+            ensureCountdownTimer();
+            updateCountdownDisplay();
+        }
+
+        function showReadyState() {
+            if (notifiedReady) return;
+            notifiedReady = true;
+            stopCountdown();
+            document.getElementById('notifyBanner').classList.add('show');
+            showBrowserNotification('DynamoMenu', 'Votre commande est prête !');
+        }
 
         function showBrowserNotification(title, body) {
             if ('Notification' in window && Notification.permission === 'granted') {
@@ -186,11 +301,13 @@ if ($result === null || empty($result)) {
                     const pill = document.getElementById('statusPill');
                     pill.textContent = data.statut_label;
                     pill.classList.toggle('is-ready', data.statut === 'prete');
-                    if (data.statut === 'prete' && !notifiedReady) {
-                        notifiedReady = true;
-                        document.getElementById('notifyBanner').classList.add('show');
-                        showBrowserNotification('DynamoMenu', 'Votre commande est prête !');
+
+                    if (data.statut === 'prete' || data.pret) {
+                        showReadyState();
+                        return;
                     }
+
+                    applyCountdownFromServer(data);
                 })
                 .catch(() => {});
         }
@@ -210,9 +327,7 @@ if ($result === null || empty($result)) {
                     list.innerHTML = unread.map(n => {
                         const ready = (n.titre || '').toLowerCase().includes('prête');
                         if (ready && !notifiedReady) {
-                            notifiedReady = true;
-                            document.getElementById('notifyBanner').classList.add('show');
-                            showBrowserNotification(n.titre, n.message);
+                            showReadyState();
                         }
                         return '<div class="alert alert-info py-2 mb-2 small"><strong>' +
                             escapeHtml(n.titre) + '</strong><br>' + escapeHtml(n.message) + '</div>';
@@ -233,6 +348,10 @@ if ($result === null || empty($result)) {
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
+        if (notifiedReady) {
+            document.getElementById('notifyBanner').classList.add('show');
+        }
+        ensureCountdownTimer();
         refreshStatus();
         refreshNotifications();
         setInterval(refreshStatus, 8000);

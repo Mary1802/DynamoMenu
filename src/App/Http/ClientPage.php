@@ -73,6 +73,11 @@ final class ClientPage
         return Application::getInstance()->tableContextService()->link($path);
     }
 
+    public static function requireClientProfile(): void
+    {
+        Application::getInstance()->clientProfileService()->requireWhenTableBound();
+    }
+
     public static function bootstrapTableContext(): void
     {
         Application::getInstance()->tableContextService()->bootstrap();
@@ -82,6 +87,11 @@ final class ClientPage
     public static function tableSession(): ?array
     {
         return Application::getInstance()->tableContextService()->session();
+    }
+
+    public static function redirectToIndex(): void
+    {
+        Application::getInstance()->tableContextService()->redirectToIndex();
     }
 
     public static function tableRequireOrRedirect(string $redirect = 'index.php'): void

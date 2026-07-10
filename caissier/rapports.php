@@ -169,18 +169,67 @@ $nomsMois = ReportService::MONTH_NAMES;
     <?php Dashboard::scripts(); ?>
     <script>
     (function () {
+        var anneeSelect = document.getElementById('filtreAnnee');
+        var moisSelect = document.getElementById('filtreMois');
         var jourSelect = document.getElementById('jourExport');
         if (!jourSelect) return;
-        document.querySelectorAll('.rapport-jour-link').forEach(function (link) {
-            function updateHref() {
-                var base = link.getAttribute('data-base');
-                if (base) {
-                    link.href = base + '&jour=' + encodeURIComponent(jourSelect.value);
+
+        function daysInMonth(year, month) {
+            return new Date(year, month, 0).getDate();
+        }
+
+        function periodQuery() {
+            var annee = anneeSelect ? anneeSelect.value : '<?php echo (int) $annee; ?>';
+            var mois = moisSelect ? moisSelect.value : '<?php echo (int) $moisNum; ?>';
+            return 'annee=' + encodeURIComponent(annee) + '&mois=' + encodeURIComponent(mois);
+        }
+
+        function rebuildDayOptions() {
+            var annee = parseInt(anneeSelect ? anneeSelect.value : '<?php echo (int) $annee; ?>', 10);
+            var mois = parseInt(moisSelect ? moisSelect.value : '<?php echo (int) $moisNum; ?>', 10);
+            var total = daysInMonth(annee, mois);
+            var previous = parseInt(jourSelect.value || '1', 10);
+            var today = new Date();
+            var defaultDay = (annee === today.getFullYear() && mois === (today.getMonth() + 1))
+                ? today.getDate()
+                : total;
+            var selected = Math.min(Math.max(1, previous || defaultDay), total);
+
+            jourSelect.innerHTML = '';
+            for (var d = 1; d <= total; d++) {
+                var option = document.createElement('option');
+                option.value = String(d);
+                option.textContent = String(d);
+                if (d === selected) {
+                    option.selected = true;
                 }
+                jourSelect.appendChild(option);
             }
-            updateHref();
-            jourSelect.addEventListener('change', updateHref);
-        });
+        }
+
+        function updateExportLinks() {
+            var query = periodQuery();
+            document.querySelectorAll('.rapport-jour-link').forEach(function (link) {
+                var type = link.classList.contains('rapport-export-btn--print') ? 'rapport_imprimer.php' : 'rapport_export.php';
+                link.setAttribute('data-base', type + '?type=journalier&' + query);
+                link.href = type + '?type=journalier&' + query + '&jour=' + encodeURIComponent(jourSelect.value);
+            });
+        }
+
+        function syncPeriod() {
+            rebuildDayOptions();
+            updateExportLinks();
+        }
+
+        if (anneeSelect) {
+            anneeSelect.addEventListener('change', syncPeriod);
+        }
+        if (moisSelect) {
+            moisSelect.addEventListener('change', syncPeriod);
+        }
+
+        jourSelect.addEventListener('change', updateExportLinks);
+        syncPeriod();
     })();
     </script>
 </body>

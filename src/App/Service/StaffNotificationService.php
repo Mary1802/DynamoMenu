@@ -39,6 +39,38 @@ final class StaffNotificationService
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
+        if ($role === 'manager') {
+            $stmt = $this->pdo->query("
+                SELECT c.num_commande, c.statut, c.num_table, c.montant_total,
+                       cl.nom_client, cl.prenom_client, cl.telephone_client,
+                       COUNT(d.id_detail) AS nombre_items
+                FROM commande c
+                LEFT JOIN client cl ON c.id_client = cl.id_client
+                LEFT JOIN contient d ON c.num_commande = d.num_commande
+                WHERE c.statut = 'prete'
+                GROUP BY c.num_commande, c.statut, c.num_table, c.montant_total,
+                         cl.nom_client, cl.prenom_client, cl.telephone_client, c.date_commande
+                ORDER BY c.date_commande ASC
+                LIMIT 20
+            ");
+            $items = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $client = trim(($row['prenom_client'] ?? '') . ' ' . ($row['nom_client'] ?? ''));
+                $items[] = [
+                    'type' => 'prete',
+                    'num_commande' => $row['num_commande'],
+                    'num_table' => $row['num_table'],
+                    'nom_client' => $client,
+                    'telephone_client' => $row['telephone_client'] ?? '',
+                    'nombre_items' => (int) ($row['nombre_items'] ?? 0),
+                    'label' => 'Commande prête — table ' . ($row['num_table'] ?? '?'),
+                    'href' => 'dashboard.php#cmd-' . (int) $row['num_commande'],
+                ];
+            }
+
+            return $items;
+        }
+
         if ($role === 'caissier') {
             $items = [];
             foreach ($this->factures->findPendingDemandes() as $d) {

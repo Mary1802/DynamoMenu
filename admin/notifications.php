@@ -69,7 +69,6 @@ AdminPage::shellStart('Admin — Notifications', 'notifications', 'Communication
                     <th>Type</th>
                     <th>Canal</th>
                     <th>Titre</th>
-                    <th>Lu</th>
                 </tr>
             </thead>
             <tbody>
@@ -81,7 +80,6 @@ AdminPage::shellStart('Admin — Notifications', 'notifications', 'Communication
                     <td><?php echo htmlspecialchars($n['type_notification']); ?></td>
                     <td><?php echo htmlspecialchars($n['canal']); ?></td>
                     <td><?php echo htmlspecialchars($n['titre']); ?></td>
-                    <td><?php echo (int) $n['lu'] ? 'Oui' : 'Non'; ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

@@ -74,7 +74,11 @@ final class TableContextService
 
         if (!$table) {
 
-            $_SESSION['table_error'] = 'QR code invalide ou table désactivée.';
+            if (empty($_SESSION['num_table'])) {
+
+                $_SESSION['table_error'] = 'QR code invalide ou table désactivée.';
+
+            }
 
 
 
@@ -153,23 +157,21 @@ final class TableContextService
 
 
     public function redirectAfterScan(string $target = 'index.php'): void
-
     {
-
         $code = trim((string) ($_GET['t'] ?? $_GET['table'] ?? ''));
-
         if ($code === '' || !$this->session()) {
-
             return;
-
         }
 
+        $profile = Application::getInstance()->clientProfileService();
+        if (!$profile->isComplete()) {
+            header('Location: identite.php');
+            exit;
+        }
 
-
+        // La table est déjà en session : retirer ?t= de l'URL pour éviter une boucle de redirection.
         header('Location: ' . $target);
-
         exit;
-
     }
 
 
@@ -185,6 +187,18 @@ final class TableContextService
             exit;
 
         }
+
+    }
+
+
+
+    public function redirectToIndex(): never
+
+    {
+
+        header('Location: ' . $this->link('index.php'), true, 302);
+
+        exit;
 
     }
 

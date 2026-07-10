@@ -79,7 +79,7 @@ AdminPage::shellStart(
 
     <div class="table-responsive-wrap">
 
-        <table class="data-table">
+        <table class="data-table admin-tables-table">
 
             <thead>
 
@@ -142,42 +142,34 @@ AdminPage::shellStart(
                         </form>
 
                         <div class="admin-tables-actions">
-                            <div class="admin-tables-actions-row">
-                                <button type="submit" name="update_table" form="<?php echo $formId; ?>" class="btn-primary btn-sm admin-tables-btn admin-tables-btn--primary">
-                                    <i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer
+                            <button type="submit" name="update_table" form="<?php echo $formId; ?>" class="btn-primary btn-sm admin-tables-btn admin-tables-btn--primary">
+                                <i class="bi bi-check-lg" aria-hidden="true"></i> Enregistrer
+                            </button>
+                            <a href="imprimer_qr.php?table=<?php echo (int) $t['num_table']; ?>" target="_blank" rel="noopener" class="btn-details btn-sm admin-tables-btn">
+                                <i class="bi bi-printer" aria-hidden="true"></i> Imprimer
+                            </a>
+                            <a href="<?php echo htmlspecialchars($url); ?>" target="_blank" rel="noopener" class="btn-details btn-sm admin-tables-btn">
+                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Tester
+                            </a>
+                            <form method="post" class="admin-tables-inline-form">
+                                <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
+                                <button type="submit" name="regenerate_code" class="btn-details btn-sm admin-tables-btn">
+                                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Regénérer
                                 </button>
-                            </div>
-
-                            <div class="admin-tables-actions-row admin-tables-actions-row--qr">
-                                <a href="imprimer_qr.php?table=<?php echo (int) $t['num_table']; ?>" target="_blank" rel="noopener" class="btn-details btn-sm admin-tables-btn">
-                                    <i class="bi bi-printer" aria-hidden="true"></i> Imprimer
-                                </a>
-                                <a href="<?php echo htmlspecialchars($url); ?>" target="_blank" rel="noopener" class="btn-details btn-sm admin-tables-btn">
-                                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Tester
-                                </a>
-                                <form method="post" class="admin-tables-inline-form">
-                                    <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
-                                    <button type="submit" name="regenerate_code" class="btn-details btn-sm admin-tables-btn">
-                                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Regénérer
-                                    </button>
-                                </form>
-                            </div>
-
-                            <div class="admin-tables-actions-row admin-tables-actions-row--manage">
-                                <form method="post" class="admin-tables-inline-form">
-                                    <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
-                                    <button type="submit" name="toggle_actif" class="btn-details btn-sm admin-tables-btn">
-                                        <i class="bi bi-toggle-<?php echo (int) $t['actif'] ? 'on' : 'off'; ?>" aria-hidden="true"></i>
-                                        <?php echo (int) $t['actif'] ? 'Désactiver' : 'Activer'; ?>
-                                    </button>
-                                </form>
-                                <form method="post" class="admin-tables-inline-form" onsubmit="return confirm('Supprimer définitivement la table n°<?php echo (int) $t['num_table']; ?> ?');">
-                                    <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
-                                    <button type="submit" name="delete_table" class="btn-details btn-sm admin-tables-btn admin-tables-btn--danger">
-                                        <i class="bi bi-trash" aria-hidden="true"></i> Supprimer
-                                    </button>
-                                </form>
-                            </div>
+                            </form>
+                            <form method="post" class="admin-tables-inline-form">
+                                <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
+                                <button type="submit" name="toggle_actif" class="btn-details btn-sm admin-tables-btn">
+                                    <i class="bi bi-toggle-<?php echo (int) $t['actif'] ? 'on' : 'off'; ?>" aria-hidden="true"></i>
+                                    <?php echo (int) $t['actif'] ? 'Désactiver' : 'Activer'; ?>
+                                </button>
+                            </form>
+                            <form method="post" class="admin-tables-inline-form" onsubmit="return confirm('Supprimer définitivement la table n°<?php echo (int) $t['num_table']; ?> ?');">
+                                <input type="hidden" name="num_table" value="<?php echo (int) $t['num_table']; ?>">
+                                <button type="submit" name="delete_table" class="btn-details btn-sm admin-tables-btn admin-tables-btn--danger">
+                                    <i class="bi bi-trash" aria-hidden="true"></i> Supprimer
+                                </button>
+                            </form>
                         </div>
                     </td>
 

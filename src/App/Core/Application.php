@@ -11,6 +11,7 @@ use App\Repository\BoissonRepository;
 use App\Repository\ClientRepository;
 use App\Repository\CommandeRepository;
 use App\Repository\ContactRepository;
+use App\Repository\HorairesRepository;
 use App\Repository\EmployeRepository;
 use App\Repository\FactureRepository;
 use App\Repository\PlatRepository;
@@ -21,6 +22,7 @@ use App\Security\PasswordHasher;
 use App\Security\SessionCookie;
 use App\Service\ActivityLogService;
 use App\Service\CartService;
+use App\Service\ClientProfileService;
 use App\Service\ClientPaymentService;
 use App\Service\CommandeService;
 use App\Service\EmployePasswordService;
@@ -59,7 +61,9 @@ final class Application
     private ?NotificationService $notificationService = null;
     private ?CartService $cartService = null;
     private ?TableContextService $tableContextService = null;
+    private ?ClientProfileService $clientProfileService = null;
     private ?ContactRepository $contactRepository = null;
+    private ?HorairesRepository $horairesRepository = null;
     private ?ClientRepository $clientRepository = null;
     private ?MenuService $menuService = null;
     private ?OrderCreationService $orderCreationService = null;
@@ -263,6 +267,15 @@ final class Application
         return $this->tableContextService;
     }
 
+    public function clientProfileService(): ClientProfileService
+    {
+        if ($this->clientProfileService === null) {
+            $this->clientProfileService = ClientProfileService::fromApp($this);
+        }
+
+        return $this->clientProfileService;
+    }
+
     public function contactRepository(): ContactRepository
     {
         if ($this->contactRepository === null) {
@@ -270,6 +283,15 @@ final class Application
         }
 
         return $this->contactRepository;
+    }
+
+    public function horairesRepository(): HorairesRepository
+    {
+        if ($this->horairesRepository === null) {
+            $this->horairesRepository = new HorairesRepository($this->db());
+        }
+
+        return $this->horairesRepository;
     }
 
     public function clientRepository(): ClientRepository

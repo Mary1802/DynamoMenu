@@ -3,7 +3,7 @@
 $class = ($small ?? false) ? 'form-select form-select-sm' : 'form-select';
 $req = ($required ?? false) ? ' required' : '';
 ?>
-<select name="<?php echo htmlspecialchars($name); ?>" class="<?php echo $class; ?>" aria-label="Catégorie"<?php echo $req; ?>>
+<select name="<?php echo htmlspecialchars($name); ?>" class="<?php echo $class; ?>" aria-label="Catégorie"<?php echo $req; ?><?php if (!empty($formId)): ?> form="<?php echo htmlspecialchars((string) $formId); ?>"<?php endif; ?>>
     <option value=""<?php echo $selected === '' ? ' selected' : ''; ?>>— Catégorie —</option>
     <?php foreach ($options as $cat): ?>
     <?php $isSelected = strcasecmp($selected, $cat) === 0; ?>

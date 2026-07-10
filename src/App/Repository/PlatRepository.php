@@ -25,26 +25,54 @@ final class PlatRepository extends BaseRepository
         return $this->pdo->query('SELECT * FROM plat ORDER BY categorie, nom_plat')->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function create(string $nom, float $prix, string $categorie, int $quantite, ?string $imagePath): void
+    /** @return array<string, mixed>|null */
+    public function findById(int $id): ?array
     {
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO plat (nom_plat, prix_unitaire, categorie, quantite_plat, image_url) VALUES (?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([$nom, $prix, $categorie, $quantite, $imagePath]);
+        $stmt = $this->pdo->prepare('SELECT * FROM plat WHERE id_plat = ?');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row !== false ? $row : null;
     }
 
-    public function update(int $id, string $nom, float $prix, string $categorie, int $quantite, ?string $imagePath): void
-    {
+    public function create(
+        string $nom,
+        float $prix,
+        string $categorie,
+        int $quantite,
+        ?string $imagePath,
+        int $tempsPreparationMin = 15,
+    ): void {
+        $tempsPreparationMin = max(1, min(180, $tempsPreparationMin));
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO plat (nom_plat, prix_unitaire, categorie, quantite_plat, temps_preparation_min, image_url)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$nom, $prix, $categorie, $quantite, $tempsPreparationMin, $imagePath]);
+    }
+
+    public function update(
+        int $id,
+        string $nom,
+        float $prix,
+        string $categorie,
+        int $quantite,
+        ?string $imagePath,
+        int $tempsPreparationMin = 15,
+    ): void {
+        $tempsPreparationMin = max(1, min(180, $tempsPreparationMin));
         if ($imagePath !== null) {
             $stmt = $this->pdo->prepare(
-                'UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?, quantite_plat = ?, image_url = ? WHERE id_plat = ?'
+                'UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?, quantite_plat = ?,
+                 temps_preparation_min = ?, image_url = ? WHERE id_plat = ?'
             );
-            $stmt->execute([$nom, $prix, $categorie, $quantite, $imagePath, $id]);
+            $stmt->execute([$nom, $prix, $categorie, $quantite, $tempsPreparationMin, $imagePath, $id]);
         } else {
             $stmt = $this->pdo->prepare(
-                'UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?, quantite_plat = ? WHERE id_plat = ?'
+                'UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?, quantite_plat = ?,
+                 temps_preparation_min = ? WHERE id_plat = ?'
             );
-            $stmt->execute([$nom, $prix, $categorie, $quantite, $id]);
+            $stmt->execute([$nom, $prix, $categorie, $quantite, $tempsPreparationMin, $id]);
         }
     }
 

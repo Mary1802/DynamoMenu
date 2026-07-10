@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\Client;
 
 use App\Core\Application;
+use App\Controller\Client\OrderHistoryController;
+use App\Model\CommandeStatut;
 use App\Repository\ContactRepository;
 use App\Service\TableContextService;
 use PDOException;
@@ -30,7 +32,10 @@ final class HomeController
      *   panierUrl: string,
      *   indexUrl: string,
      *   contactRows: list<array<string,mixed>>,
-     *   hasContactSection: bool
+     *   horairesLines: list<string>,
+     *   hasContactSection: bool,
+     *   recentOrders: list<array<string,mixed>>,
+     *   mesCommandesUrl: string
      * }
      */
     public function index(): array
@@ -40,13 +45,20 @@ final class HomeController
         try {
             $this->tables->bootstrap();
             $this->tables->redirectAfterScan('index.php');
+            Application::getInstance()->clientProfileService()->requireWhenTableBound();
         } catch (PDOException) {
             die('Erreur de connexion');
         }
 
         $tableCtx = $this->tables->session();
         $tableError = $this->tables->consumeTableError();
-        $scanError = isset($_GET['err']) && $_GET['err'] === 'table';
+
+        if ($tableCtx !== null && isset($_GET['err'])) {
+            header('Location: index.php', true, 302);
+            exit;
+        }
+
+        $scanError = isset($_GET['err']) && $_GET['err'] === 'table' && $tableCtx === null;
 
         $contactRows = $this->contacts->listAll();
         if ($contactRows === []) {
@@ -56,6 +68,34 @@ final class HomeController
             }
         }
 
+        $orderNums = OrderHistoryController::sessionOrderIds();
+        $commandeRepo = Application::getInstance()->commandeRepository();
+        Application::getInstance()->schemaUpgrade()->run();
+        $recentRows = $commandeRepo->findClientOrderSummaries($orderNums);
+        $recentOrders = [];
+        foreach (array_slice($recentRows, 0, 3) as $row) {
+            $num = (int) $row['num_commande'];
+            $statut = (string) $row['statut'];
+            $countdown = $commandeRepo->buildCountdownState($row);
+            $recentOrders[] = [
+                'num_commande' => $num,
+                'statut' => $statut,
+                'statut_label' => CommandeStatut::clientLabel($statut),
+                'statut_class' => match ($statut) {
+                    'prete' => 'is-ready',
+                    'livree', 'annulee' => 'is-done',
+                    default => '',
+                },
+                'detail_url' => $this->tables->link('suivi_commande.php') . '?commande=' . $num,
+                'countdown_active' => $countdown['countdown_active'],
+                'prep_end_unix' => $countdown['prep_end_unix'],
+                'prep_remaining_seconds' => $countdown['prep_remaining_seconds'],
+                'server_unix' => $countdown['server_unix'],
+            ];
+        }
+
+        $horairesLines = Application::getInstance()->horairesRepository()->lines();
+
         return [
             'tableCtx' => $tableCtx,
             'tableError' => $tableError,
@@ -63,19 +103,28 @@ final class HomeController
             'menuUrl' => $this->tables->link('menu.php'),
             'panierUrl' => $this->tables->link('panier.php'),
             'indexUrl' => $this->tables->link('index.php'),
+            'mesCommandesUrl' => $this->tables->link('mes_commandes.php'),
             'contactRows' => $contactRows,
-            'hasContactSection' => self::hasContactSection($contactRows),
+            'horairesLines' => $horairesLines,
+            'hasContactSection' => self::hasContactSection($contactRows, $horairesLines),
+            'recentOrders' => $recentOrders,
         ];
     }
 
-    /** @param list<array<string, mixed>> $contactRows */
-    private static function hasContactSection(array $contactRows): bool
+    /**
+     * @param list<array<string, mixed>> $contactRows
+     * @param list<string> $horairesLines
+     */
+    private static function hasContactSection(array $contactRows, array $horairesLines): bool
     {
+        if ($horairesLines !== []) {
+            return true;
+        }
+
         foreach ($contactRows as $row) {
             $nom = trim((string) ($row['nom'] ?? $row['nom_etablissement'] ?? ''));
             if ($nom !== ''
                 || trim((string) ($row['adresse'] ?? '')) !== ''
-                || trim((string) ($row['horaires'] ?? '')) !== ''
                 || trim((string) ($row['telephone'] ?? '')) !== ''
                 || trim((string) ($row['email'] ?? '')) !== ''
                 || trim((string) ($row['whatsapp'] ?? '')) !== '') {

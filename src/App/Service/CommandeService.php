@@ -39,7 +39,7 @@ final class CommandeService
 
     public function startPreparation(int $numCommande): void
     {
-        $this->repository->updateStatut($numCommande, CommandeStatut::EN_PREPARATION);
+        $this->repository->startPreparationTracking($numCommande);
     }
 
     public function markReady(int $numCommande): void
@@ -51,6 +51,24 @@ final class CommandeService
     public function markDelivered(int $numCommande): void
     {
         $this->repository->markDelivered($numCommande);
+        $this->activityLog->log('commande_livree', "Commande #{$numCommande} livrée à la table", 'manager');
+    }
+
+    /** @return array{prete:int,livree:int} */
+    public function managerStats(): array
+    {
+        return [
+            'prete' => $this->repository->countByStatut(CommandeStatut::PRETE),
+            'livree' => $this->repository->countByStatut(CommandeStatut::LIVREE),
+        ];
+    }
+
+    public function handleManagerAction(string $action, int $numCommande): void
+    {
+        match ($action) {
+            'livree' => $this->markDelivered($numCommande),
+            default => null,
+        };
     }
 
     public function updateStatut(int $numCommande, string $statut, string $logModule = 'admin'): void
@@ -59,7 +77,11 @@ final class CommandeService
             return;
         }
 
-        $this->repository->updateStatut($numCommande, $statut);
+        if ($statut === CommandeStatut::EN_PREPARATION) {
+            $this->repository->startPreparationTracking($numCommande);
+        } else {
+            $this->repository->updateStatut($numCommande, $statut);
+        }
         $this->activityLog->log('commande_statut', "Commande #{$numCommande} → {$statut}", $logModule);
 
         if ($statut === CommandeStatut::PRETE) {
@@ -72,7 +94,6 @@ final class CommandeService
         match ($action) {
             'en_cours' => $this->startPreparation($numCommande),
             'termine' => $this->markReady($numCommande),
-            'livree' => $this->markDelivered($numCommande),
             default => null,
         };
     }

@@ -28,17 +28,21 @@ use App\Controller\Caissier\ReportController as CaissierReportController;
 use App\Controller\Client\CartController;
 use App\Controller\Client\ClearSessionController;
 use App\Controller\Client\CommandeController as ClientCommandeController;
+use App\Controller\Client\ClientIdentificationController;
 use App\Controller\Client\ConfirmationController;
 use App\Controller\Client\HomeController;
 use App\Controller\Client\MenuController;
 use App\Controller\Client\NouvelleCommandeController;
 use App\Controller\Client\OrderSuccessController;
+use App\Controller\Client\OrderHistoryController;
 use App\Controller\Client\OrderTrackingController;
 use App\Controller\Client\PaymentConfirmationController;
 use App\Controller\Client\PaymentController;
 use App\Controller\Client\PaymentRequestController;
 use App\Controller\Cuisine\CommandeListController as CuisineCommandeListController;
 use App\Controller\Cuisine\KitchenDashboardController;
+use App\Controller\Manager\CommandeListController as ManagerCommandeListController;
+use App\Controller\Manager\ManagerDashboardController;
 use App\Controller\Staff\LoginController;
 use App\Controller\Staff\LogoutController;
 use App\Controller\Staff\ParametresController as StaffParametresController;
@@ -68,6 +72,7 @@ return [
     ],
     'admin/employes.php' => [
         'auth' => 'admin',
+        'setup' => ['schema'],
         'controller' => [EmployeController::class, 'handle'],
         'args' => ['get', 'post', 'session'],
     ],
@@ -124,6 +129,11 @@ return [
         'controller' => [HomeController::class, 'index'],
         'args' => [],
     ],
+    'client/identite.php' => [
+        'auth' => 'client.session',
+        'controller' => [ClientIdentificationController::class, 'handle'],
+        'args' => ['post'],
+    ],
     'client/menu.php' => [
         'controller' => [MenuController::class, 'index'],
         'args' => [],
@@ -178,6 +188,9 @@ return [
         'controller' => [OrderTrackingController::class, 'show'],
         'args' => ['get'],
     ],
+    'client/mes_commandes.php' => [
+        'controller' => [OrderHistoryController::class, 'index'],
+    ],
     'client/traitement_paiement.php' => [
         'controller' => [PaymentRequestController::class, 'handle'],
         'args' => ['post'],
@@ -201,6 +214,31 @@ return [
     ],
     'cuisine/parametres.php' => [
         'auth' => 'staff:cuisinier',
+        'controller' => [StaffParametresController::class, 'index'],
+        'args' => ['staff_user'],
+    ],
+
+    // ── Manager ──────────────────────────────────────────────────────
+    'manager/dashboard.php' => [
+        'auth' => 'staff:manager',
+        'invoke' => static function (): array {
+            $manager = new ManagerDashboardController();
+            $manager->handlePost($_POST);
+
+            return $manager->index();
+        },
+    ],
+    'manager/commandes.php' => [
+        'auth' => 'staff:manager',
+        'invoke' => static function (): array {
+            $list = new ManagerCommandeListController();
+            $list->handlePost($_POST);
+
+            return $list->index($_GET);
+        },
+    ],
+    'manager/parametres.php' => [
+        'auth' => 'staff:manager',
         'controller' => [StaffParametresController::class, 'index'],
         'args' => ['staff_user'],
     ],
@@ -283,6 +321,7 @@ return [
 
     // ── Racine ─────────────────────────────────────────────────────────
     'login.php' => [
+        'setup' => ['schema'],
         'controller' => [LoginController::class, 'handle'],
         'args' => [],
     ],

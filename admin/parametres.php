@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../bootstrap/app.php';
 
 use App\Http\AdminPage;
+use App\Http\Dashboard;
 use App\Http\Kernel;
 
 $result = Kernel::forFile(__FILE__);
@@ -23,11 +24,8 @@ AdminPage::shellStart(
 <div class="dashboard-card settings-single-card">
     <section class="settings-panel-section">
         <h3 class="settings-panel-title">Thème d'affichage</h3>
-        <p class="text-secondary small mb-2">Clair : fond blanc. Sombre : fond noir.</p>
-        <div class="theme-switcher" role="group" aria-label="Thème">
-            <button type="button" class="theme-switch-btn" data-theme-set="dark"><i class="bi bi-moon-stars" aria-hidden="true"></i> Sombre</button>
-            <button type="button" class="theme-switch-btn" data-theme-set="light"><i class="bi bi-sun" aria-hidden="true"></i> Clair</button>
-        </div>
+        <p class="text-secondary small mb-2">Cochez pour le mode clair, décochez pour le mode sombre.</p>
+        <?php Dashboard::themeToggle(); ?>
     </section>
 
     <section class="settings-panel-section">
@@ -41,6 +39,21 @@ AdminPage::shellStart(
             <dd><?php echo htmlspecialchars($account['role'] ?? ''); ?></dd>
         </dl>
         <p class="text-secondary small mb-0">Le mot de passe n'est pas affiché ici. Consultez la page <a href="employes.php">Employés</a>.</p>
+    </section>
+
+    <section id="horaires-admin" class="settings-panel-section">
+        <h3 class="settings-panel-title">Horaires d'ouverture</h3>
+        <p class="text-secondary small mb-3">Affichés sur l'accueil client, indépendamment des contacts.</p>
+        <form method="post" class="row g-3">
+            <div class="col-12">
+                <label class="form-label text-secondary" for="restaurantHoraires">Horaires</label>
+                <textarea name="horaires" id="restaurantHoraires" class="form-control" rows="4" placeholder="Lundi - Samedi : 10h00 - 22h00&#10;Dimanche : 11h00 - 20h00"><?php echo htmlspecialchars($horaires); ?></textarea>
+                <p class="text-secondary small mt-2 mb-0">Une ligne par plage horaire. Vous pouvez aussi séparer avec <code>;</code> ou <code>|</code>.</p>
+            </div>
+            <div class="col-12">
+                <button type="submit" name="save_horaires" class="btn-primary">Enregistrer les horaires</button>
+            </div>
+        </form>
     </section>
 
     <section id="contacts-admin" class="settings-panel-section">
@@ -67,10 +80,6 @@ AdminPage::shellStart(
             <div class="col-12">
                 <label class="form-label text-secondary" for="contactAdresse">Adresse</label>
                 <input type="text" name="adresse" id="contactAdresse" class="form-control" value="<?php echo htmlspecialchars($currentContact['adresse'] ?? ''); ?>">
-            </div>
-            <div class="col-12">
-                <label class="form-label text-secondary" for="contactHoraires">Horaires</label>
-                <input type="text" name="horaires" id="contactHoraires" class="form-control" placeholder="Lun–Dim : 11h00 – 23h00" value="<?php echo htmlspecialchars($currentContact['horaires'] ?? ''); ?>">
             </div>
             <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
                 <button type="submit" name="save_contact" class="btn-primary">Enregistrer</button>

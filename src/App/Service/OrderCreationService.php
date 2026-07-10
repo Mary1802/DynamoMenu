@@ -37,12 +37,13 @@ final class OrderCreationService
         array $cartItems,
         string $numTable,
         float $totalPanier,
+        ?array $clientProfile = null,
         float $tvaRate = 0.16
     ): array {
-        $nom = trim((string) ($post['nom'] ?? ''));
-        $prenom = trim((string) ($post['prenom'] ?? ''));
-        $email = trim((string) ($post['email'] ?? ''));
-        $telephone = trim((string) ($post['telephone'] ?? ''));
+        $nom = trim((string) ($post['nom'] ?? $clientProfile['nom'] ?? ''));
+        $prenom = trim((string) ($post['prenom'] ?? $clientProfile['prenom'] ?? ''));
+        $email = trim((string) ($post['email'] ?? $clientProfile['email'] ?? ''));
+        $telephone = trim((string) ($post['telephone'] ?? $clientProfile['telephone'] ?? ''));
         $modePaiement = (string) ($post['mode_paiement_souhaite'] ?? '');
         $instructions = mb_substr(trim((string) ($post['instructions'] ?? '')), 0, 1000);
 
@@ -139,18 +140,79 @@ final class OrderCreationService
                 if (!empty($item['personnalisation'])) {
                     $label .= ' — ' . $item['personnalisation'];
                 }
-                $stmt = $this->pdo->prepare("
-                    INSERT INTO contient (num_commande, id_plat, id_boisson, quantite, prix, sous_total, personnalisation_boisson)
-                    VALUES (?, NULL, NULL, ?, ?, ?, ?)
-                ");
-                $stmt->execute([
-                    $numCommande,
-                    $item['quantite'],
-                    $item['prix'],
-                    $item['sous_total'],
-                    $label,
-                ]);
+
+                $idPlat = (int) ($item['id_plat'] ?? 0);
+                $idBoisson = (int) ($item['id_boisson'] ?? 0);
+                if ($idPlat <= 0 && $idBoisson <= 0) {
+                    [$idPlat, $idBoisson] = $this->resolveMenuItemIds(
+                        (string) $item['nom'],
+                        (string) ($item['category'] ?? '')
+                    );
+                }
+
+                if ($idPlat > 0) {
+                    $stmt = $this->pdo->prepare("
+                        INSERT INTO contient (num_commande, id_plat, quantite, prix, sous_total, personnalisation_boisson)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmt->execute([
+                        $numCommande,
+                        $idPlat,
+                        $item['quantite'],
+                        $item['prix'],
+                        $item['sous_total'],
+                        $label,
+                    ]);
+                } elseif ($idBoisson > 0) {
+                    $stmt = $this->pdo->prepare("
+                        INSERT INTO contient (num_commande, id_boisson, quantite, prix, sous_total, personnalisation_boisson)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmt->execute([
+                        $numCommande,
+                        $idBoisson,
+                        $item['quantite'],
+                        $item['prix'],
+                        $item['sous_total'],
+                        $label,
+                    ]);
+                } else {
+                    $stmt = $this->pdo->prepare("
+                        INSERT INTO contient (num_commande, id_plat, id_boisson, quantite, prix, sous_total, personnalisation_boisson)
+                        VALUES (?, NULL, NULL, ?, ?, ?, ?)
+                    ");
+                    $stmt->execute([
+                        $numCommande,
+                        $item['quantite'],
+                        $item['prix'],
+                        $item['sous_total'],
+                        $label,
+                    ]);
+                }
             }
         }
+    }
+
+    /** @return array{0: int, 1: int} */
+    private function resolveMenuItemIds(string $name, string $category): array
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return [0, 0];
+        }
+
+        if (mb_strtolower(trim($category)) === 'boissons') {
+            $stmt = $this->pdo->prepare('SELECT id_boisson FROM boisson WHERE nom_boisson = ? LIMIT 1');
+            $stmt->execute([$name]);
+            $id = (int) $stmt->fetchColumn();
+
+            return [0, $id];
+        }
+
+        $stmt = $this->pdo->prepare('SELECT id_plat FROM plat WHERE nom_plat = ? LIMIT 1');
+        $stmt->execute([$name]);
+        $id = (int) $stmt->fetchColumn();
+
+        return [$id, 0];
     }
 }

@@ -17,13 +17,14 @@ final class ParametresController
 
     /**
      * @param array<string, mixed> $user
-     * @return array{account:array<string,mixed>,contacts:array<string,mixed>}
+     * @return array{account:array<string,mixed>,contacts:array<string,mixed>,horairesLines:list<string>}
      */
     public function index(array $user): array
     {
         return [
             'account' => $this->settings->staffAccount($user),
             'contacts' => $this->settings->primaryContact(),
+            'horairesLines' => $this->settings->horairesLines(),
         ];
     }
 }

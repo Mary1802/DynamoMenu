@@ -72,6 +72,22 @@ final class PaiementService
             $numFacture = $this->factures->create($numCommande, $montantPaye, $modePaiement);
             $this->factures->markDemandesTraitees($numCommande);
             $this->pdo->commit();
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            if ($this->factures->hasFacture($numCommande)) {
+                $existing = $this->factures->findByCommande($numCommande);
+
+                return [
+                    'success' => true,
+                    'num_facture' => (int) ($existing['num_facture'] ?? 0),
+                    'already_paid' => true,
+                ];
+            }
+
+            return ['success' => false, 'error' => 'Erreur lors du traitement du paiement: ' . $e->getMessage()];
         } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();

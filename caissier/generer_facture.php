@@ -290,11 +290,9 @@ if ($result === null || empty($result)) {
                 <h1 class="restaurant-name">DynamoMenu</h1>
                 <div class="restaurant-details">
                     123 Avenue du Restaurant<br>
-                    75000 Paris, France<br>
-                    Tél: 01 23 45 67 89<br>
-                    Email: contact@dynamomenu.fr<br>
-                    SIRET: 123 456 789 00012<br>
-                    TVA Intracom: FR12345678901
+                    75000 Kinshasa, RDC<br>
+                    Tél: 0823620306<br>
+                    Email: contact@dynamomenu.com
                 </div>
             </div>
             
@@ -404,7 +402,7 @@ if ($result === null || empty($result)) {
         <!-- Signature -->
         <div class="signature">
             <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
-                Fait à Paris, le <?php echo date('d/m/Y', strtotime($facture['date_facture'])); ?>
+                Fait à Kinshasa, le <?php echo date('d/m/Y', strtotime($facture['date_facture'])); ?>
             </div>
             <div class="signature-line"></div>
             <div style="font-size: 12px; color: #666;">
@@ -417,7 +415,7 @@ if ($result === null || empty($result)) {
             <p>
                 DynamoMenu - Restaurant Gastronomique<br>
                 Facture émise électroniquement - Conservez ce document pour vos archives<br>
-                En cas de réclamation, merci de contacter le service client au 01 23 45 67 89
+                En cas de réclamation, merci de contacter le service client 0823620306
             </p>
         </div>
     </div>

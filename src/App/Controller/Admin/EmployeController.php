@@ -15,6 +15,7 @@ final class EmployeController
         'admin' => 'Administrateur',
         'cuisinier' => 'Cuisinier',
         'caissier' => 'Caissier',
+        'manager' => 'Manager',
     ];
 
     private Application $app;
@@ -33,6 +34,7 @@ final class EmployeController
     {
         $message = '';
         $error = '';
+        $this->app->schemaUpgrade()->run();
         $repo = $this->app->employeRepository();
         $passwords = $this->app->employePasswordService();
         $passwords->syncPasswordNotes();
@@ -65,7 +67,46 @@ final class EmployeController
                         $log->log('employe_create', "Employé créé : {$email} ({$role})");
                         $message = 'Compte créé. L\'employé peut se connecter avec son email et le mot de passe défini.';
                     } catch (PDOException $e) {
-                        $error = 'Cet email est déjà utilisé ou la création a échoué.';
+                        $error = str_contains($e->getMessage(), 'role')
+                            ? 'Impossible d\'enregistrer ce rôle. Lancez run_update.php puis réessayez.'
+                            : 'Cet email est déjà utilisé ou la création a échoué.';
+                    }
+                }
+            }
+
+            if (isset($post['update_role'])) {
+                $id = (int) ($post['id_employe'] ?? 0);
+                $role = (string) ($post['role'] ?? '');
+
+                if ($id <= 0 || !isset(self::ROLES[$role])) {
+                    $error = 'Employé ou rôle invalide.';
+                } else {
+                    try {
+                        $repo->updateRole($id, $role);
+                        $log->log('employe_role_update', "Rôle employé #{$id} → {$role}");
+                        $message = 'Rôle mis à jour.';
+                    } catch (PDOException $e) {
+                        $error = str_contains($e->getMessage(), 'role')
+                            ? 'Rôle non supporté en base. Lancez run_update.php puis réessayez.'
+                            : 'La mise à jour du rôle a échoué.';
+                    }
+                }
+            }
+
+            if (isset($post['update_telephone'])) {
+                $id = (int) ($post['id_employe'] ?? 0);
+                $telephone = trim((string) ($post['telephone_employe'] ?? ''));
+
+                if ($id <= 0) {
+                    $error = 'Employé invalide.';
+                } else {
+                    $employe = $repo->findById($id);
+                    if ($employe === null) {
+                        $error = 'Employé introuvable.';
+                    } else {
+                        $repo->updateTelephone($id, $telephone);
+                        $log->log('employe_phone_update', 'Téléphone mis à jour : ' . $employe->email);
+                        $message = 'Téléphone mis à jour pour ' . $employe->email . '.';
                     }
                 }
             }

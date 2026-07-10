@@ -21,6 +21,11 @@ final class DashboardLayoutView
         View::render('staff/scripts');
     }
 
+    public static function themeToggle(): void
+    {
+        View::render('staff/theme-toggle');
+    }
+
     public static function sidebarUserFooter(string $context): void
     {
         $auth = Application::getInstance()->staffAuth();

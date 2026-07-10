@@ -8,8 +8,9 @@ body.login-page {
     --login-title: #fff;
     --login-muted: rgba(255, 255, 255, 0.6);
     --login-label: rgba(255, 255, 255, 0.8);
-    --login-input-bg: rgba(0, 0, 0, 0.3);
-    --login-input-border: rgba(255, 255, 255, 0.1);
+    --login-input-bg: rgba(255, 255, 255, 0.08);
+    --login-input-border: rgba(255, 255, 255, 0.22);
+    --login-input-placeholder: rgba(255, 255, 255, 0.45);
     --login-switch-bg: rgba(0, 0, 0, 0.25);
     --login-switch-border: rgba(255, 255, 255, 0.12);
     --login-switch-text: rgba(255, 255, 255, 0.75);
@@ -34,6 +35,7 @@ html.theme-light body.login-page {
     --login-label: rgba(0, 0, 0, 0.78);
     --login-input-bg: #ffffff;
     --login-input-border: rgba(0, 0, 0, 0.15);
+    --login-input-placeholder: rgba(0, 0, 0, 0.45);
     --login-switch-bg: #f8f9fa;
     --login-switch-border: rgba(0, 0, 0, 0.12);
     --login-switch-text: rgba(0, 0, 0, 0.7);
@@ -46,33 +48,37 @@ html.theme-light body.login-page {
     z-index: 20;
 }
 
-.login-theme-bar .theme-switcher {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.login-theme-bar .theme-switch-btn {
-    min-height: 40px;
-    padding: 0.45rem 0.85rem;
+.login-theme-bar .theme-toggle {
+    padding: 0.45rem 0.75rem;
     border: 1px solid var(--login-switch-border);
     border-radius: 8px;
     background: var(--login-switch-bg);
-    color: var(--login-switch-text);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+    gap: 0.55rem;
 }
 
-.login-theme-bar .theme-switch-btn.is-active,
-.login-theme-bar .theme-switch-btn:hover {
-    border-color: rgba(255, 111, 31, 0.45);
-    background: rgba(255, 111, 31, 0.12);
+.login-theme-bar .theme-toggle-side {
+    font-size: 0.85rem;
+    color: var(--login-switch-text);
+}
+
+html:not(.theme-light) .login-theme-bar .theme-toggle-side--dark {
     color: #ff6f1f;
+}
+
+html.theme-light .login-theme-bar .theme-toggle-side--light {
+    color: #c45f0a;
+}
+
+.login-theme-bar .theme-toggle-switch {
+    background: var(--login-switch-border);
+}
+
+html.theme-light .login-theme-bar .theme-toggle-input:checked + .theme-toggle-switch {
+    background: #c45f0a;
+}
+
+html:not(.theme-light) .login-theme-bar .theme-toggle-input:checked + .theme-toggle-switch {
+    background: #ff6f1f;
 }
 
 .login-container {
@@ -123,12 +129,22 @@ html.theme-light body.login-page {
     font-size: 0.95rem;
 }
 
+.login-page .form-control::placeholder {
+    color: var(--login-input-placeholder);
+    opacity: 1;
+}
+
 .login-page .form-control:focus,
 .login-page .form-select:focus {
     background: var(--login-input-bg);
-    border-color: rgba(255, 111, 31, 0.45);
+    border-color: rgba(255, 111, 31, 0.55);
     color: var(--login-text);
-    box-shadow: 0 0 0 0.2rem rgba(255, 111, 31, 0.15);
+    box-shadow: 0 0 0 0.2rem rgba(255, 111, 31, 0.2);
+}
+
+html:not(.theme-light) .login-page .form-control:focus,
+html:not(.theme-light) .login-page .form-select:focus {
+    background: rgba(255, 255, 255, 0.11);
 }
 
 html.theme-light .login-page .form-select option {
@@ -190,6 +206,15 @@ html.theme-light .login-page .alert-success {
     margin-top: 20px;
 }
 
+html.theme-light .login-page .back-link a {
+    color: #c45f0a;
+}
+
+html.theme-light .login-page .back-link a:hover,
+html.theme-light .login-page .login-init-link {
+    color: #9a3d08;
+}
+
 .login-page .back-link a {
     color: rgba(255, 111, 31, 0.85);
     text-decoration: none;
@@ -215,7 +240,7 @@ html.theme-light .login-page .alert-success {
         justify-content: flex-end;
     }
 
-    .login-theme-bar .theme-switch-btn span.theme-switch-label {
+    .login-theme-bar .theme-toggle-side span {
         display: none;
     }
 

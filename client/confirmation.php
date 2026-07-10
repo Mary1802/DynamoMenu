@@ -100,10 +100,39 @@ if ($result !== null) {
         .recap-item {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
             gap: 1rem;
-            padding: 0.8rem 0;
+            padding: 0.85rem 0;
             border-bottom: 1px solid rgba(148,163,184,0.12);
             color: #cbd5e1;
+        }
+
+        .recap-item-main {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .recap-item-main strong {
+            display: block;
+            color: #f8fafc;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .recap-item-detail {
+            font-size: 0.85rem;
+            color: rgba(203,213,225,0.85);
+            margin-top: 0.35rem;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .recap-item-price {
+            flex: 0 0 auto;
+            font-weight: 600;
+            color: #ff6f1f;
+            white-space: nowrap;
+            text-align: right;
         }
         
         .recap-item:last-child {
@@ -113,11 +142,65 @@ if ($result !== null) {
         .recap-total {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
             padding: 1rem 0;
             border-top: 2px solid rgba(255,111,31,0.24);
             font-weight: 700;
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             color: #f8fafc;
+        }
+
+        .recap-total span:last-child {
+            color: #ff6f1f;
+            font-size: 1.2rem;
+        }
+
+        .confirmation-hero h1 {
+            color: #f8fafc;
+            font-size: clamp(1.5rem, 5vw, 2.75rem);
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .confirmation-hero p {
+            color: rgba(226,232,240,0.82);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .client-info-box p {
+            margin-bottom: 0.35rem;
+            word-break: break-word;
+        }
+
+        @media (max-width: 767.98px) {
+            .confirmation-container {
+                padding: 1.5rem 0.85rem 2.5rem;
+            }
+
+            .confirmation-card {
+                padding: 1.15rem;
+                border-radius: 18px;
+            }
+
+            .recap-panier {
+                padding: 1rem;
+            }
+
+            .confirmation-nav .btn {
+                font-size: 0.88rem;
+                padding: 0.45rem 0.75rem;
+            }
+
+            .confirmation-hero {
+                padding: 1.15rem !important;
+            }
+
+            .section-title {
+                font-size: 1.25rem;
+            }
         }
         
         .btn-confirm {
@@ -194,22 +277,25 @@ if ($result !== null) {
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-relative py-3">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-relative py-3 confirmation-nav">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="index.php">
                 <span style="color: #ff6f1f; font-weight: 700;">Dynamo</span><span style="color: #f8fafc; margin-left: 0.25rem;">Menu</span>
             </a>
             <div class="d-flex align-items-center">
-                <a href="panier.php" class="btn btn-outline-light me-2">← Retour au panier</a>
+                <a href="panier.php" class="btn btn-outline-light">
+                    <span class="d-none d-sm-inline">← Retour au panier</span>
+                    <span class="d-sm-none">← Panier</span>
+                </a>
             </div>
         </div>
     </nav>
 
     <div class="confirmation-container">
-        <div class="mb-4 p-4 rounded-4" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,111,31,0.15);">
-            <h1 class="mb-2" style="color: #f8fafc; font-size: 2.75rem; font-weight: 800;">Confirmation de commande</h1>
-            <p class="mb-0" style="color: rgba(226,232,240,0.82); font-size: 1.05rem; max-width: 720px; line-height: 1.7;">
-                Validez vos informations et envoyez votre commande directement à la cuisine. Le design est inspiré de l’accueil pour une expérience plus cohérente.
+        <div class="mb-4 p-4 rounded-4 confirmation-hero" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,111,31,0.15);">
+            <h1 class="mb-2">Confirmation de commande</h1>
+            <p class="mb-0">
+                Vérifiez votre commande, choisissez le mode de paiement et envoyez-la à la cuisine.
             </p>
         </div>
         
@@ -222,50 +308,19 @@ if ($result !== null) {
         <div class="row">
             <div class="col-lg-8">
                 <div class="confirmation-card">
-                    <h3 class="section-title">Informations personnelles</h3>
+                    <h3 class="section-title">Vos informations</h3>
+                    <div class="mb-4 p-3 rounded-3 client-info-box" style="background:rgba(255,255,255,0.04);border:1px solid rgba(148,163,184,0.16);">
+                        <p class="mb-2"><strong><?php echo htmlspecialchars(trim($clientProfile['prenom'] . ' ' . $clientProfile['nom'])); ?></strong></p>
+                        <p class="mb-1 text-secondary small"><?php echo htmlspecialchars($clientProfile['email']); ?></p>
+                        <p class="mb-1 text-secondary small"><?php echo htmlspecialchars($clientProfile['telephone']); ?></p>
+                        <p class="mb-0 text-secondary small">Table : <?php echo htmlspecialchars($tableCtx['label']); ?></p>
+                    </div>
+
+                    <h3 class="section-title">Finaliser la commande</h3>
                     
                     <form method="POST">
                         <?php ClientPage::csrfField(); ?>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label required">Nom</label>
-                                    <input type="text" name="nom" class="form-control" required 
-                                           value="<?php echo $_POST['nom'] ?? ''; ?>">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label required">Prénom</label>
-                                    <input type="text" name="prenom" class="form-control" required
-                                           value="<?php echo $_POST['prenom'] ?? ''; ?>">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label required">Email</label>
-                                    <input type="email" name="email" id="email" class="form-control" required
-                                           value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label required">Téléphone</label>
-                                    <input type="tel" name="telephone" class="form-control" required
-                                           value="<?php echo htmlspecialchars($_POST['telephone'] ?? ''); ?>">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Table (via QR)</label>
-                            <input type="text" class="form-control" readonly
-                                   value="<?php echo htmlspecialchars($tableCtx['label']); ?>">
-                            <input type="hidden" name="num_table" value="<?php echo (int) $tableCtx['num_table']; ?>">
-                        </div>
+                        <input type="hidden" name="num_table" value="<?php echo (int) $tableCtx['num_table']; ?>">
 
                         <div class="form-group">
                             <label class="form-label required">Mode de paiement prévu</label>
@@ -303,29 +358,29 @@ if ($result !== null) {
                     <div class="recap-panier">
                         <?php foreach ($panier as $item): ?>
                         <div class="recap-item">
-                            <div>
+                            <div class="recap-item-main">
                                 <strong><?php echo htmlspecialchars($item['nom']); ?></strong>
-                                <div style="font-size: 0.85rem; color: #666;">
-                                    x<?php echo $item['quantite']; ?>
+                                <div class="recap-item-detail">
+                                    Quantité : <?php echo (int) $item['quantite']; ?>
                                     <?php if ($item['type'] === 'plat' && !empty($item['sauces'])): ?>
-                                    <br>Sauces: <?php echo htmlspecialchars($item['sauces']); ?>
+                                    <br>Sauces : <?php echo htmlspecialchars($item['sauces']); ?>
                                     <?php elseif (!empty($item['personnalisation'])): ?>
                                     <br><?php echo htmlspecialchars($item['personnalisation']); ?>
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <div><?php echo Money::format((float) $item['sous_total']); ?></div>
+                            <div class="recap-item-price"><?php echo Money::format((float) $item['sous_total']); ?></div>
                         </div>
                         <?php endforeach; ?>
                         
                         <div class="recap-item">
-                            <div>Sous-total</div>
-                            <div><?php echo Money::format($total_panier); ?></div>
+                            <div class="recap-item-main">Sous-total</div>
+                            <div class="recap-item-price"><?php echo Money::format($total_panier); ?></div>
                         </div>
                         
                         <div class="recap-item">
-                            <div>TVA (16%)</div>
-                            <div><?php echo Money::format($tva_amount); ?></div>
+                            <div class="recap-item-main">TVA (16%)</div>
+                            <div class="recap-item-price"><?php echo Money::format($tva_amount); ?></div>
                         </div>
                         <div class="recap-total">
                             <div>Total TTC</div>

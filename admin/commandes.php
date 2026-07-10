@@ -35,19 +35,6 @@ AdminPage::shellStart('Admin — Commandes', 'commandes', 'Exploitation', 'Comma
     </form>
 </div>
 
-<div class="chart-container mb-4">
-    <div class="chart-title">Filtrer</div>
-    <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
-        <select name="statut" class="form-select" style="max-width:220px; min-width:220px;">
-            <option value="">Tous les statuts</option>
-            <?php foreach ($statuts as $k => $label): ?>
-            <option value="<?php echo $k; ?>"<?php echo $filter === $k ? ' selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <button type="submit" class="btn-primary">Appliquer</button>
-    </form>
-</div>
-
 <div class="chart-container">
     <div class="chart-title">Liste (<?php echo count($commandes); ?>)</div>
     <div class="table-responsive-wrap">

@@ -20,6 +20,13 @@
                         — Table <?php echo htmlspecialchars((string) ($item['num_table'] ?? '—')); ?>
                         <span class="text-muted small d-block">Nouvelle commande</span>
                     </a>
+                    <?php elseif ($role === 'manager'): ?>
+                    <a href="<?php echo htmlspecialchars((string) ($item['href'] ?? 'dashboard.php')); ?>">
+                        <?php echo htmlspecialchars((string) ($item['label'] ?? 'Commande prête')); ?>
+                        <?php if (!empty($item['nom_client'])): ?>
+                        <span class="text-muted small d-block"><?php echo htmlspecialchars((string) $item['nom_client']); ?></span>
+                        <?php endif; ?>
+                    </a>
                     <?php else: ?>
                     <a href="<?php echo htmlspecialchars($item['href']); ?>">
                         <?php echo htmlspecialchars($item['label']); ?>

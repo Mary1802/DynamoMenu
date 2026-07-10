@@ -46,7 +46,7 @@ final class DatabaseInitializer
         prenom_employe VARCHAR(100) NOT NULL,
         email_employe VARCHAR(100) UNIQUE NOT NULL,
         mot_de_passe VARCHAR(255) NOT NULL,
-        role ENUM('admin', 'cuisinier', 'caissier') NOT NULL,
+        role ENUM('admin', 'cuisinier', 'caissier', 'manager') NOT NULL,
         telephone_employe VARCHAR(20),
         date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");

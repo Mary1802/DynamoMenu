@@ -109,7 +109,7 @@ if ($result !== null) {
                 <div class="dashboard-card stat-card">
                     <div class="stat-icon success"><i class="bi bi-check-circle" aria-hidden="true"></i></div>
                     <div class="stat-value"><?php echo (int) $stats['prete']; ?></div>
-                    <div class="stat-label">Prêtes à servir</div>
+                    <div class="stat-label">Terminées en cuisine</div>
                 </div>
             </div>
 
@@ -178,6 +178,7 @@ if ($result !== null) {
                                         <div class="order-actions">
                                             <?php if ($commande['statut'] === 'en_attente'): ?>
                                                 <form method="POST" class="w-100">
+                                                    <?php Dashboard::csrfField(); ?>
                                                     <input type="hidden" name="action" value="en_cours">
                                                     <input type="hidden" name="commande_id" value="<?php echo $commande['num_commande']; ?>">
                                                     <button type="submit" class="btn-primary w-100">
@@ -187,6 +188,7 @@ if ($result !== null) {
                                                 </form>
                                             <?php elseif ($commande['statut'] === 'en_preparation'): ?>
                                                 <form method="POST" class="w-100">
+                                                    <?php Dashboard::csrfField(); ?>
                                                     <input type="hidden" name="action" value="termine">
                                                     <input type="hidden" name="commande_id" value="<?php echo $commande['num_commande']; ?>">
                                                     <button type="submit" class="btn-primary btn-success-variant w-100">
@@ -207,14 +209,14 @@ if ($result !== null) {
                     <!-- À servir -->
                     <div class="dashboard-card kitchen-panel-card">
                         <div class="card-header">
-                            <h3 class="card-title">À servir</h3>
+                            <h3 class="card-title">Prêtes en cuisine</h3>
                             <a href="commandes.php?filtre=prete" class="card-action">Voir tout</a>
                         </div>
                         
                         <?php if (empty($commandes_terminees)): ?>
                             <div class="empty-state kitchen-scroll-panel">
                                 <div class="empty-icon"><i class="bi bi-check2-circle" aria-hidden="true"></i></div>
-                                <p>Aucune commande prête à servir</p>
+                                <p>Aucune commande terminée en attente</p>
                             </div>
                         <?php else: ?>
                             <div class="order-timeline order-scroll-panel kitchen-scroll-panel">
@@ -232,16 +234,7 @@ if ($result !== null) {
                                         <div class="order-items kitchen-order-items">
                                             <?php Dashboard::renderKitchenOrderDetails($cmd['lignes'] ?? []); ?>
                                         </div>
-                                        <div class="order-actions">
-                                            <form method="POST" class="w-100">
-                                                <input type="hidden" name="action" value="livree">
-                                                <input type="hidden" name="commande_id" value="<?php echo $cmd['num_commande']; ?>">
-                                                <button type="submit" class="btn-outline w-100">
-                                                    <i class="bi bi-check2-all" aria-hidden="true"></i>
-                                                    <span>Marquer comme livrée</span>
-                                                </button>
-                                            </form>
-                                        </div>
+                                        <p class="text-secondary small mb-0 mt-2">En attente de prise en charge par le manager pour la livraison.</p>
                                     </div>
                                 <?php endforeach; ?>
                             </div>

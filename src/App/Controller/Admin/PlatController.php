@@ -54,20 +54,24 @@ final class PlatController
                         (float) $post['prix_unitaire'],
                         trim((string) ($post['categorie'] ?? '')),
                         (int) ($post['quantite_plat'] ?? 0),
-                        $imagePath
+                        $imagePath,
+                        (int) ($post['temps_preparation_min'] ?? 15)
                     );
                     Application::getInstance()->activityLog()->log('plat_create', 'Plat ajouté : ' . $post['nom_plat'], 'admin');
                     $message = 'Plat ajouté.';
                 }
                 if (isset($post['update_plat'])) {
                     $imagePath = $this->uploads->upload($files['image_plat'] ?? []);
+                    $existing = $this->plats->findById((int) $post['id_plat']);
+                    $quantitePlat = (int) ($existing['quantite_plat'] ?? 0);
                     $this->plats->update(
                         (int) $post['id_plat'],
                         trim((string) $post['nom_plat']),
                         (float) $post['prix_unitaire'],
                         trim((string) ($post['categorie'] ?? '')),
-                        (int) ($post['quantite_plat'] ?? 0),
-                        $imagePath
+                        $quantitePlat,
+                        $imagePath,
+                        (int) ($post['temps_preparation_min'] ?? 15)
                     );
                     $message = 'Plat mis à jour.';
                 }

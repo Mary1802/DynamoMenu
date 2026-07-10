@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Staff;
 
 use App\Core\Application;
+use App\Controller\Admin\EmployeController;
 use PDOException;
 
 final class LoginController
@@ -23,6 +24,7 @@ final class LoginController
     {
         $auth = $this->app->staffAuth();
         $auth->startSession();
+        $this->app->schemaUpgrade()->run();
         $this->app->employePasswordService()->upgradePlaintextPasswords();
 
         $error = '';
@@ -57,13 +59,21 @@ final class LoginController
                     $error = 'Veuillez remplir tous les champs.';
                 } else {
                     try {
-                        $employe = $this->app->employeRepository()->findByEmailAndRole($email, $role);
+                        $employe = $this->app->employeRepository()->findByEmail($email);
 
-                        if (
-                            $employe !== null
-                            && $this->app->passwordHasher()->verify($password, (string) $employe->motDePasse)
-                            && $employe->role === $role
+                        if ($employe === null) {
+                            $error = 'Email, mot de passe ou rôle incorrect.';
+                        } elseif (!isset(EmployeController::ROLES[$employe->role])) {
+                            $error = 'Ce compte existe mais son rôle n\'est pas valide. Un administrateur doit le corriger dans Admin → Employés (lancez aussi run_update.php si besoin).';
+                        } elseif ($employe->role !== $role) {
+                            $error = 'Ce compte est enregistré avec le rôle « '
+                                . $this->app->staffAuth()->roleLabel($employe->role)
+                                . ' ». Sélectionnez ce rôle à la connexion.';
+                        } elseif (
+                            !$this->app->passwordHasher()->verify($password, (string) $employe->motDePasse)
                         ) {
+                            $error = 'Email, mot de passe ou rôle incorrect.';
+                        } else {
                             if ($this->app->passwordHasher()->needsRehash((string) $employe->motDePasse)) {
                                 $this->app->employeRepository()->updatePassword(
                                     $employe->id,
@@ -74,8 +84,6 @@ final class LoginController
                             header('Location: ' . $auth->dashboardUrl($role));
                             exit;
                         }
-
-                        $error = 'Email, mot de passe ou rôle incorrect.';
                     } catch (PDOException $e) {
                         $error = 'Erreur de connexion. Vérifiez la configuration de la base de données.';
                     }

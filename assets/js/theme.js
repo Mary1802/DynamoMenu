@@ -6,6 +6,14 @@
 
     var STORAGE_KEY = 'dm_dashboard_theme';
 
+    function syncThemeToggle(theme) {
+        var isLight = theme === 'light';
+        document.querySelectorAll('[data-theme-toggle]').forEach(function (input) {
+            input.checked = isLight;
+            input.setAttribute('aria-checked', isLight ? 'true' : 'false');
+        });
+    }
+
     function applyAppTheme(theme) {
         var root = document.documentElement;
         var body = document.body;
@@ -29,11 +37,7 @@
             /* ignore */
         }
 
-        document.querySelectorAll('[data-theme-set]').forEach(function (btn) {
-            var active = btn.getAttribute('data-theme-set') === theme;
-            btn.classList.toggle('is-active', active);
-            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-        });
+        syncThemeToggle(theme);
     }
 
     function getStoredTheme() {
@@ -47,13 +51,13 @@
     function initAppTheme() {
         applyAppTheme(getStoredTheme());
 
-        document.querySelectorAll('[data-theme-set]').forEach(function (btn) {
-            if (btn.dataset.dmThemeBound === '1') {
+        document.querySelectorAll('[data-theme-toggle]').forEach(function (input) {
+            if (input.dataset.dmThemeBound === '1') {
                 return;
             }
-            btn.dataset.dmThemeBound = '1';
-            btn.addEventListener('click', function () {
-                applyAppTheme(btn.getAttribute('data-theme-set') || 'dark');
+            input.dataset.dmThemeBound = '1';
+            input.addEventListener('change', function () {
+                applyAppTheme(input.checked ? 'light' : 'dark');
             });
         });
     }

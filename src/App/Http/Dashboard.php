@@ -25,6 +25,11 @@ final class Dashboard
         DashboardLayoutView::scripts();
     }
 
+    public static function themeToggle(): void
+    {
+        DashboardLayoutView::themeToggle();
+    }
+
     public static function csrfField(): void
     {
         Application::getInstance()->csrf()->field();
@@ -181,9 +186,10 @@ final class Dashboard
         string $selected,
         array $categories,
         bool $small = false,
-        bool $required = false
+        bool $required = false,
+        ?string $formId = null
     ): void {
-        MenuFormView::platCategorySelect($name, $selected, $categories, $small, $required);
+        MenuFormView::platCategorySelect($name, $selected, $categories, $small, $required, $formId);
     }
 
     /** @return list<string> */
@@ -198,9 +204,10 @@ final class Dashboard
         string $selected,
         array $types,
         bool $small = false,
-        bool $required = false
+        bool $required = false,
+        ?string $formId = null
     ): void {
-        MenuFormView::boissonTypeSelect($name, $selected, $types, $small, $required);
+        MenuFormView::boissonTypeSelect($name, $selected, $types, $small, $required, $formId);
     }
 
     /** @return list<array<string, mixed>> */

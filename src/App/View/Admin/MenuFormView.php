@@ -14,7 +14,8 @@ final class MenuFormView
         string $selected,
         array $categories,
         bool $small = false,
-        bool $required = false
+        bool $required = false,
+        ?string $formId = null
     ): void {
         $selected = trim($selected);
         $options = $categories;
@@ -29,6 +30,7 @@ final class MenuFormView
             'options' => $options,
             'small' => $small,
             'required' => $required,
+            'formId' => $formId,
         ]);
     }
 
@@ -38,7 +40,8 @@ final class MenuFormView
         string $selected,
         array $types,
         bool $small = false,
-        bool $required = false
+        bool $required = false,
+        ?string $formId = null
     ): void {
         $selected = trim($selected);
         $options = $types;
@@ -53,6 +56,7 @@ final class MenuFormView
             'options' => $options,
             'small' => $small,
             'required' => $required,
+            'formId' => $formId,
         ]);
     }
 }

@@ -150,6 +150,7 @@ final class StaffAuthService
             'admin' => 'admin/dashboard.php',
             'cuisinier' => 'cuisine/dashboard.php',
             'caissier' => 'caissier/paiement.php',
+            'manager' => 'manager/dashboard.php',
         ];
 
         return $urls[$role] ?? 'login.php';
@@ -161,8 +162,9 @@ final class StaffAuthService
             'admin' => 'Administrateur',
             'cuisinier' => 'Cuisinier',
             'caissier' => 'Caissier',
+            'manager' => 'Manager',
         ];
 
-        return $labels[$role] ?? $role;
+        return $labels[$role] ?? ($role !== '' ? $role : 'Non défini');
     }
 }

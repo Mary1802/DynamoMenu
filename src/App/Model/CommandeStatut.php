@@ -38,10 +38,10 @@ final class CommandeStatut
     public static function clientLabels(): array
     {
         return [
-            self::EN_ATTENTE => 'En attente en cuisine',
+            self::EN_ATTENTE => 'En attente',
             self::EN_PREPARATION => 'En préparation',
-            self::PRETE => 'Prête — en cours de service',
-            self::LIVREE => 'Livrée à votre table',
+            self::PRETE => 'Prête',
+            self::LIVREE => 'Livrée',
             self::ANNULEE => 'Annulée',
         ];
     }

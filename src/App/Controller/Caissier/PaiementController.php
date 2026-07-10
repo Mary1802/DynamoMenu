@@ -11,6 +11,7 @@ use App\Service\PaiementService;
 final class PaiementController
 {
     private const SESSION_ENCAISSE_KEY = 'caisse_encaisse';
+    private const SESSION_PAY_TOKEN_KEY = 'caisse_pay_token';
 
     private Application $app;
     private PaiementService $paiement;
@@ -39,22 +40,44 @@ final class PaiementController
      *   payment_completed: bool,
      *   num_facture_encaisse: int,
      *   mode_paiement_encaisse: string|null,
-     *   show_payment_modal: bool
+     *   mode_paiement_encaisse: string|null,
+     *   show_payment_modal: bool,
+     *   payment_token: string|null
      * }
      */
     public function handle(array $get, array $post): array
     {
+        $this->sendNoCacheHeaders();
         $this->paiement->ensureSchema();
 
         $error = null;
         $paymentCompleted = false;
         $numFactureEncaisse = 0;
         $voirCommande = null;
+        $paymentToken = null;
+
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($get['voir_commande'])) {
+            $voirId = (int) $get['voir_commande'];
+            if ($voirId > 0 && $this->app->factureRepository()->hasFacture($voirId)) {
+                $existing = $this->app->factureRepository()->findByCommande($voirId);
+                if ($existing !== null) {
+                    $this->redirectToEncaisseSummary($voirId, (int) $existing['num_facture']);
+                }
+            }
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($post['payer_commande'])) {
             $numCommande = (int) ($post['commande_id'] ?? 0);
             if ($numCommande <= 0) {
                 $error = 'Commande invalide.';
+            } elseif ($this->app->factureRepository()->hasFacture($numCommande)) {
+                $existing = $this->app->factureRepository()->findByCommande($numCommande);
+                if ($existing !== null) {
+                    $this->redirectToEncaisseSummary($numCommande, (int) $existing['num_facture']);
+                }
+            } elseif (!$this->verifyPaymentToken($numCommande, (string) ($post['pay_token'] ?? ''))) {
+                $error = 'Ce paiement a déjà été enregistré ou la page est obsolète. Fermez la fenêtre et rouvrez la commande depuis la liste.';
+                $voirCommande = $numCommande;
             } else {
                 $result = $this->paiement->processPayment(
                     $numCommande,
@@ -63,6 +86,7 @@ final class PaiementController
                 );
 
                 if ($result['success'] && !empty($result['num_facture'])) {
+                    $this->invalidatePaymentToken($numCommande);
                     $this->redirectToEncaisseSummary($numCommande, (int) $result['num_facture']);
                 }
 
@@ -88,12 +112,6 @@ final class PaiementController
             $numFactureEncaisse = (int) ($get['facture'] ?? 0);
         } elseif (isset($get['voir_commande'])) {
             $voirCommande = (int) $get['voir_commande'];
-            if ($voirCommande > 0 && $this->app->factureRepository()->hasFacture($voirCommande)) {
-                $existing = $this->app->factureRepository()->findByCommande($voirCommande);
-                if ($existing !== null) {
-                    $this->redirectToEncaisseSummary($voirCommande, (int) $existing['num_facture']);
-                }
-            }
         }
 
         if ($paymentCompleted && $voirCommande <= 0) {
@@ -123,6 +141,9 @@ final class PaiementController
         } elseif ($voirCommande !== null && $voirCommande > 0) {
             $commandeDetails = $this->commandes->repository()->findPaymentDetails($voirCommande)
                 ?? $data['commande_details'];
+            if ($commandeDetails !== null && !$paymentCompleted) {
+                $paymentToken = $this->createPaymentToken($voirCommande);
+            }
         } elseif ($data['commande_details'] !== null) {
             $commandeDetails = $data['commande_details'];
         }
@@ -156,7 +177,48 @@ final class PaiementController
             'num_facture_encaisse' => $numFactureEncaisse,
             'mode_paiement_encaisse' => $modePaiementEncaisse,
             'show_payment_modal' => $showPaymentModal,
+            'payment_token' => $paymentToken,
         ];
+    }
+
+    private function sendNoCacheHeaders(): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+    }
+
+    private function createPaymentToken(int $numCommande): string
+    {
+        $token = bin2hex(random_bytes(16));
+        if (!isset($_SESSION[self::SESSION_PAY_TOKEN_KEY]) || !is_array($_SESSION[self::SESSION_PAY_TOKEN_KEY])) {
+            $_SESSION[self::SESSION_PAY_TOKEN_KEY] = [];
+        }
+        $_SESSION[self::SESSION_PAY_TOKEN_KEY][$numCommande] = $token;
+
+        return $token;
+    }
+
+    private function verifyPaymentToken(int $numCommande, string $token): bool
+    {
+        if ($numCommande <= 0 || $token === '') {
+            return false;
+        }
+
+        $expected = $_SESSION[self::SESSION_PAY_TOKEN_KEY][$numCommande] ?? '';
+
+        return $expected !== '' && hash_equals($expected, $token);
+    }
+
+    private function invalidatePaymentToken(int $numCommande): void
+    {
+        if (isset($_SESSION[self::SESSION_PAY_TOKEN_KEY][$numCommande])) {
+            unset($_SESSION[self::SESSION_PAY_TOKEN_KEY][$numCommande]);
+        }
     }
 
     /** @return array{commande:int,facture:int}|null */
@@ -177,6 +239,8 @@ final class PaiementController
 
     private function redirectToEncaisseSummary(int $numCommande, int $numFacture): never
     {
+        $this->invalidatePaymentToken($numCommande);
+
         $_SESSION[self::SESSION_ENCAISSE_KEY] = [
             'commande' => $numCommande,
             'facture' => $numFacture,

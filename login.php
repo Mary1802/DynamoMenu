@@ -20,21 +20,12 @@ if ($result !== null) {
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/login.css?v=3">
+    <link rel="stylesheet" href="assets/css/login.css?v=6">
     <?php ClientPage::csrfMetaTag(); ?>
 </head>
 <body class="login-page">
     <div class="login-theme-bar">
-        <div class="theme-switcher" role="group" aria-label="Thème d'affichage">
-            <button type="button" class="theme-switch-btn" data-theme-set="dark" aria-pressed="true">
-                <i class="bi bi-moon-stars" aria-hidden="true"></i>
-                <span class="theme-switch-label">Sombre</span>
-            </button>
-            <button type="button" class="theme-switch-btn" data-theme-set="light" aria-pressed="false">
-                <i class="bi bi-sun" aria-hidden="true"></i>
-                <span class="theme-switch-label">Clair</span>
-            </button>
-        </div>
+        <?php \App\View\Staff\DashboardLayoutView::themeToggle(); ?>
     </div>
 
     <div class="login-container">
@@ -70,6 +61,7 @@ if ($result !== null) {
                 <label for="role" class="form-label">Rôle</label>
                 <select id="role" name="role" class="form-select" required>
                     <option value="">-- Sélectionner un rôle --</option>
+                    <option value="manager"<?php echo $postRole === 'manager' ? ' selected' : ''; ?>>Manager</option>
                     <option value="cuisinier"<?php echo $postRole === 'cuisinier' ? ' selected' : ''; ?>>Cuisinier</option>
                     <option value="caissier"<?php echo $postRole === 'caissier' ? ' selected' : ''; ?>>Caissier</option>
                     <option value="admin"<?php echo $postRole === 'admin' ? ' selected' : ''; ?>>Administrateur</option>
@@ -88,7 +80,7 @@ if ($result !== null) {
     </div>
 
     <script src="assets/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/theme.js?v=1"></script>
+    <script src="assets/js/theme.js?v=2"></script>
     <script src="assets/js/csrf.js?v=1"></script>
 </body>
 </html>

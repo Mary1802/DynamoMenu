@@ -57,8 +57,7 @@ final class OrderTrackingController
 
         $accessToken = trim((string) ($get['token'] ?? ''));
         if (!$this->orderAccess->canAccess($commande, $accessToken !== '' ? $accessToken : null)) {
-            header('Location: index.php?err=access');
-            exit;
+            $this->tables->redirectToIndex();
         }
 
         $lignes = $this->commandes->findTrackingLines($numCommande);
@@ -81,6 +80,10 @@ final class OrderTrackingController
             $modePaiement = $modesFacture[$facture['mode_paiement']] ?? (string) $facture['mode_paiement'];
         }
 
+        Application::getInstance()->schemaUpgrade()->run();
+        $countdown = $this->commandes->buildCountdownState($commande);
+        $prepEstimeMinutes = $this->commandes->calculateEstimatedPrepMinutes($numCommande);
+
         return [
             'num_commande' => $numCommande,
             'commande' => $commande,
@@ -91,6 +94,10 @@ final class OrderTrackingController
             'clientNom' => $clientNom,
             'modePaiement' => $modePaiement,
             'indexUrl' => $this->tables->link('index.php'),
+            'mesCommandesUrl' => $this->tables->link('mes_commandes.php'),
+            'countdown' => $countdown,
+            'prepEstimeMinutes' => $prepEstimeMinutes,
+            'statutCode' => $statut,
         ];
     }
 }

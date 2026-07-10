@@ -48,7 +48,6 @@ if ($result !== null) {
                     
                     <a href="notifications.php" class="notification-btn" aria-label="Notifications">
                         <i class="bi bi-bell" aria-hidden="true"></i>
-                        <span class="notification-badge"><?php echo (int) $stats['pending_orders']; ?></span>
                     </a>
                 </div>
             </header>

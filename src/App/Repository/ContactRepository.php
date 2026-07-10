@@ -54,13 +54,12 @@ final class ContactRepository extends BaseRepository
         string $telephone,
         string $whatsapp,
         string $email,
-        string $horaires,
         bool $actif = true
     ): int {
         $stmt = $this->pdo->prepare(
             'INSERT INTO contact (nom, adresse, telephone, whatsapp, email, horaires, actif) VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$nom, $adresse, $telephone, $whatsapp, $email, $horaires, $actif ? 1 : 0]);
+        $stmt->execute([$nom, $adresse, $telephone, $whatsapp, $email, '', $actif ? 1 : 0]);
 
         return (int) $this->pdo->lastInsertId();
     }
@@ -72,13 +71,12 @@ final class ContactRepository extends BaseRepository
         string $telephone,
         string $whatsapp,
         string $email,
-        string $horaires,
         bool $actif = true
     ): void {
         $stmt = $this->pdo->prepare(
-            'UPDATE contact SET nom = ?, adresse = ?, telephone = ?, whatsapp = ?, email = ?, horaires = ?, actif = ? WHERE id_contact = ?'
+            'UPDATE contact SET nom = ?, adresse = ?, telephone = ?, whatsapp = ?, email = ?, actif = ? WHERE id_contact = ?'
         );
-        $stmt->execute([$nom, $adresse, $telephone, $whatsapp, $email, $horaires, $actif ? 1 : 0, $id]);
+        $stmt->execute([$nom, $adresse, $telephone, $whatsapp, $email, $actif ? 1 : 0, $id]);
     }
 
     public function delete(int $id): void

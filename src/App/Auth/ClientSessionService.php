@@ -40,7 +40,7 @@ final class ClientSessionService
         $last = (int) ($_SESSION['_client_last_activity'] ?? 0);
 
         if ($last > 0 && time() - $last > $lifetime) {
-            $tableKeys = ['num_table', 'table_code', 'table_label'];
+            $tableKeys = ['num_table', 'table_code', 'table_label', 'client_nom', 'client_prenom', 'client_email', 'client_telephone', 'id_client', 'client_identite_locked'];
             $preserved = [];
             foreach ($tableKeys as $key) {
                 if (isset($_SESSION[$key])) {

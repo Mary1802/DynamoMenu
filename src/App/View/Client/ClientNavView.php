@@ -10,6 +10,7 @@ namespace App\View\Client;
 
 
 
+use App\Controller\Client\OrderHistoryController;
 use App\Core\Application;
 
 use App\View\View;
@@ -25,15 +26,15 @@ final class ClientNavView
     {
 
         $tables = Application::getInstance()->tableContextService();
+        Application::getInstance()->clientSession()->start();
+        $hasOrders = OrderHistoryController::sessionOrderIds() !== [];
 
         View::render('client/nav', [
-
             'active' => $active,
-
             'tableCtx' => $tables->session(),
-
             'tableLink' => static fn (string $path): string => $tables->link($path),
-
+            'hasOrders' => $hasOrders,
+            'mesCommandesUrl' => $tables->link('mes_commandes.php'),
         ]);
 
     }

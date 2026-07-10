@@ -405,6 +405,9 @@ if ($result !== null) {
                     <?php Dashboard::csrfField(); ?>
                     <input type="hidden" name="commande_id" value="<?php echo $commande_details['num_commande']; ?>">
                     <input type="hidden" name="montant_paye" value="<?php echo $commande_details['montant_total']; ?>">
+                    <?php if (!empty($payment_token)): ?>
+                    <input type="hidden" name="pay_token" value="<?php echo htmlspecialchars($payment_token); ?>">
+                    <?php endif; ?>
                     <input type="hidden" name="mode_paiement" value="<?php echo htmlspecialchars($defaultMode); ?>" id="selectedMode">
                     
                     <div class="paiement-options">
@@ -444,10 +447,20 @@ if ($result !== null) {
             var modal = document.getElementById('paiementModal');
             modal.classList.remove('is-open');
             modal.style.removeProperty('display');
-            if (window.location.search) {
-                window.location.replace(window.location.pathname);
-            }
+            window.location.replace(window.location.pathname);
         }
+
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+
+        <?php if (!empty($payment_completed)): ?>
+        if (window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+        <?php endif; ?>
         
         // Fermer le modal en cliquant à l'extérieur
         document.getElementById('paiementModal').addEventListener('click', function(e) {

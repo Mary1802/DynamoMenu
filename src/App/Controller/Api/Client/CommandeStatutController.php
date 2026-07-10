@@ -36,6 +36,7 @@ final class CommandeStatutController
         }
 
         try {
+            Application::getInstance()->schemaUpgrade()->run();
             $row = $this->commandes->findForStatusApi($num);
         } catch (PDOException) {
             ApiResponse::error('Erreur serveur', 500);
@@ -51,6 +52,7 @@ final class CommandeStatutController
         }
 
         $statut = (string) $row['statut'];
+        $countdown = $this->commandes->buildCountdownState($row);
 
         ApiResponse::json([
             'num_commande' => (int) $row['num_commande'],
@@ -60,6 +62,14 @@ final class CommandeStatutController
             'num_table' => $row['num_table'],
             'pret' => $statut === CommandeStatut::PRETE,
             'livree' => $statut === CommandeStatut::LIVREE,
+            'countdown_active' => $countdown['countdown_active'],
+            'prep_started_at' => $countdown['prep_started_at'],
+            'prep_total_seconds' => $countdown['prep_total_seconds'],
+            'prep_total_minutes' => $countdown['prep_total_minutes'],
+            'prep_remaining_seconds' => $countdown['prep_remaining_seconds'],
+            'prep_end_unix' => $countdown['prep_end_unix'],
+            'server_unix' => $countdown['server_unix'],
+            'prep_finished' => $countdown['prep_finished'],
         ]);
     }
 }

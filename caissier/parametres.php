@@ -48,11 +48,8 @@ if ($result !== null) {
             <div class="dashboard-card settings-single-card">
                 <section class="settings-panel-section">
                     <h3 class="settings-panel-title">Thème d'affichage</h3>
-                    <p class="text-secondary small mb-2">Clair : fond blanc. Sombre : fond noir.</p>
-                    <div class="theme-switcher" role="group" aria-label="Thème">
-                        <button type="button" class="theme-switch-btn" data-theme-set="dark"><i class="bi bi-moon-stars" aria-hidden="true"></i> Sombre</button>
-                        <button type="button" class="theme-switch-btn" data-theme-set="light"><i class="bi bi-sun" aria-hidden="true"></i> Clair</button>
-                    </div>
+                    <p class="text-secondary small mb-2">Cochez pour le mode clair, décochez pour le mode sombre.</p>
+                    <?php Dashboard::themeToggle(); ?>
                 </section>
 
                 <section class="settings-panel-section">
@@ -65,7 +62,6 @@ if ($result !== null) {
                         <dt>Rôle</dt>
                         <dd><?php echo htmlspecialchars($account['role'] ?? ''); ?></dd>
                     </dl>
-                    <p class="text-secondary small mb-0">Le mot de passe n'est pas affiché ici.</p>
                 </section>
 
                 <section class="settings-panel-section">
@@ -79,6 +75,19 @@ if ($result !== null) {
                     <?php endif; ?>
                     <?php if (!empty($contacts['email'])): ?>
                     <p class="mb-0"><a href="mailto:<?php echo htmlspecialchars($contacts['email']); ?>"><?php echo htmlspecialchars($contacts['email']); ?></a></p>
+                    <?php endif; ?>
+                </section>
+
+                <section class="settings-panel-section">
+                    <h3 class="settings-panel-title">Horaires d'ouverture</h3>
+                    <?php if (!empty($horairesLines)): ?>
+                    <ul class="mb-0 ps-3">
+                        <?php foreach ($horairesLines as $line): ?>
+                        <li class="text-secondary"><?php echo htmlspecialchars($line); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <?php else: ?>
+                    <p class="text-secondary small mb-0">Non renseignés. Modifiables dans Admin → Paramètres.</p>
                     <?php endif; ?>
                 </section>
             </div>

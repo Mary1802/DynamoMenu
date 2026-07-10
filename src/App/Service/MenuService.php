@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Core\Application;
 use App\Data\MenuSeed;
 use App\Support\MenuImageIndex;
 use PDO;
@@ -85,9 +86,11 @@ final class MenuService
     {
         $menuItems = [];
 
+        Application::getInstance()->schemaUpgrade()->run();
+
         try {
             $stmt = $this->pdo->query(
-                'SELECT id_plat, nom_plat, prix_unitaire, categorie, image_url FROM plat ORDER BY categorie, nom_plat'
+                'SELECT id_plat, nom_plat, prix_unitaire, categorie, image_url, temps_preparation_min FROM plat ORDER BY categorie, nom_plat'
             );
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 $menuItems[] = [
@@ -96,6 +99,9 @@ final class MenuService
                     'desc' => '',
                     'price' => isset($r['prix_unitaire']) ? (float) $r['prix_unitaire'] : 0.0,
                     'img' => MenuImageIndex::normalizePath($r['image_url'] ?: null),
+                    'prep_min' => (int) ($r['temps_preparation_min'] ?? 15),
+                    'id_plat' => (int) $r['id_plat'],
+                    'id_boisson' => null,
                 ];
             }
 
@@ -137,6 +143,9 @@ final class MenuService
                     'desc' => $desc,
                     'price' => isset($r['prix_unitaire']) ? (float) $r['prix_unitaire'] : 0.0,
                     'img' => MenuImageIndex::normalizePath($r['image_url'] ?: null),
+                    'prep_min' => 2,
+                    'id_plat' => null,
+                    'id_boisson' => (int) $r['id_boisson'],
                 ];
             }
         } catch (PDOException) {

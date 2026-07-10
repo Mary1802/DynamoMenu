@@ -40,6 +40,7 @@ final class ConfirmationController
     {
         $this->session->start();
         $this->tables->bootstrap();
+        Application::getInstance()->clientProfileService()->requireWhenTableBound();
 
         $totals = $this->cart->totals();
         if ($totals['panier'] === []) {
@@ -53,6 +54,12 @@ final class ConfirmationController
             exit;
         }
 
+        $clientProfile = Application::getInstance()->clientProfileService()->get();
+        if ($clientProfile === null) {
+            header('Location: identite.php');
+            exit;
+        }
+
         $error = null;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($post['confirmer_commande'])) {
@@ -62,7 +69,8 @@ final class ConfirmationController
                 $post,
                 $totals['panier'],
                 (string) $tableCtx['num_table'],
-                $totals['total_panier']
+                $totals['total_panier'],
+                $clientProfile
             );
 
             if ($result['success']) {
@@ -85,6 +93,7 @@ final class ConfirmationController
         return [
             'error' => $error,
             'tableCtx' => $tableCtx,
+            'clientProfile' => $clientProfile,
             'panier' => $totals['panier'],
             'total_panier' => $totals['total_panier'],
             'tva_amount' => $totals['tva_amount'],

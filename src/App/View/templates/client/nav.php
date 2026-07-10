@@ -30,6 +30,10 @@ $is = static fn (string $page): string => $active === $page ? ' active' : '';
 
             <li class="nav-item"><a class="nav-link text-white<?php echo $is('menu'); ?>" href="<?php echo htmlspecialchars($tableLink('menu.php')); ?>"<?php echo $active === 'menu' ? ' aria-current="page"' : ''; ?>>Menu</a></li>
 
+            <?php if (!empty($hasOrders)): ?>
+            <li class="nav-item"><a class="nav-link text-white<?php echo $is('mes_commandes'); ?>" href="<?php echo htmlspecialchars($mesCommandesUrl ?? $tableLink('mes_commandes.php')); ?>">Mes commandes</a></li>
+            <?php endif; ?>
+
             <li class="nav-item">
 
                 <a class="nav-link text-white position-relative<?php echo $is('panier'); ?>" href="<?php echo htmlspecialchars($tableLink('panier.php')); ?>">
@@ -46,9 +50,9 @@ $is = static fn (string $page): string => $active === $page ? ' active' : '';
 
         </ul>
 
-        <?php if ($tableCtx && !in_array($active, ['menu', 'panier'], true)): ?>
+        <?php if ($tableCtx && !in_array($active, ['menu', 'panier', 'mes_commandes'], true)): ?>
 
-        <a class="btn btn-primary ms-lg-3 mt-3 mt-lg-0 w-100 w-lg-auto" href="<?php echo htmlspecialchars($tableLink('menu.php')); ?>">Commander</a>
+        <a class="btn btn-primary btn-sm ms-lg-3 mt-3 mt-lg-0 px-3 client-nav-commander" href="<?php echo htmlspecialchars($tableLink('menu.php')); ?>">Commander</a>
 
         <?php elseif (!$tableCtx): ?>
 

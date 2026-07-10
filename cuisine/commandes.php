@@ -53,7 +53,7 @@ if ($result !== null) {
 
             <div class="mb-3 d-flex flex-wrap gap-2">
                 <a href="commandes.php" class="btn-details btn-sm<?php echo $filtre === 'actives' ? ' active' : ''; ?>">En cours</a>
-                <a href="commandes.php?filtre=prete" class="btn-details btn-sm<?php echo $filtre === 'prete' ? ' active' : ''; ?>">À servir</a>
+                <a href="commandes.php?filtre=prete" class="btn-details btn-sm<?php echo $filtre === 'prete' ? ' active' : ''; ?>">Prêtes (lecture)</a>
                 <a href="commandes.php?filtre=toutes" class="btn-details btn-sm<?php echo $filtre === 'toutes' ? ' active' : ''; ?>">Toutes</a>
             </div>
 

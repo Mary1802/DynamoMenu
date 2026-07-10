@@ -16,7 +16,19 @@ final class EmployeRepository extends BaseRepository
             'SELECT id_employe, nom_employe, prenom_employe, email_employe, mot_de_passe, role, telephone_employe
              FROM employe WHERE email_employe = ? AND role = ? LIMIT 1'
         );
-        $stmt->execute([$email, $role]);
+        $stmt->execute([trim($email), $role]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ? Employe::fromRow($row) : null;
+    }
+
+    public function findByEmail(string $email): ?Employe
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id_employe, nom_employe, prenom_employe, email_employe, mot_de_passe, role, telephone_employe
+             FROM employe WHERE email_employe = ? LIMIT 1'
+        );
+        $stmt->execute([trim($email)]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $row ? Employe::fromRow($row) : null;
@@ -72,6 +84,18 @@ final class EmployeRepository extends BaseRepository
             'UPDATE employe SET mot_de_passe = ?, mot_de_passe_note = ? WHERE id_employe = ?'
         );
         $stmt->execute([$passwordHash, $passwordNote, $id]);
+    }
+
+    public function updateRole(int $id, string $role): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE employe SET role = ? WHERE id_employe = ?');
+        $stmt->execute([$role, $id]);
+    }
+
+    public function updateTelephone(int $id, string $telephone): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE employe SET telephone_employe = ? WHERE id_employe = ?');
+        $stmt->execute([$telephone, $id]);
     }
 
     public function delete(int $id): void

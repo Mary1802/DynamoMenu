@@ -141,6 +141,8 @@ final class CartService
         $img = (string) ($post['img'] ?? '');
         $category = (string) ($post['category'] ?? '');
         $personnalisation = trim((string) ($post['personnalisation'] ?? ''));
+        $idPlat = (int) ($post['id_plat'] ?? 0);
+        $idBoisson = (int) ($post['id_boisson'] ?? 0);
 
         if ($name === '' || $price <= 0) {
             return ['success' => false, 'message' => 'Données invalides'];
@@ -166,6 +168,8 @@ final class CartService
             'category' => $category,
             'personnalisation' => $personnalisation,
             'cart_key' => $cartKey,
+            'id_plat' => $idPlat > 0 ? $idPlat : null,
+            'id_boisson' => $idBoisson > 0 ? $idBoisson : null,
         ];
 
         $summary = $this->countSummary();

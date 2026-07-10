@@ -121,6 +121,7 @@ final class Kernel
             'staff:admin' => StaffPage::require(['admin']),
             'staff:cuisinier' => StaffPage::require(['cuisinier']),
             'staff:caissier' => StaffPage::require(['caissier']),
+            'staff:manager' => StaffPage::require(['manager']),
             'client.session' => ClientPage::startSession(),
             default => throw new RuntimeException("Auth inconnue : {$auth}"),
         };

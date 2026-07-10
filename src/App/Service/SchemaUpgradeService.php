@@ -32,6 +32,8 @@ final class SchemaUpgradeService
         $this->ensurePlatColumns();
         $this->ensureBoissonColumns();
         $this->ensureTypeBoisson();
+        $this->ensureEmployeRoleEnum();
+        $this->app->horairesRepository()->ensureTable();
         $this->normalizeMenuImages();
         $this->app->menuService()->seedStaticItems();
         $this->app->employePasswordService()->upgradePlaintextPasswords();
@@ -75,6 +77,16 @@ final class SchemaUpgradeService
         if (!in_array('instructions_speciales', $commandeCols, true)) {
             $after = in_array('mode_paiement_souhaite', $commandeCols, true) ? 'mode_paiement_souhaite' : 'montant_total';
             $this->pdo->exec("ALTER TABLE commande ADD COLUMN instructions_speciales TEXT NULL AFTER {$after}");
+            $commandeCols[] = 'instructions_speciales';
+        }
+        if (!in_array('date_debut_preparation', $commandeCols, true)) {
+            $after = in_array('instructions_speciales', $commandeCols, true) ? 'instructions_speciales' : 'statut';
+            $this->pdo->exec("ALTER TABLE commande ADD COLUMN date_debut_preparation DATETIME NULL AFTER {$after}");
+            $commandeCols[] = 'date_debut_preparation';
+        }
+        if (!in_array('temps_preparation_estime_sec', $commandeCols, true)) {
+            $after = in_array('date_debut_preparation', $commandeCols, true) ? 'date_debut_preparation' : 'statut';
+            $this->pdo->exec("ALTER TABLE commande ADD COLUMN temps_preparation_estime_sec INT UNSIGNED NULL AFTER {$after}");
         }
     }
 
@@ -94,6 +106,26 @@ final class SchemaUpgradeService
         }
         if (!in_array('quantite_plat', $platCols, true)) {
             $this->pdo->exec("ALTER TABLE plat ADD COLUMN quantite_plat INT NOT NULL DEFAULT 0 AFTER categorie");
+            $platCols[] = 'quantite_plat';
+        }
+        if (!in_array('temps_preparation_min', $platCols, true)) {
+            $after = in_array('quantite_plat', $platCols, true) ? 'quantite_plat' : 'categorie';
+            $this->pdo->exec("ALTER TABLE plat ADD COLUMN temps_preparation_min INT UNSIGNED NOT NULL DEFAULT 15 AFTER {$after}");
+        }
+    }
+
+    private function ensureEmployeRoleEnum(): void
+    {
+        try {
+            $col = $this->pdo->query("SHOW COLUMNS FROM employe LIKE 'role'")->fetch(PDO::FETCH_ASSOC);
+            if (!$col || !is_string($col['Type'] ?? null)) {
+                return;
+            }
+            if (!str_contains($col['Type'], "'manager'")) {
+                $this->pdo->exec("ALTER TABLE employe MODIFY role ENUM('admin', 'cuisinier', 'caissier', 'manager') NOT NULL");
+            }
+        } catch (PDOException) {
+            // Table employe absente (installation incomplète).
         }
     }
 

@@ -42,6 +42,7 @@ final class CartController
     {
         $this->session->start();
         $this->tables->bootstrap();
+        Application::getInstance()->clientProfileService()->requireWhenTableBound();
 
         Application::getInstance()->schemaUpgrade()->run();
 

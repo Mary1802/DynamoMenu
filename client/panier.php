@@ -276,6 +276,154 @@ if ($result !== null) {
             background: rgba(255,255,255,0.05);
             color: #fff;
         }
+
+        .cart-table-header {
+            display: none;
+        }
+
+        .cart-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .cart-line {
+            padding: 1.15rem 1rem;
+            background: rgba(255,255,255,0.04);
+            border-radius: 18px;
+            border-left: 4px solid #ff6f1f;
+        }
+
+        .cart-line-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.85rem;
+        }
+
+        .cart-line-title {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .cart-line-total {
+            flex: 0 0 auto;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #ff6f1f;
+            white-space: nowrap;
+        }
+
+        .cart-line-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 0.65rem;
+        }
+
+        .cart-line-badges .badge {
+            font-size: 0.78rem;
+            font-weight: 500;
+            max-width: 100%;
+            white-space: normal;
+            text-align: left;
+            line-height: 1.3;
+        }
+
+        .cart-line-footer {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 0.85rem;
+            border-top: 1px dashed rgba(255,255,255,0.12);
+        }
+
+        .cart-line-unit {
+            font-size: 0.88rem;
+            color: rgba(229,231,235,0.85);
+        }
+
+        .cart-line-unit strong {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .cart-line-qty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .cart-line-qty .d-flex {
+            background: rgba(255,255,255,0.08);
+            padding: 0.35rem 0.65rem;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .delete-btn {
+            width: 100%;
+        }
+
+        .cart-line-delete {
+            flex: 1 1 100%;
+        }
+
+        .summary-row {
+            flex-wrap: wrap;
+            gap: 0.35rem 1rem;
+        }
+
+        .summary-row span:last-child {
+            margin-left: auto;
+            text-align: right;
+        }
+
+        @media (max-width: 575.98px) {
+            .panier-items,
+            .panier-summary {
+                padding: 1.15rem;
+                border-radius: 18px;
+            }
+
+            .section-title {
+                font-size: 1.35rem;
+            }
+
+            .display-5 {
+                font-size: 1.75rem;
+            }
+
+            .cart-line-footer {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.85rem;
+            }
+
+            .cart-line-unit {
+                text-align: center;
+            }
+
+            .cart-line-qty {
+                justify-content: center;
+            }
+
+            .cart-line-delete .delete-btn {
+                display: block;
+                width: 100%;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body class="client-site">
@@ -299,128 +447,116 @@ if ($result !== null) {
             </a>
         </div>
         <?php else: ?>
-        
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="panier-items">
-                    <h3 class="section-title">Récapitulatif de votre commande</h3>
-                    
-                    <!-- En-tête des colonnes -->
-                    <div class="row mb-3" style="background: rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 12px; font-weight: 600; color: rgba(226,232,240,0.8); font-size: 0.95rem;">
-                        <div class="col-6">Article & Détails</div>
-                        <div class="col-2 text-center">Prix unitaire</div>
-                        <div class="col-2 text-center">Quantité</div>
-                        <div class="col-2 text-center">Total article</div>
+
+        <div class="panier-items">
+            <h3 class="section-title">Récapitulatif de votre commande</h3>
+
+            <div class="cart-list">
+                <?php foreach ($panier as $index => $item): ?>
+                <article class="cart-line">
+                    <header class="cart-line-header">
+                        <h4 class="cart-line-title"><?php echo htmlspecialchars($item['nom']); ?></h4>
+                        <span class="cart-line-total"><?php echo Money::format((float) $item['sous_total']); ?></span>
+                    </header>
+
+                    <?php if (
+                        ($item['type'] === 'plat' && !empty($item['sauces']))
+                        || !empty($item['personnalisation'])
+                        || isset($item['category'])
+                    ): ?>
+                    <div class="cart-line-badges">
+                        <?php if ($item['type'] === 'plat' && !empty($item['sauces'])): ?>
+                        <span class="badge bg-secondary text-white">Sauces : <?php echo htmlspecialchars($item['sauces']); ?></span>
+                        <?php elseif (!empty($item['personnalisation'])): ?>
+                        <span class="badge bg-secondary text-white"><?php echo htmlspecialchars($item['personnalisation']); ?></span>
+                        <?php endif; ?>
+                        <?php if (isset($item['category'])): ?>
+                        <span class="badge bg-info text-dark"><?php echo htmlspecialchars($item['category']); ?></span>
+                        <?php endif; ?>
                     </div>
-                    
-                    <?php foreach ($panier as $index => $item): ?>
-                    <div class="panier-item row align-items-center">
-                        <div class="item-info col-6">
-                            <div class="item-name">
-                                <strong style="font-size: 1.1rem;"><?php echo htmlspecialchars($item['nom']); ?></strong>
-                                <div class="item-details mt-2">
-                                    <?php if ($item['type'] === 'plat' && !empty($item['sauces'])): ?>
-                                    <div class="mb-1"><span class="badge bg-secondary text-white" style="font-size: 0.8rem;">Sauces: <?php echo htmlspecialchars($item['sauces']); ?></span></div>
-                                    <?php elseif (!empty($item['personnalisation'])): ?>
-                                    <div class="mb-1"><span class="badge bg-secondary text-white" style="font-size: 0.8rem;"><?php echo htmlspecialchars($item['personnalisation']); ?></span></div>
-                                    <?php endif; ?>
-                                    <?php if (isset($item['category'])): ?>
-                                    <div><span class="badge bg-info" style="font-size: 0.8rem;"><?php echo htmlspecialchars($item['category']); ?></span></div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
+                    <?php endif; ?>
+
+                    <div class="cart-line-footer">
+                        <div class="cart-line-unit">
+                            <strong><?php echo Money::format((float) $item['prix']); ?></strong>
+                            <span class="d-block d-md-none"> / unité</span>
                         </div>
-                        
-                        <div class="col-2 text-center">
-                            <div style="font-weight: 600; color: #fff; font-size: 1.1rem;"><?php echo Money::format((float) $item['prix']); ?></div>
-                            <div style="font-size: 0.8rem; color: rgba(229,231,235,0.85);">Prix unitaire</div>
-                        </div>
-                        
-                        <div class="item-quantity col-2 text-center">
+
+                        <div class="cart-line-qty">
                             <div class="d-flex align-items-center justify-content-center gap-2">
-                                <form method="POST" style="display: inline;">
+                                <form method="POST" class="d-inline">
+                                    <?php ClientPage::csrfField(); ?>
                                     <input type="hidden" name="index" value="<?php echo $index; ?>">
                                     <input type="hidden" name="action" value="minus">
-                                    <button type="submit" name="modifier_quantite" class="quantity-btn">-</button>
+                                    <button type="submit" name="modifier_quantite" class="quantity-btn" aria-label="Diminuer">−</button>
                                 </form>
-                                
-                                <span class="quantity-value"><?php echo $item['quantite']; ?></span>
-                                
-                                <form method="POST" style="display: inline;">
+                                <span class="quantity-value"><?php echo (int) $item['quantite']; ?></span>
+                                <form method="POST" class="d-inline">
+                                    <?php ClientPage::csrfField(); ?>
                                     <input type="hidden" name="index" value="<?php echo $index; ?>">
                                     <input type="hidden" name="action" value="plus">
-                                    <button type="submit" name="modifier_quantite" class="quantity-btn">+</button>
+                                    <button type="submit" name="modifier_quantite" class="quantity-btn" aria-label="Augmenter">+</button>
                                 </form>
                             </div>
-                            <div style="font-size: 0.8rem; color: rgba(229,231,235,0.85); margin-top: 0.25rem;">Quantité</div>
                         </div>
+
+                        <form method="POST" class="cart-line-delete">
+                            <?php ClientPage::csrfField(); ?>
+                            <input type="hidden" name="index" value="<?php echo $index; ?>">
+                            <button type="submit" name="supprimer_article" class="delete-btn" title="Supprimer cet article">Supprimer</button>
+                        </form>
                     </div>
-                    
-                    <!-- Ligne de séparation et actions -->
-                    <div class="row mt-2 mb-4">
-                        <div class="col-10">
-                            <div style="border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 0.5rem; font-size: 0.9rem; color: rgba(229,231,235,0.75);">
-                                <strong>Calcul :</strong> <?php echo Money::format((float) $item['prix']); ?> × <?php echo $item['quantite']; ?> = <?php echo Money::format((float) $item['sous_total']); ?>
-                            </div>
-                        </div>
-                        <div class="col-2 text-center">
-                            <form method="POST">
-                                <input type="hidden" name="index" value="<?php echo $index; ?>">
-                                <button type="submit" name="supprimer_article" class="delete-btn" title="Supprimer cet article">Supprimer</button>
-                            </form>
-                        </div>
+                </article>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="panier-summary mt-4">
+                <h3 class="section-title">Total de la commande</h3>
+
+                <div class="summary-row">
+                    <span>Nombre total d'articles</span>
+                    <span><strong><?php echo $nombre_articles; ?> article(s)</strong></span>
+                </div>
+
+                <div class="summary-row">
+                    <span>Sous-total des articles</span>
+                    <span><?php echo Money::format($total_panier); ?></span>
+                </div>
+
+                <div class="summary-row">
+                    <span>TVA (16%)</span>
+                    <span><?php echo Money::format($tva_amount); ?></span>
+                </div>
+
+                <div class="summary-row" style="background: rgba(255,255,255,0.08); border-radius: 10px; padding: 1rem; margin-top: 0.5rem;">
+                    <span style="font-size: 1.1rem; font-weight: 700;">Total TTC à payer</span>
+                    <span style="font-size: 1.25rem; font-weight: 700; color: #ff6f1f;"><?php echo Money::format($total_ttc); ?></span>
+                </div>
+
+                <div class="text-center mt-4 pt-3" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                    <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                        <a href="<?php echo htmlspecialchars(ClientPage::tableLink('menu.php')); ?>" class="btn btn-outline-light btn-lg px-4">
+                            ← Continuer mes achats
+                        </a>
+                        <?php if ($tableCtx): ?>
+                        <a href="<?php echo htmlspecialchars(ClientPage::tableLink('confirmation.php')); ?>" class="btn btn-primary btn-lg px-4" style="background: #ff6f1f; border-color: #ff6f1f;">
+                            Confirmer la commande
+                        </a>
+                        <?php else: ?>
+                        <a href="index.php?err=table" class="btn btn-warning btn-lg px-4">Scanner le QR de la table</a>
+                        <?php endif; ?>
                     </div>
-                    <?php endforeach; ?>
-                    
-                    <!-- Récapitulatif total -->
-                    <div class="panier-summary mt-4">
-                        <h3 class="section-title">Total de la commande</h3>
-                        
-                        <div class="summary-row">
-                            <span>Nombre total d'articles</span>
-                            <span><strong><?php echo $nombre_articles; ?> article(s)</strong></span>
-                        </div>
-                        
-                        <div class="summary-row">
-                            <span>Sous-total des articles</span>
-                            <span><?php echo Money::format($total_panier); ?></span>
-                        </div>
-                        
-                        <div class="summary-row">
-                            <span>TVA (16%)</span>
-                            <span><?php echo Money::format($tva_amount); ?></span>
-                        </div>
-                        
-                        <div class="summary-row" style="background: rgba(255,255,255,0.08); border-radius: 6px; padding: 1rem; color: #e5e7eb;">
-                            <span style="font-size: 1.2rem; font-weight: 700;">Total TTC à payer</span>
-                            <span style="font-size: 1.4rem; font-weight: 700; color: #ff6f1f;"><?php echo Money::format($total_ttc); ?></span>
-                        </div>
-                        
-                        <div class="text-center mt-5 pt-4" style="border-top: 1px solid #eee;">
-                            <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
-                                <a href="<?php echo htmlspecialchars(ClientPage::tableLink('menu.php')); ?>" class="btn btn-outline-light btn-lg px-4 px-md-5">
-                                    ← Continuer mes achats
-                                </a>
-                                <?php if ($tableCtx): ?>
-                                <a href="<?php echo htmlspecialchars(ClientPage::tableLink('confirmation.php')); ?>" class="btn btn-primary btn-lg px-4 px-md-5" style="background: #ff6f1f; border-color: #ff6f1f;">
-                                    Confirmer la commande
-                                </a>
-                                <?php else: ?>
-                                <a href="index.php?err=table" class="btn btn-warning btn-lg px-4 px-md-5">Scanner le QR de la table</a>
-                                <?php endif; ?>
-                            </div>
-                            <p class="text-light mt-3 mb-0 small">
-                                <?php if ($tableCtx): ?>
-                                Commande pour <strong><?php echo htmlspecialchars($tableCtx['label']); ?></strong> — pas de nouveau scan nécessaire.
-                                <?php else: ?>
-                                Un scan QR sur votre table suffit pour toute la visite.
-                                <?php endif; ?>
-                            </p>
-                        </div>
-                    </div>
+                    <p class="text-light mt-3 mb-0 small">
+                        <?php if ($tableCtx): ?>
+                        Commande pour <strong><?php echo htmlspecialchars($tableCtx['label']); ?></strong> — pas de nouveau scan nécessaire.
+                        <?php else: ?>
+                        Un scan QR sur votre table suffit pour toute la visite.
+                        <?php endif; ?>
+                    </p>
                 </div>
             </div>
-                <?php endif; ?>
+        </div>
+        <?php endif; ?>
             </div>
         </div>
     </main>

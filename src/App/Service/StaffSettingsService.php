@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Auth\StaffAuthService;
 use App\Core\Application;
 use App\Repository\ContactRepository;
+use App\Repository\HorairesRepository;
 use PDO;
 use PDOException;
 
@@ -15,6 +16,7 @@ final class StaffSettingsService
     public function __construct(
         private readonly PDO $pdo,
         private readonly ContactRepository $contacts,
+        private readonly HorairesRepository $horaires,
         private readonly SchemaUpgradeService $schema,
         private readonly StaffAuthService $auth,
     ) {
@@ -27,6 +29,7 @@ final class StaffSettingsService
         return new self(
             $app->db(),
             $app->contactRepository(),
+            $app->horairesRepository(),
             $app->schemaUpgrade(),
             $app->staffAuth()
         );
@@ -87,5 +90,21 @@ final class StaffSettingsService
     public function contactList(): array
     {
         return $this->contacts->listAll();
+    }
+
+    public function horaires(): string
+    {
+        return $this->horaires->get();
+    }
+
+    /** @return list<string> */
+    public function horairesLines(): array
+    {
+        return $this->horaires->lines();
+    }
+
+    public function saveHoraires(string $contenu): void
+    {
+        $this->horaires->save($contenu);
     }
 }

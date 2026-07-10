@@ -8,6 +8,7 @@ use App\Core\Application;
 use App\Repository\AdminStatsRepository;
 use App\Repository\FactureRepository;
 use DateTime;
+use DateTimeImmutable;
 use PDO;
 
 final class ReportService
@@ -93,10 +94,15 @@ final class ReportService
         }
 
         $moisKey = $this->monthKey($annee, $moisNum);
-        $daysInMonth = (int) date('t', strtotime($moisKey . '-01'));
-        $jourExport = isset($get['jour']) ? (int) $get['jour'] : min((int) date('j'), $daysInMonth);
-        if ($moisKey !== date('Y-m')) {
-            $jourExport = min($jourExport, $daysInMonth);
+        $monthStart = DateTimeImmutable::createFromFormat('!Y-m-d', $moisKey . '-01');
+        $daysInMonth = $monthStart instanceof DateTimeImmutable ? (int) $monthStart->format('t') : 31;
+
+        if (isset($get['jour'])) {
+            $jourExport = (int) $get['jour'];
+        } elseif ($moisKey === date('Y-m')) {
+            $jourExport = (int) date('j');
+        } else {
+            $jourExport = $daysInMonth;
         }
         $jourExport = max(1, min($daysInMonth, $jourExport));
 
@@ -147,7 +153,8 @@ final class ReportService
         );
         $moisKey = $period['mois_key'];
         $jourNum = isset($query['jour']) ? (int) $query['jour'] : (int) date('j');
-        $daysInMonth = (int) date('t', strtotime($moisKey . '-01'));
+        $monthStart = DateTimeImmutable::createFromFormat('!Y-m-d', $moisKey . '-01');
+        $daysInMonth = $monthStart instanceof DateTimeImmutable ? (int) $monthStart->format('t') : 31;
         $jourNum = max(1, min($daysInMonth, $jourNum));
         $dayYmd = $moisKey . '-' . str_pad((string) $jourNum, 2, '0', STR_PAD_LEFT);
 

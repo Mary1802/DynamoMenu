@@ -124,6 +124,14 @@ if ($result !== null) {
             letter-spacing: 0;
             font-weight: 500;
         }
+        .menu-card-tag--prep {
+            background: rgba(255, 111, 31, 0.15);
+            border-color: rgba(255, 111, 31, 0.35);
+            color: #f4c95a;
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 600;
+        }
 
         .menu-card-footer {
             display: flex;
@@ -442,6 +450,7 @@ if ($result !== null) {
                 card.className='card menu-card border-0 overflow-hidden';
                 const descText = menuItemDescription(i);
                 const typeTag = i.type ? `<span class="menu-card-tag menu-card-tag--type">${i.type}</span>` : '';
+                const prepTag = i.prep_min ? `<span class="menu-card-tag menu-card-tag--prep"><i class="bi bi-clock"></i> ${i.prep_min} min</span>` : '';
                 card.innerHTML = `
                     <div class="menu-card-inner">
                         <div class="menu-img-wrap">
@@ -461,6 +470,7 @@ if ($result !== null) {
                             <div class="menu-card-tags">
                                 <span class="menu-card-tag">${i.category}</span>
                                 ${typeTag}
+                                ${prepTag}
                             </div>
                             <p class="text-muted menu-desc">${descText}</p>
                             <div class="menu-card-footer">
@@ -507,6 +517,8 @@ if ($result !== null) {
             formData.append('img', item.img);
             formData.append('category', item.category);
             formData.append('personnalisation', personnalisation);
+            if (item.id_plat) formData.append('id_plat', item.id_plat);
+            if (item.id_boisson) formData.append('id_boisson', item.id_boisson);
             const csrfMeta = document.querySelector('meta[name="csrf-token"]');
             if (csrfMeta) {
                 formData.append('_csrf', csrfMeta.getAttribute('content'));
