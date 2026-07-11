@@ -10,7 +10,7 @@ namespace App\Repository;
 
 
 
-use App\Service\QrService;
+use App\Service\TableCodeService;
 
 use PDO;
 
@@ -92,7 +92,7 @@ final class TableRepository extends BaseRepository
 
         foreach ($rows as $row) {
 
-            $code = QrService::generateTableCode((int) $row['num_table']);
+            $code = TableCodeService::generateTableCode((int) $row['num_table']);
 
             $stmt->execute([$code, $row['num_table']]);
 
@@ -103,7 +103,63 @@ final class TableRepository extends BaseRepository
 
 
     /** @return array<string, mixed>|null */
+    public function findByNumTable(int $numTable): ?array
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT num_table, code_table, nombre_place, libelle, actif
+            FROM table_restaurant
+            WHERE num_table = ?
+            LIMIT 1
+        ');
+        $stmt->execute([$numTable]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        return $row ?: null;
+    }
+
+    /** @return array<string, mixed> */
+    public function ensureDefaultTable(int $numTable, int $places, ?string $libelle = null): array
+    {
+        $existing = $this->findByNumTable($numTable);
+        if ($existing !== null) {
+            if ((int) $existing['actif'] !== 1) {
+                $stmt = $this->pdo->prepare('UPDATE table_restaurant SET actif = 1 WHERE num_table = ?');
+                $stmt->execute([$numTable]);
+                $existing['actif'] = 1;
+            }
+
+            if ((int) $existing['nombre_place'] !== $places) {
+                $stmt = $this->pdo->prepare('UPDATE table_restaurant SET nombre_place = ? WHERE num_table = ?');
+                $stmt->execute([$places, $numTable]);
+                $existing['nombre_place'] = $places;
+            }
+
+            if (($existing['code_table'] ?? '') === '') {
+                $code = TableCodeService::generateTableCode($numTable);
+                $this->updateCode($numTable, $code);
+                $existing['code_table'] = $code;
+            }
+
+            return $existing;
+        }
+
+        $code = TableCodeService::generateTableCode($numTable);
+        $label = $libelle ?? ('Table ' . $numTable);
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO table_restaurant (num_table, nombre_place, libelle, code_table, actif) VALUES (?, ?, ?, ?, 1)'
+        );
+        $stmt->execute([$numTable, $places, $label, $code]);
+
+        return $this->findByNumTable($numTable) ?? [
+            'num_table' => $numTable,
+            'nombre_place' => $places,
+            'libelle' => $label,
+            'code_table' => $code,
+            'actif' => 1,
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
     public function findByCode(string $code): ?array
 
     {

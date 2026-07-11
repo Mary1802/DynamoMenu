@@ -7,33 +7,27 @@ namespace App\Controller\Client;
 use App\Core\Application;
 use App\Controller\Client\OrderHistoryController;
 use App\Model\CommandeStatut;
-use App\Repository\ContactRepository;
 use App\Service\TableContextService;
 use PDOException;
 
 final class HomeController
 {
     private TableContextService $tables;
-    private ContactRepository $contacts;
 
     public function __construct(?Application $app = null)
     {
         $app ??= Application::getInstance();
         $this->tables = $app->tableContextService();
-        $this->contacts = $app->contactRepository();
     }
 
     /**
      * @return array{
      *   tableCtx: array<string,mixed>|null,
      *   tableError: string|null,
-     *   scanError: bool,
+     *   tableAccessError: bool,
      *   menuUrl: string,
      *   panierUrl: string,
      *   indexUrl: string,
-     *   contactRows: list<array<string,mixed>>,
-     *   horairesLines: list<string>,
-     *   hasContactSection: bool,
      *   recentOrders: list<array<string,mixed>>,
      *   mesCommandesUrl: string
      * }
@@ -44,8 +38,7 @@ final class HomeController
 
         try {
             $this->tables->bootstrap();
-            $this->tables->redirectAfterScan('index.php');
-            Application::getInstance()->clientProfileService()->requireWhenTableBound();
+            $this->tables->redirectAfterTableBind('index.php');
         } catch (PDOException) {
             die('Erreur de connexion');
         }
@@ -58,15 +51,7 @@ final class HomeController
             exit;
         }
 
-        $scanError = isset($_GET['err']) && $_GET['err'] === 'table' && $tableCtx === null;
-
-        $contactRows = $this->contacts->listAll();
-        if ($contactRows === []) {
-            $appConfig = Application::getInstance()->config()->app();
-            if (is_array($appConfig['contacts'] ?? null) && $appConfig['contacts'] !== []) {
-                $contactRows = [$appConfig['contacts']];
-            }
-        }
+        $tableAccessError = isset($_GET['err']) && $_GET['err'] === 'table' && $tableCtx === null;
 
         $orderNums = OrderHistoryController::sessionOrderIds();
         $commandeRepo = Application::getInstance()->commandeRepository();
@@ -94,44 +79,15 @@ final class HomeController
             ];
         }
 
-        $horairesLines = Application::getInstance()->horairesRepository()->lines();
-
         return [
             'tableCtx' => $tableCtx,
             'tableError' => $tableError,
-            'scanError' => $scanError,
+            'tableAccessError' => $tableAccessError,
             'menuUrl' => $this->tables->link('menu.php'),
             'panierUrl' => $this->tables->link('panier.php'),
             'indexUrl' => $this->tables->link('index.php'),
             'mesCommandesUrl' => $this->tables->link('mes_commandes.php'),
-            'contactRows' => $contactRows,
-            'horairesLines' => $horairesLines,
-            'hasContactSection' => self::hasContactSection($contactRows, $horairesLines),
             'recentOrders' => $recentOrders,
         ];
-    }
-
-    /**
-     * @param list<array<string, mixed>> $contactRows
-     * @param list<string> $horairesLines
-     */
-    private static function hasContactSection(array $contactRows, array $horairesLines): bool
-    {
-        if ($horairesLines !== []) {
-            return true;
-        }
-
-        foreach ($contactRows as $row) {
-            $nom = trim((string) ($row['nom'] ?? $row['nom_etablissement'] ?? ''));
-            if ($nom !== ''
-                || trim((string) ($row['adresse'] ?? '')) !== ''
-                || trim((string) ($row['telephone'] ?? '')) !== ''
-                || trim((string) ($row['email'] ?? '')) !== ''
-                || trim((string) ($row['whatsapp'] ?? '')) !== '') {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

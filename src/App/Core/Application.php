@@ -32,7 +32,7 @@ use App\Service\NotificationService;
 use App\Service\OrderCreationService;
 use App\Service\PaiementService;
 use App\Service\ReportService;
-use App\Service\QrService;
+use App\Service\TableCodeService;
 use App\Service\SchemaUpgradeService;
 use App\Service\StaffNotificationService;
 use App\Service\StaffSettingsService;
@@ -78,7 +78,7 @@ final class Application
     private ?SchemaUpgradeService $schemaUpgrade = null;
     private ?MoneyFormatter $moneyFormatter = null;
     private ?StaffNotificationService $staffNotificationService = null;
-    private ?QrService $qrService = null;
+    private ?TableCodeService $tableCodeService = null;
 
     private function __construct()
     {
@@ -420,12 +420,12 @@ final class Application
         return $this->staffNotificationService;
     }
 
-    public function qrService(): QrService
+    public function tableCodeService(): TableCodeService
     {
-        if ($this->qrService === null) {
-            $this->qrService = QrService::fromApp($this);
+        if ($this->tableCodeService === null) {
+            $this->tableCodeService = TableCodeService::fromApp($this);
         }
 
-        return $this->qrService;
+        return $this->tableCodeService;
     }
 }

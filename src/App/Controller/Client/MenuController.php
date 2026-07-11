@@ -41,7 +41,6 @@ final class MenuController
         try {
             $this->app->schemaUpgrade()->run();
             $this->tables->bootstrap();
-            $this->app->clientProfileService()->requireWhenTableBound();
         } catch (PDOException) {
             die('Erreur de connexion');
         }

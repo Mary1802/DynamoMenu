@@ -31,6 +31,7 @@ final class NouvelleCommandeController
             // Table optionnelle : on vide quand même le panier
         }
 
+        Application::getInstance()->clientProfileService()->clear();
         $this->cart->clearCart();
         header('Location: ' . $this->tables->link('menu.php'));
         exit;

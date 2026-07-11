@@ -76,11 +76,6 @@ return [
         'controller' => [EmployeController::class, 'handle'],
         'args' => ['get', 'post', 'session'],
     ],
-    'admin/imprimer_qr.php' => [
-        'auth' => 'staff:admin',
-        'controller' => [TableController::class, 'printStickers'],
-        'args' => ['get'],
-    ],
     'admin/logs.php' => [
         'auth' => 'admin',
         'controller' => [LogController::class, 'handle'],

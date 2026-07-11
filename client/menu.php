@@ -18,170 +18,16 @@ if ($result !== null) {
     <title>DynamoMenu - Menu</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css?v=9">
+    <link rel="stylesheet" href="../assets/css/style.css?v=11">
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
     <?php ClientPage::csrfMetaTag(); ?>
     <style>
-        :root {
-            --accent-color: #ff6f1f;
-            --menu-img-width: 200px;
-            --menu-img-min-height: 200px;
-        }
-        .item-category { font-size: 0.85rem; color: rgba(255, 255, 255, 0.8); }
-        .price { color: var(--accent-color); font-weight: 700; }
-        .add-cart svg, #cartBtn svg, a.position-fixed svg { color: var(--accent-color); }
-
-        #menuList.menu-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.25rem;
-            align-items: start;
-        }
-        @media (min-width: 768px) {
-            #menuList.menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-
-        .menu-card {
-            height: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Image à gauche ; hauteur calée sur le contenu */
-        .menu-card-inner {
-            display: flex;
-            flex-direction: row;
-            align-items: stretch;
-            min-height: 0;
-        }
-
-        .menu-card .menu-img-wrap {
-            flex: 0 0 var(--menu-img-width);
-            width: var(--menu-img-width);
-            min-width: var(--menu-img-width);
-            max-width: var(--menu-img-width);
-            min-height: var(--menu-img-min-height);
-            align-self: stretch;
-            position: relative;
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.05);
-            border-right: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .menu-card .menu-img-wrap img {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center;
-            display: block;
-        }
-
-        .menu-card-body {
-            flex: 1 1 auto;
-            min-width: 0;
-            padding: 1rem 1.15rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            gap: 0.45rem;
-        }
-
-        .menu-card-body .menu-desc {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            margin: 0;
-            font-size: 0.88rem;
-            line-height: 1.45;
-        }
-
-        .menu-card-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem;
-        }
-
-        .menu-card-tag {
-            display: inline-block;
-            font-size: 0.72rem;
-            font-weight: 600;
-            letter-spacing: 0.03em;
-            text-transform: uppercase;
-            padding: 0.2rem 0.55rem;
-            border-radius: 999px;
-            background: rgba(var(--dm-primary-rgb), 0.12);
-            border: 1px solid rgba(var(--dm-primary-rgb), 0.28);
-            color: var(--dm-accent-soft);
-        }
-
-        .menu-card-tag--type {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.12);
-            color: rgba(255, 255, 255, 0.75);
-            text-transform: none;
-            letter-spacing: 0;
-            font-weight: 500;
-        }
-        .menu-card-tag--prep {
-            background: rgba(255, 111, 31, 0.15);
-            border-color: rgba(255, 111, 31, 0.35);
-            color: #f4c95a;
-            text-transform: none;
-            letter-spacing: 0;
-            font-weight: 600;
-        }
-
-        .menu-card-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-            margin-top: 0.15rem;
-            padding-top: 0.65rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .menu-card-footer .price {
-            font-size: 1.05rem;
-        }
-
-        .menu-card-footer-hint {
-            font-size: 0.78rem;
-            color: rgba(255, 255, 255, 0.5);
-            font-weight: 500;
-        }
-
-        .menu-card-body h3 {
-            font-size: 1.05rem;
-            line-height: 1.3;
-        }
-
-        @media (max-width: 575.98px) {
-            .menu-card-inner {
-                flex-direction: column;
-                min-height: 0;
-            }
-            .menu-card .menu-img-wrap {
-                flex: 0 0 auto;
-                width: 100%;
-                min-width: 100%;
-                max-width: 100%;
-                min-height: var(--menu-img-min-height);
-                height: var(--menu-img-min-height);
-                align-self: auto;
-                border-right: none;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            }
-        }
-
         a.position-fixed .floating-badge {
             position: absolute;
             top: -8px;
             right: -8px;
-            background: var(--accent-color);
-            color: #fff;
+            background: #c5a059;
+            color: #0a0a0a;
             border-radius: 999px;
             padding: 0.18rem 0.42rem;
             font-size: 0.72rem;
@@ -189,45 +35,18 @@ if ($result !== null) {
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
         }
         .add-cart.in-cart { opacity: 0.45; pointer-events: none; }
-        .drink-modal .modal-content {
-            background: #0f172a;
-            border: 1px solid rgba(255,111,31,0.25);
-            color: #f8fafc;
-        }
-        .flavor-pick {
-            display: flex; flex-wrap: wrap; gap: 0.5rem;
-        }
-        .flavor-pick label {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 999px;
-            padding: 0.35rem 0.75rem;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .flavor-pick input { display: none; }
-        .flavor-pick input:checked + span { color: #ff6f1f; font-weight: 600; }
-        .flavor-pick label:has(input:checked) {
-            border-color: rgba(255,111,31,0.5);
-            background: rgba(255,111,31,0.12);
-        }
         .soda-unit-row { margin-bottom: 0.5rem; }
     </style>
 </head>
-<body class="client-site">
+<body class="client-site client-luxury">
     <?php ClientPage::nav('menu'); ?>
 
-    <main class="container-fluid px-3 px-md-4 py-4 py-md-5 client-main-menu">
-        <?php if (!$tableCtx): ?>
-        <div class="alert alert-warning mb-3 py-2 text-center" role="alert">
-            Pour commander, scannez d'abord le <strong>QR code sur votre table</strong>.
-            <a href="index.php" class="alert-link">Retour accueil</a>
-        </div>
-        <?php endif; ?>
-        <section class="text-center mb-4">
-            <p class="text-uppercase text-warning mb-2">Notre Carte</p>
-            <h1 class="display-5 fw-bold menu-title">Notre <span class="text-warning">Menu</span></h1>
-            <div id="categories" class="d-flex justify-content-center flex-wrap gap-2 mt-4"></div>
+    <main class="container-fluid px-3 px-md-4 client-main-menu">
+        <section class="lux-menu-hero">
+            <p class="lux-eyebrow mb-2">Notre carte</p>
+            <h1 class="lux-menu-hero__title">Notre <span>Menu</span></h1>
+            <p class="lux-menu-hero__subtitle">Parcourez nos créations, filtrez par catégorie et ajoutez vos favoris au panier en un clic.</p>
+            <div id="categories" class="d-flex justify-content-center flex-wrap gap-2"></div>
         </section>
 
         <section id="menuList" class="menu-grid mb-5" aria-live="polite"></section>
@@ -278,7 +97,7 @@ if ($result !== null) {
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-primary" id="fruitDrinkConfirm" style="background:#ff6f1f;border:none;">Ajouter au panier</button>
+                    <button type="button" class="btn btn-primary" id="fruitDrinkConfirm">Ajouter au panier</button>
                 </div>
             </div>
         </div>
@@ -314,13 +133,22 @@ if ($result !== null) {
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-primary" id="sodaDrinkConfirm" style="background:#ff6f1f;border:none;">Ajouter au panier</button>
+                    <button type="button" class="btn btn-primary" id="sodaDrinkConfirm">Ajouter au panier</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            const nav = document.querySelector('.client-navbar');
+            if (!nav) return;
+            const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 24);
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        })();
+    </script>
     <script>
         const MONEY = <?php echo json_encode(Money::jsConfig(), JSON_UNESCAPED_UNICODE); ?>;
         function menuUnitToCdf(unit) {
@@ -396,12 +224,15 @@ if ($result !== null) {
 
         function updateCartCountFromData(data) {
             const count = data.count || 0;
-            ['cartCount', 'floatingCartCount'].forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
+            document.querySelectorAll('[data-cart-count]').forEach(function (el) {
                 el.textContent = count;
-                el.style.display = count === 0 ? 'none' : 'block';
+                el.style.display = count === 0 ? 'none' : 'inline-block';
             });
+            const floating = document.getElementById('floatingCartCount');
+            if (floating) {
+                floating.textContent = count;
+                floating.style.display = count === 0 ? 'none' : 'block';
+            }
         }
 
         // The menu is rendered from the database rows seeded by schema_upgrade().

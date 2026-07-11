@@ -7,7 +7,7 @@ namespace App\Service;
 use App\Core\Application;
 use App\Core\Config;
 
-final class QrService
+final class TableCodeService
 {
     public function __construct(
         private readonly Config $config
@@ -30,17 +30,5 @@ final class QrService
     public function tableEntryUrl(string $codeTable): string
     {
         return $this->config->baseUrl() . '/client/index.php?t=' . rawurlencode($codeTable);
-    }
-
-    public static function imageUrl(string $targetUrl, int $size = 280): string
-    {
-        return 'https://api.qrserver.com/v1/create-qr-code/?size=' . $size . 'x' . $size
-            . '&data=' . rawurlencode($targetUrl);
-    }
-
-    /** URL QR haute résolution pour impression (autocollants table). */
-    public static function printImageUrl(string $targetUrl, int $size = 480): string
-    {
-        return self::imageUrl($targetUrl, $size);
     }
 }

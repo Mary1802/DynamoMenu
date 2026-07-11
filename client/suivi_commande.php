@@ -114,8 +114,10 @@ if ($result === null || empty($result)) {
         .countdown-label { color: rgba(255,255,255,0.65); font-size: 0.9rem; margin-top: 0.35rem; }
         .prep-badge { color: rgba(255,255,255,0.5); font-size: 0.8rem; }
     </style>
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
+    <link rel="stylesheet" href="../assets/css/client-pages-theme.css?v=1">
 </head>
-<body>
+<body class="client-site client-luxury">
     <header class="navbar navbar-dark px-3 py-3">
         <a class="navbar-brand fw-bold text-white" href="<?php echo htmlspecialchars($indexUrl); ?>">DynamoMenu</a>
     </header>
@@ -200,7 +202,7 @@ if ($result === null || empty($result)) {
                 <a href="<?php echo htmlspecialchars($indexUrl); ?>" class="btn btn-outline-light flex-fill">
                     <i class="bi bi-house-door"></i> Retour à l'accueil
                 </a>
-                <a href="<?php echo htmlspecialchars(ClientPage::tableLink('nouvelle_commande.php')); ?>" class="btn btn-primary flex-fill" style="background:#ff6f1f;border-color:#ff6f1f;">
+                <a href="<?php echo htmlspecialchars(ClientPage::tableLink('nouvelle_commande.php')); ?>" class="btn btn-primary flex-fill">
                     <i class="bi bi-plus-circle"></i> Commander à nouveau
                 </a>
             </div>

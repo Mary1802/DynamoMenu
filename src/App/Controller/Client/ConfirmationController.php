@@ -40,7 +40,7 @@ final class ConfirmationController
     {
         $this->session->start();
         $this->tables->bootstrap();
-        Application::getInstance()->clientProfileService()->requireWhenTableBound();
+        Application::getInstance()->clientProfileService()->requireBeforeOrderValidation();
 
         $totals = $this->cart->totals();
         if ($totals['panier'] === []) {
@@ -81,6 +81,7 @@ final class ConfirmationController
                 ];
                 $_SESSION['suivi_commande_id'] = $result['num_commande'];
                 Application::getInstance()->orderAccess()->grant($result['num_commande']);
+                Application::getInstance()->clientProfileService()->clear();
                 unset($_SESSION['panier']);
 
                 header('Location: suivi_commande.php?commande=' . $result['num_commande']);

@@ -11,6 +11,7 @@
         document.querySelectorAll('[data-theme-toggle]').forEach(function (input) {
             input.checked = isLight;
             input.setAttribute('aria-checked', isLight ? 'true' : 'false');
+            input.setAttribute('aria-label', isLight ? 'Activer le mode sombre' : 'Activer le mode clair');
         });
     }
 

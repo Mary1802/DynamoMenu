@@ -24,7 +24,7 @@ AdminPage::shellStart(
 <div class="dashboard-card settings-single-card">
     <section class="settings-panel-section">
         <h3 class="settings-panel-title">Thème d'affichage</h3>
-        <p class="text-secondary small mb-2">Cochez pour le mode clair, décochez pour le mode sombre.</p>
+        <p class="text-secondary small mb-2">Basculez entre le mode clair et le mode sombre.</p>
         <?php Dashboard::themeToggle(); ?>
     </section>
 

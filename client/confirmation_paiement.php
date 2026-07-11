@@ -109,12 +109,14 @@ $mode_labels = ClientPaymentService::modeIcons();
             border: 1px solid #ddd;
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
+    <link rel="stylesheet" href="../assets/css/client-pages-theme.css?v=1">
 </head>
-<body>
+<body class="client-site client-luxury client-luxury-light">
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="index.php">
-                <span style="color: #ff6f1f; font-weight: 700;">Dynamo</span><span style="color: #333;">Menu</span>
+                <span class="client-brand-accent">Dynamo</span><span class="client-brand-name client-brand-name--dark">Menu</span>
             </a>
         </div>
     </nav>

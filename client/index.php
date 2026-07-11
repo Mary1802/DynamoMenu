@@ -17,38 +17,29 @@ if ($result !== null) {
     <title>DynamoMenu - Accueil</title>
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css?v=10">
+    <link rel="stylesheet" href="../assets/css/style.css?v=11">
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
 </head>
-<body class="client-site">
-    <header class="navbar navbar-expand-lg navbar-dark px-4 py-3">
-        <a class="navbar-brand fw-bold text-white" href="<?php echo htmlspecialchars($indexUrl); ?>">DynamoMenu</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navMenu">
-            <ul class="navbar-nav ms-auto align-items-lg-center">
-                <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars($indexUrl); ?>">Accueil</a></li>
-                <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars($menuUrl); ?>">Menu</a></li>
-                <?php if (!empty($recentOrders)): ?>
-                <li class="nav-item"><a class="nav-link text-white" href="<?php echo htmlspecialchars($mesCommandesUrl); ?>">Mes commandes</a></li>
-                <?php endif; ?>
-                <li class="nav-item">
-                    <a class="nav-link text-white position-relative" href="<?php echo htmlspecialchars($panierUrl); ?>">
-                        Panier
-                        <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">0</span>
-                    </a>
-                </li>
-                <li class="nav-item"><a class="nav-link text-white" href="../login.php">Employé</a></li>
-            </ul>
-            <a class="btn btn-primary ms-lg-4" href="#contact">Nous contacter</a>
-        </div>
-    </header>
+<body class="client-site client-luxury">
+    <?php ClientPage::nav('index'); ?>
 
-    <main class="container-fluid px-4 py-5 hero-section">
-        <?php if (($tableError || $scanError) && empty($tableCtx)): ?>
-            <?php ClientPage::tableError($tableError ?: 'QR code invalide. Rescannez le code affiché sur votre table.'); ?>
-        <?php elseif ($tableCtx): ?>
-            <?php ClientPage::tableWelcome($tableCtx); ?>
+    <section class="lux-hero" aria-label="Bienvenue">
+        <div class="lux-hero__bg" style="background-image: url('../assets/images/combo/combo burger frites poulet.jpg');"></div>
+        <div class="lux-hero__overlay" aria-hidden="true"></div>
+        <div class="lux-hero__content">
+            <p class="lux-eyebrow mb-3">Commandez. Savourez. Profitez.</p>
+            <h1 class="lux-hero__title">Une expérience culinaire digitale, élégante et sans attente</h1>
+            <p class="lux-hero__subtitle">Parcourez notre carte et commandez en toute simplicité depuis l'appareil de votre table — préparé avec soin par notre équipe.</p>
+            <div class="lux-hero__actions">
+                <a class="btn btn-primary btn-lg" href="<?php echo htmlspecialchars($menuUrl); ?>">Commander</a>
+                <a class="btn btn-outline-light btn-lg lux-btn-ghost" href="<?php echo htmlspecialchars($menuUrl); ?>">Voir le menu</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="lux-page-intro lux-band lux-band--intro">
+        <?php if (($tableError || $tableAccessError) && empty($tableCtx)): ?>
+            <?php ClientPage::tableError($tableError ?: 'Table non reconnue. Utilisez l\'appareil configuré pour votre table.'); ?>
         <?php endif; ?>
 
         <?php if (!empty($recentOrders)): ?>
@@ -98,185 +89,90 @@ if ($result !== null) {
                 </div>
 
                 <div class="client-recent-orders__footer">
-                    <a href="<?php echo htmlspecialchars($mesCommandesUrl); ?>" class="btn btn-primary btn-sm" style="background:#ff6f1f;border-color:#ff6f1f;">
-                        Toutes mes commandes
-                    </a>
+                    <a href="<?php echo htmlspecialchars($mesCommandesUrl); ?>" class="btn btn-primary btn-sm">Toutes mes commandes</a>
                 </div>
             </div>
         </section>
         <?php endif; ?>
+    </div>
 
-        <div class="row align-items-center g-5">
-            <div class="col-lg-6">
-                <p class="text-uppercase text-warning mb-3">Commandez. Mangez. Profitez !</p>
-                <h1 class="display-4 hero-title mb-4">Une nouvelle façon de commander :<br>rapide, pratique et totalement digitale</h1>
-                <p class="hero-subtitle mb-4">Commandez votre repas en un clic et profitez-en dès maintenant.</p>
-                <div class="d-flex gap-3 flex-wrap">
-                    <a class="btn btn-primary btn-lg" href="<?php echo htmlspecialchars($menuUrl); ?>">Commander</a>
-                    <a class="btn btn-outline-light btn-lg" href="<?php echo htmlspecialchars($menuUrl); ?>">Voir menu</a>
-                </div>
-            </div>
-            <div class="col-lg-6 text-center hero-image-col d-none d-lg-block">
-                <img src="../assets/images/combo/combo burger frites poulet.jpg" alt="Combo Burger Frites Poulet" class="img-fluid rounded-4 shadow-lg hero-home-image">
-            </div>
+    <section id="apropos" class="lux-about lux-band lux-band--about" aria-labelledby="lux-about-title">
+        <div class="lux-about__inner">
+            <p class="lux-eyebrow mb-3">À propos</p>
+            <h2 id="lux-about-title" class="lux-about__title">DynamoMenu, votre menu digital de restaurant</h2>
+            <p class="lux-about__text">DynamoMenu est une solution de commande digitale pensée pour les restaurants : depuis la tablette ou le smartphone posé sur votre table, consultez la carte en temps réel, composez votre commande et suivez sa préparation jusqu'au service.</p>
+            <p class="lux-about__text">Conçu pour simplifier l'expérience client et fluidifier le travail des équipes — cuisine, caisse et administration — DynamoMenu modernise le service en salle sans compromis sur le confort ni la qualité de l'accueil.</p>
+            <a class="btn btn-outline-light lux-btn-ghost" href="<?php echo htmlspecialchars($menuUrl); ?>">Découvrir le menu</a>
         </div>
-    </main>
-
-    <?php if ($hasContactSection): ?>
-    <section id="contact" class="home-info-section container-fluid px-4 pb-5">
-        <div class="row justify-content-center mb-4 mb-lg-5">
-            <div class="col-lg-8 text-center">
-                <p class="text-uppercase text-warning mb-2 small fw-semibold">Informations pratiques</p>
-                <h2 class="menu-title display-6 fw-bold mb-3">Nous trouver &amp; nous contacter</h2>
-                <p class="hero-subtitle mb-0">Toutes les informations utiles pour votre visite, au même endroit.</p>
-            </div>
-        </div>
-
-        <?php if (!empty($horairesLines)): ?>
-        <div class="row g-4 justify-content-center mb-4 mb-lg-5">
-            <div class="col-md-6 col-lg-4">
-                <article class="home-info-card h-100">
-                    <div class="home-info-card-accent" aria-hidden="true"></div>
-                    <div class="home-info-card-body">
-                        <header class="home-info-card-header">
-                            <span class="home-info-card-icon"><i class="bi bi-clock" aria-hidden="true"></i></span>
-                            <div>
-                                <p class="home-info-card-label">Ouverture</p>
-                                <h3 class="home-info-card-title">Horaires</h3>
-                            </div>
-                        </header>
-                        <div class="home-info-card-content">
-                            <ul class="home-info-schedule">
-                                <?php foreach ($horairesLines as $line): ?>
-                                <li><?php echo htmlspecialchars($line); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                    </div>
-                </article>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <?php foreach ($contactRows as $contactIndex => $contacts):
-            $contactNom = trim((string) ($contacts['nom'] ?? $contacts['nom_etablissement'] ?? 'DynamoMenu'));
-            $contactInfos = trim((string) ($contacts['infos'] ?? $contacts['description'] ?? ''));
-            if ($contactInfos === '') {
-                $contactInfos = 'Restaurant avec service sur place. Commandez depuis votre table via le menu digital.';
-            }
-            $contactAdresse = trim((string) ($contacts['adresse'] ?? ''));
-            $contactTel = trim((string) ($contacts['telephone'] ?? ''));
-            $contactEmail = trim((string) ($contacts['email'] ?? ''));
-            $contactWhatsapp = trim((string) ($contacts['whatsapp'] ?? ''));
-            if ($contactNom === '' && $contactAdresse === ''
-                && $contactTel === '' && $contactEmail === '' && $contactWhatsapp === '') {
-                continue;
-            }
-            $rowClass = 'row g-4 g-lg-4 justify-content-center';
-            if ($contactIndex > 0) {
-                $rowClass .= ' mt-4 pt-4 border-top border-secondary border-opacity-25';
-            }
-        ?>
-        <div class="<?php echo $rowClass; ?>">
-            <?php if (count($contactRows) > 1): ?>
-            <div class="col-12 text-center mb-2">
-                <h3 class="h5 text-warning mb-0"><?php echo htmlspecialchars($contactNom); ?></h3>
-            </div>
-            <?php endif; ?>
-            <div class="col-md-6 col-lg-6">
-                <article class="home-info-card h-100">
-                    <div class="home-info-card-accent" aria-hidden="true"></div>
-                    <div class="home-info-card-body">
-                        <header class="home-info-card-header">
-                            <span class="home-info-card-icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
-                            <div>
-                                <p class="home-info-card-label">À propos</p>
-                                <h3 class="home-info-card-title">Établissement</h3>
-                            </div>
-                        </header>
-                        <div class="home-info-card-content">
-                            <p class="home-info-name"><?php echo htmlspecialchars($contactNom); ?></p>
-                            <?php if ($contactInfos !== ''): ?>
-                            <p class="home-info-desc"><?php echo htmlspecialchars($contactInfos); ?></p>
-                            <?php endif; ?>
-                            <?php if ($contactAdresse !== ''): ?>
-                            <div class="home-info-detail-box">
-                                <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
-                                <span><?php echo htmlspecialchars($contactAdresse); ?></span>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </article>
-            </div>
-
-            <div class="col-md-6 col-lg-6">
-                <article class="home-info-card h-100">
-                    <div class="home-info-card-accent" aria-hidden="true"></div>
-                    <div class="home-info-card-body">
-                        <header class="home-info-card-header">
-                            <span class="home-info-card-icon"><i class="bi bi-chat-dots" aria-hidden="true"></i></span>
-                            <div>
-                                <p class="home-info-card-label">Joignez-nous</p>
-                                <h3 class="home-info-card-title">Contact</h3>
-                            </div>
-                        </header>
-                        <div class="home-info-card-content home-info-card-content--contact">
-                            <?php if ($contactTel !== ''): ?>
-                            <a class="home-info-contact-row" href="tel:<?php echo htmlspecialchars(preg_replace('/\s+/', '', $contactTel)); ?>">
-                                <span class="home-info-contact-icon"><i class="bi bi-telephone-fill" aria-hidden="true"></i></span>
-                                <span class="home-info-contact-text">
-                                    <span class="home-info-contact-kind">Téléphone</span>
-                                    <span class="home-info-contact-value"><?php echo htmlspecialchars($contactTel); ?></span>
-                                </span>
-                                <i class="bi bi-chevron-right home-info-contact-arrow" aria-hidden="true"></i>
-                            </a>
-                            <?php endif; ?>
-                            <?php if ($contactEmail !== ''): ?>
-                            <a class="home-info-contact-row" href="mailto:<?php echo htmlspecialchars($contactEmail); ?>">
-                                <span class="home-info-contact-icon"><i class="bi bi-envelope-fill" aria-hidden="true"></i></span>
-                                <span class="home-info-contact-text">
-                                    <span class="home-info-contact-kind">Email</span>
-                                    <span class="home-info-contact-value"><?php echo htmlspecialchars($contactEmail); ?></span>
-                                </span>
-                                <i class="bi bi-chevron-right home-info-contact-arrow" aria-hidden="true"></i>
-                            </a>
-                            <?php endif; ?>
-                            <?php if ($contactWhatsapp !== ''): ?>
-                            <a class="home-info-contact-row home-info-contact-row--whatsapp" href="https://wa.me/<?php echo htmlspecialchars(preg_replace('/[^0-9]/', '', $contactWhatsapp)); ?>" target="_blank" rel="noopener">
-                                <span class="home-info-contact-icon"><i class="bi bi-whatsapp" aria-hidden="true"></i></span>
-                                <span class="home-info-contact-text">
-                                    <span class="home-info-contact-kind">WhatsApp</span>
-                                    <span class="home-info-contact-value"><?php echo htmlspecialchars($contactWhatsapp); ?></span>
-                                </span>
-                                <i class="bi bi-chevron-right home-info-contact-arrow" aria-hidden="true"></i>
-                            </a>
-                            <?php endif; ?>
-                            <?php if ($contactTel === '' && $contactEmail === '' && $contactWhatsapp === ''): ?>
-                            <p class="home-info-desc mb-0">Coordonnées disponibles à l'accueil.</p>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </article>
-            </div>
-        </div>
-        <?php endforeach; ?>
     </section>
-    <?php endif; ?>
+
+    <section class="lux-highlights lux-band lux-band--highlights" aria-labelledby="lux-highlights-title">
+        <header class="lux-section-head">
+            <p class="lux-eyebrow mb-2">Nos incontournables</p>
+            <h2 id="lux-highlights-title" class="lux-section-head__title">Une sélection de nos meilleures créations</h2>
+            <p class="lux-section-head__text">Combos généreux, plats signatures et accompagnements — tout est disponible à la commande depuis votre table.</p>
+        </header>
+        <div class="lux-highlights__grid">
+            <a href="<?php echo htmlspecialchars($menuUrl); ?>" class="lux-highlight-card">
+                <div class="lux-highlight-card__img">
+                    <img src="../assets/images/combo/combo burger frites poulet.jpg" alt="Combo burger frites poulet" loading="lazy" decoding="async">
+                </div>
+                <div class="lux-highlight-card__body">
+                    <h3 class="lux-highlight-card__name">Combo Burger Frites</h3>
+                    <p class="lux-highlight-card__desc">Formule complète pour un repas généreux et savoureux.</p>
+                </div>
+            </a>
+            <a href="<?php echo htmlspecialchars($menuUrl); ?>" class="lux-highlight-card">
+                <div class="lux-highlight-card__img">
+                    <img src="../assets/images/combo/combo sandwich frites.png" alt="Combo sandwich frites" loading="lazy" decoding="async">
+                </div>
+                <div class="lux-highlight-card__body">
+                    <h3 class="lux-highlight-card__name">Combo Sandwich</h3>
+                    <p class="lux-highlight-card__desc">Léger, croquant et parfait pour une pause déjeuner.</p>
+                </div>
+            </a>
+            <a href="<?php echo htmlspecialchars($menuUrl); ?>" class="lux-highlight-card">
+                <div class="lux-highlight-card__img">
+                    <img src="../assets/images/plats_principaux/makoso.jpg" alt="Plat principal" loading="lazy" decoding="async">
+                </div>
+                <div class="lux-highlight-card__body">
+                    <h3 class="lux-highlight-card__name">Plats signatures</h3>
+                    <p class="lux-highlight-card__desc">Recettes maison préparées à la commande par notre cuisine.</p>
+                </div>
+            </a>
+            <a href="<?php echo htmlspecialchars($menuUrl); ?>" class="lux-highlight-card">
+                <div class="lux-highlight-card__img">
+                    <img src="../assets/images/desserts/tarte aux pommes.jpg" alt="Dessert" loading="lazy" decoding="async">
+                </div>
+                <div class="lux-highlight-card__body">
+                    <h3 class="lux-highlight-card__name">Desserts &amp; douceurs</h3>
+                    <p class="lux-highlight-card__desc">Terminez votre repas sur une note sucrée et gourmande.</p>
+                </div>
+            </a>
+        </div>
+    </section>
 
     <?php ClientPage::footer(); ?>
 
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
     <script>
+        (function () {
+            const nav = document.querySelector('.client-navbar');
+            if (!nav) return;
+            const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 24);
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        })();
+    </script>
+    <script>
         function updateCartBadge() {
             fetch('get_cart_count.php')
                 .then(response => response.json())
                 .then(data => {
-                    const cartBadge = document.getElementById('cartCount');
-                    if (cartBadge) {
+                    document.querySelectorAll('[data-cart-count]').forEach(function (cartBadge) {
                         cartBadge.textContent = data.count;
-                        cartBadge.style.display = data.count === 0 ? 'none' : 'block';
-                    }
+                        cartBadge.style.display = data.count === 0 ? 'none' : 'inline-block';
+                    });
                 });
         }
         document.addEventListener('DOMContentLoaded', updateCartBadge);

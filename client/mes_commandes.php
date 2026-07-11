@@ -133,10 +133,11 @@ if ($result !== null) {
         }
 
     </style>
-
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
+    <link rel="stylesheet" href="../assets/css/client-pages-theme.css?v=1">
 </head>
 
-<body class="client-site">
+<body class="client-site client-luxury">
 
     <?php ClientPage::nav('mes_commandes'); ?>
 
@@ -162,7 +163,7 @@ if ($result !== null) {
 
             <p class="text-secondary small mb-3">Aucune commande récente.</p>
 
-            <a href="<?php echo htmlspecialchars($menuUrl); ?>" class="btn btn-primary btn-sm" style="background:#ff6f1f;border-color:#ff6f1f;">
+            <a href="<?php echo htmlspecialchars($menuUrl); ?>" class="btn btn-primary btn-sm">
 
                 Voir le menu
 
@@ -242,7 +243,7 @@ if ($result !== null) {
 
             </a>
 
-            <a href="<?php echo htmlspecialchars($menuUrl); ?>" class="btn btn-primary btn-sm" style="background:#ff6f1f;border-color:#ff6f1f;">
+            <a href="<?php echo htmlspecialchars($menuUrl); ?>" class="btn btn-primary btn-sm">
 
                 <i class="bi bi-plus-lg"></i> Menu
 

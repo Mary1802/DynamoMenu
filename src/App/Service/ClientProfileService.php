@@ -53,9 +53,14 @@ final class ClientProfileService
             return;
         }
 
+        $returnTo = $this->peekReturnAfterIdentification();
+        $target = $returnTo === 'confirmation.php'
+            ? $this->tables->link('confirmation.php')
+            : $this->tables->link('index.php');
+
         header('Cache-Control: no-store, no-cache, must-revalidate');
         header('Pragma: no-cache');
-        header('Location: index.php', true, $_SERVER['REQUEST_METHOD'] === 'POST' ? 303 : 302);
+        header('Location: ' . $target, true, $_SERVER['REQUEST_METHOD'] === 'POST' ? 303 : 302);
         exit;
     }
 
@@ -118,18 +123,51 @@ final class ClientProfileService
         return ['success' => true];
     }
 
-    public function requireWhenTableBound(): void
+    public function requireBeforeOrderValidation(): void
     {
-        if ($this->tables->session() === null || $this->isComplete()) {
+        if ($this->isComplete()) {
             return;
         }
 
-        $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-        if ($script === 'identite.php') {
-            return;
-        }
-
+        $this->setReturnAfterIdentification('confirmation.php');
         header('Location: identite.php', true, 302);
         exit;
+    }
+
+    public function setReturnAfterIdentification(string $path): void
+    {
+        $this->session->start();
+        $_SESSION['identite_return_to'] = $path;
+    }
+
+    public function peekReturnAfterIdentification(): string
+    {
+        $this->session->start();
+        $url = trim((string) ($_SESSION['identite_return_to'] ?? ''));
+
+        return $url !== '' ? $url : 'index.php';
+    }
+
+    public function consumeReturnAfterIdentification(): string
+    {
+        $this->session->start();
+        $url = trim((string) ($_SESSION['identite_return_to'] ?? ''));
+        unset($_SESSION['identite_return_to']);
+
+        return $url !== '' ? $url : 'index.php';
+    }
+
+    public function clear(): void
+    {
+        $this->session->start();
+        unset(
+            $_SESSION['client_nom'],
+            $_SESSION['client_prenom'],
+            $_SESSION['client_email'],
+            $_SESSION['client_telephone'],
+            $_SESSION['id_client'],
+            $_SESSION['client_identite_locked'],
+            $_SESSION['identite_return_to'],
+        );
     }
 }

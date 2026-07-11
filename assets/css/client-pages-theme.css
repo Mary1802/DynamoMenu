@@ -1,0 +1,258 @@
+/**
+ * Palette client unifiée (or / sombre) — pages hors accueil & menu.
+ * Charge après les styles inline de chaque page.
+ */
+body.client-luxury {
+    --page-bg: #070707;
+    --page-bg-soft: #121212;
+    --page-card: rgba(22, 22, 22, 0.94);
+    --page-card-border: rgba(197, 160, 89, 0.22);
+    --page-surface: rgba(255, 255, 255, 0.04);
+    --page-text: #f2f0eb;
+    --page-text-muted: rgba(242, 240, 235, 0.62);
+    --page-gradient: radial-gradient(circle at top left, rgba(197, 160, 89, 0.1), transparent 28%),
+        linear-gradient(180deg, #070707 0%, #121212 100%);
+}
+
+/* Fond & typo communs (pages sombres) */
+body.client-luxury:not(.client-luxury-light) {
+    background: var(--page-gradient) !important;
+    color: var(--page-text) !important;
+    font-family: var(--lux-font);
+}
+
+body.client-luxury:not(.client-luxury-light)::before {
+    display: none !important;
+}
+
+body.client-luxury .btn-primary,
+body.client-luxury .btn-confirm,
+body.client-luxury .btn-continue,
+body.client-luxury .btn-payer:not(.btn-payer--muted) {
+    background: linear-gradient(135deg, var(--lux-gold) 0%, var(--lux-gold-dark) 100%) !important;
+    border-color: var(--lux-gold-dark) !important;
+    color: #0a0a0a !important;
+    box-shadow: 0 8px 24px rgba(197, 160, 89, 0.22) !important;
+}
+
+body.client-luxury .btn-primary:hover,
+body.client-luxury .btn-confirm:hover,
+body.client-luxury .btn-continue:hover,
+body.client-luxury .btn-payer:not(.btn-payer--muted):hover {
+    background: linear-gradient(135deg, var(--lux-gold-light) 0%, var(--lux-gold) 100%) !important;
+    color: #0a0a0a !important;
+}
+
+body.client-luxury .btn-outline-light {
+    border-color: var(--lux-gold) !important;
+    color: var(--lux-gold) !important;
+}
+
+body.client-luxury .btn-outline-light:hover {
+    background: rgba(197, 160, 89, 0.12) !important;
+    color: var(--lux-gold-light) !important;
+}
+
+body.client-luxury .section-title {
+    border-bottom-color: var(--lux-gold) !important;
+    color: var(--page-text) !important;
+}
+
+body.client-luxury .form-control:focus,
+body.client-luxury .form-select:focus {
+    border-color: var(--lux-gold) !important;
+    box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.18) !important;
+}
+
+/* Panier */
+body.client-luxury .panier-items,
+body.client-luxury .panier-summary {
+    background: var(--page-card) !important;
+    border-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .panier-item {
+    border-left-color: var(--lux-gold) !important;
+}
+
+body.client-luxury .item-price,
+body.client-luxury .summary-total .summary-value {
+    color: var(--lux-gold) !important;
+}
+
+body.client-luxury .quantity-btn:hover {
+    background: var(--lux-gold) !important;
+    border-color: var(--lux-gold) !important;
+    color: #0a0a0a !important;
+}
+
+/* Mes commandes */
+body.client-luxury .order-card {
+    background: var(--page-card) !important;
+    border-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .order-statut {
+    background: rgba(197, 160, 89, 0.14) !important;
+    color: var(--lux-gold-light) !important;
+}
+
+/* Identité client */
+body.client-luxury .identite-card {
+    background: var(--page-card) !important;
+    border-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .table-badge {
+    background: rgba(197, 160, 89, 0.12) !important;
+    border-color: var(--page-card-border) !important;
+    color: var(--page-text) !important;
+}
+
+/* Confirmation commande */
+body.client-luxury .confirmation-card,
+body.client-luxury .recap-panier,
+body.client-luxury .client-info-box,
+body.client-luxury .confirmation-hero {
+    background: var(--page-card) !important;
+    border-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .recap-total {
+    color: var(--lux-gold) !important;
+    border-top-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .recap-item-price {
+    color: var(--lux-gold-light) !important;
+}
+
+/* Succès commande */
+body.client-luxury .success-card {
+    background: var(--page-card) !important;
+    border-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .success-icon {
+    background: rgba(197, 160, 89, 0.14) !important;
+    color: var(--lux-gold) !important;
+}
+
+body.client-luxury .success-title {
+    color: var(--lux-gold) !important;
+}
+
+body.client-luxury .commande-info,
+body.client-luxury .info-box {
+    border-color: var(--lux-border-soft) !important;
+}
+
+body.client-luxury .info-value.highlight,
+body.client-luxury .montant-total {
+    color: var(--lux-gold) !important;
+}
+
+/* Suivi commande */
+body.client-luxury .suivi-card {
+    background: var(--page-card) !important;
+    border-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .status-pill {
+    background: rgba(197, 160, 89, 0.14) !important;
+    color: var(--lux-gold-light) !important;
+}
+
+body.client-luxury .total-row {
+    color: var(--lux-gold) !important;
+    border-top-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .countdown-ring {
+    background: rgba(197, 160, 89, 0.08) !important;
+    border-color: var(--page-card-border) !important;
+}
+
+body.client-luxury .countdown-time {
+    color: var(--lux-gold) !important;
+}
+
+/* Pages claires (paiement) — accents or uniquement */
+body.client-luxury.client-luxury-light {
+    background: #f4f3f0 !important;
+    color: #1a1a1a !important;
+    font-family: var(--lux-font);
+}
+
+body.client-luxury.client-luxury-light::before {
+    display: none !important;
+}
+
+body.client-luxury.client-luxury-light .section-title {
+    border-bottom-color: var(--lux-gold) !important;
+    color: #1a1a1a !important;
+}
+
+body.client-luxury.client-luxury-light .total-section,
+body.client-luxury.client-luxury-light .paiement-option.selected {
+    color: var(--lux-gold-dark) !important;
+    border-color: var(--lux-gold) !important;
+}
+
+body.client-luxury.client-luxury-light .paiement-option:hover,
+body.client-luxury.client-luxury-light .paiement-option.selected {
+    border-color: var(--lux-gold) !important;
+    background: rgba(197, 160, 89, 0.06) !important;
+}
+
+body.client-luxury.client-luxury-light .status-badge.pending {
+    background: rgba(197, 160, 89, 0.15) !important;
+    color: var(--lux-gold-dark) !important;
+}
+
+body.client-luxury.client-luxury-light .btn-primary,
+body.client-luxury.client-luxury-light .btn-payer:not(.btn-payer--muted) {
+    color: #0a0a0a !important;
+}
+
+body.client-luxury.client-luxury-light .instructions-box {
+    background: rgba(197, 160, 89, 0.08) !important;
+    border-color: rgba(197, 160, 89, 0.25) !important;
+}
+
+body.client-luxury.client-luxury-light .confirmation-card,
+body.client-luxury.client-luxury-light .paiement-card,
+body.client-luxury.client-luxury-light .demande-info {
+    border: 1px solid rgba(197, 160, 89, 0.15);
+}
+
+body.client-luxury.client-luxury-light .navbar-brand {
+    color: #1a1a1a !important;
+    font-family: var(--lux-font);
+    font-weight: 600;
+}
+
+body.client-luxury .panier-total-amount {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--lux-gold) !important;
+}
+
+body.client-luxury .client-brand-accent {
+    color: var(--lux-gold) !important;
+    font-weight: 700;
+}
+
+body.client-luxury .client-brand-name {
+    color: var(--page-text) !important;
+    margin-left: 0.15rem;
+}
+
+body.client-luxury.client-luxury-light .client-brand-name--dark {
+    color: #1a1a1a !important;
+}
+
+body.client-luxury .confirmation-hero {
+    background: var(--page-surface) !important;
+    border: 1px solid var(--page-card-border) !important;
+}

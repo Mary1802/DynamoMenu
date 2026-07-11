@@ -230,12 +230,14 @@ if ($result === null || empty($result)) {
             margin-left: 0.25rem;
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
+    <link rel="stylesheet" href="../assets/css/client-pages-theme.css?v=1">
 </head>
-<body>
+<body class="client-site client-luxury">
     <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-relative py-3">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="index.php">
-                <span style="color: #ff6f1f; font-weight: 700;">Dynamo</span><span>Menu</span>
+                <span class="client-brand-accent">Dynamo</span><span class="client-brand-name">Menu</span>
             </a>
         </div>
     </nav>

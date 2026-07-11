@@ -35,6 +35,7 @@ final class ClientNavView
             'tableLink' => static fn (string $path): string => $tables->link($path),
             'hasOrders' => $hasOrders,
             'mesCommandesUrl' => $tables->link('mes_commandes.php'),
+            'aboutHref' => $tables->link('index.php') . '#apropos',
         ]);
 
     }

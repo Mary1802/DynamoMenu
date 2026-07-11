@@ -5,7 +5,7 @@
             <i class="bi bi-exclamation-triangle"></i>
         </div>
         <div class="client-table-welcome__content">
-            <p class="client-table-welcome__eyebrow">Scan requis</p>
+            <p class="client-table-welcome__eyebrow">Accès table</p>
             <p class="client-table-welcome__title">Table non reconnue</p>
             <p class="client-table-welcome__text"><?php echo htmlspecialchars($message); ?></p>
         </div>

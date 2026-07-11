@@ -75,7 +75,7 @@ final class ClientPage
 
     public static function requireClientProfile(): void
     {
-        Application::getInstance()->clientProfileService()->requireWhenTableBound();
+        Application::getInstance()->clientProfileService()->requireBeforeOrderValidation();
     }
 
     public static function bootstrapTableContext(): void

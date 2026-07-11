@@ -83,24 +83,30 @@ if ($result !== null) {
             border: 1px solid rgba(248,215,218,0.35);
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
+    <link rel="stylesheet" href="../assets/css/client-pages-theme.css?v=1">
 </head>
-<body>
+<body class="client-site client-luxury">
     <div class="identite-container">
         <div class="text-center mb-4">
             <a href="<?php echo htmlspecialchars($indexUrl); ?>" class="text-decoration-none">
-                <span style="color:#ff6f1f;font-weight:700;font-size:1.5rem;">Dynamo</span><span style="color:#f8fafc;font-weight:700;font-size:1.5rem;">Menu</span>
+                <span class="client-brand-accent">Dynamo</span><span class="client-brand-name client-brand-name--dark">Menu</span>
             </a>
         </div>
 
         <div class="identite-card">
             <div class="table-badge">
-                <i class="bi bi-qr-code-scan" aria-hidden="true"></i>
+                <i class="bi bi-table" aria-hidden="true"></i>
                 <?php echo htmlspecialchars($tableCtx['label']); ?>
             </div>
 
-            <h1 class="h3 mb-2">Bienvenue !</h1>
+            <h1 class="h3 mb-2">Vos informations</h1>
             <p class="text-secondary mb-4">
-                Avant d'accéder au menu, merci de renseigner vos coordonnées. Elles seront utilisées pour votre commande et le suivi.
+                <?php if (!empty($isCheckout)): ?>
+                Avant de valider votre commande, merci de renseigner vos coordonnées. Elles seront utilisées pour le suivi et la facturation.
+                <?php else: ?>
+                Merci de renseigner vos coordonnées pour votre commande et le suivi.
+                <?php endif; ?>
             </p>
 
             <?php if ($error !== null): ?>
@@ -132,7 +138,7 @@ if ($result !== null) {
                     </div>
                 </div>
                 <button type="submit" name="enregistrer_identite" class="btn-continue mt-4">
-                    Continuer vers l'accueil
+                    <?php echo !empty($isCheckout) ? 'Continuer vers la validation' : 'Continuer'; ?>
                 </button>
             </form>
         </div>

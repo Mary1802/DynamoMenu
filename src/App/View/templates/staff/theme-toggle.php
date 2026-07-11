@@ -1,14 +1,8 @@
-<label class="theme-toggle">
-    <span class="theme-toggle-side theme-toggle-side--dark">
-        <i class="bi bi-moon-stars" aria-hidden="true"></i>
-        <span>Sombre</span>
-    </span>
-    <span class="theme-toggle-control">
-        <input type="checkbox" class="theme-toggle-input" data-theme-toggle role="switch" aria-label="Activer le mode clair">
-        <span class="theme-toggle-switch" aria-hidden="true"><span class="theme-toggle-knob"></span></span>
-    </span>
-    <span class="theme-toggle-side theme-toggle-side--light">
-        <i class="bi bi-sun" aria-hidden="true"></i>
-        <span>Clair</span>
+<label class="theme-switch" title="Changer de thème">
+    <input type="checkbox" class="theme-switch-input" data-theme-toggle role="switch" aria-label="Activer le mode clair">
+    <span class="theme-switch-track" aria-hidden="true">
+        <i class="bi bi-moon-stars-fill theme-switch-icon theme-switch-icon--dark" aria-hidden="true"></i>
+        <span class="theme-switch-thumb"></span>
+        <i class="bi bi-sun-fill theme-switch-icon theme-switch-icon--light" aria-hidden="true"></i>
     </span>
 </label>

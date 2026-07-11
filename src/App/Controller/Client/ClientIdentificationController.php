@@ -123,15 +123,14 @@ final class ClientIdentificationController
 
 
             if ($result['success']) {
+                $returnTo = $this->profile->consumeReturnAfterIdentification();
+                $redirect = $this->tables->link($returnTo);
 
                 header('Cache-Control: no-store, no-cache, must-revalidate');
-
                 header('Pragma: no-cache');
-
-                header('Location: index.php', true, 303);
+                header('Location: ' . $redirect, true, 303);
 
                 exit;
-
             }
 
 
@@ -160,22 +159,18 @@ final class ClientIdentificationController
 
 
 
+        $returnTo = $this->profile->peekReturnAfterIdentification();
+        $isCheckout = $returnTo === 'confirmation.php';
+
         return [
-
             'error' => $error,
-
             'tableCtx' => $tableCtx,
-
             'nom' => $existing['nom'],
-
             'prenom' => $existing['prenom'],
-
             'email' => $existing['email'],
-
             'telephone' => $existing['telephone'],
-
             'indexUrl' => $this->tables->link('index.php'),
-
+            'isCheckout' => $isCheckout,
         ];
 
     }

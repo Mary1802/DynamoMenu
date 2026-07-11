@@ -16,7 +16,7 @@ final class AdminLayoutView
         if ($items === []) {
             $items = [
                 'dashboard' => ['url' => 'dashboard.php', 'icon' => 'bi-speedometer2', 'label' => 'Dashboard'],
-                'tables' => ['url' => 'tables.php', 'icon' => 'bi-qr-code', 'label' => 'Tables & QR'],
+                'tables' => ['url' => 'tables.php', 'icon' => 'bi-table', 'label' => 'Tables'],
                 'commandes' => ['url' => 'commandes.php', 'icon' => 'bi-receipt', 'label' => 'Commandes'],
                 'plats' => ['url' => 'plats.php', 'icon' => 'bi-grid', 'label' => 'Menu (plats)'],
                 'clients' => ['url' => 'clients.php', 'icon' => 'bi-people', 'label' => 'Clients'],

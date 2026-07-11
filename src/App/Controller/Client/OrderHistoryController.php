@@ -35,7 +35,6 @@ final class OrderHistoryController
     {
         $this->session->start();
         $this->tables->bootstrap();
-        Application::getInstance()->clientProfileService()->requireWhenTableBound();
 
         $nums = self::sessionOrderIds();
         $rows = $this->commandes->findClientOrderSummaries($nums);

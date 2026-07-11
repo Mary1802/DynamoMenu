@@ -62,40 +62,35 @@ final class TableContextService
 
         $code = trim((string) ($_GET['t'] ?? $_GET['table'] ?? ''));
 
-        if ($code === '') {
+        if ($code !== '') {
+            $table = $this->tables->findByCode($code);
+            if ($table) {
+                $this->bindTable($table);
 
-            return;
-
-        }
-
-
-
-        $table = $this->tables->findByCode($code);
-
-        if (!$table) {
-
-            if (empty($_SESSION['num_table'])) {
-
-                $_SESSION['table_error'] = 'QR code invalide ou table désactivée.';
-
+                return;
             }
 
+            if (!empty($_SESSION['num_table'])) {
+                return;
+            }
 
-
-            return;
-
+            $_SESSION['table_error'] = 'Table introuvable ou désactivée.';
         }
 
+        if (!empty($_SESSION['num_table'])) {
+            return;
+        }
 
+        $this->bindTable($this->tables->ensureDefaultTable(1, 4, 'Table 1'));
+    }
 
+    /** @param array<string, mixed> $table */
+    private function bindTable(array $table): void
+    {
         unset($_SESSION['table_error']);
-
         $_SESSION['table_code'] = $table['code_table'];
-
         $_SESSION['num_table'] = (int) $table['num_table'];
-
         $_SESSION['table_label'] = $table['libelle'] ?: ('Table ' . $table['num_table']);
-
     }
 
 
@@ -156,17 +151,11 @@ final class TableContextService
 
 
 
-    public function redirectAfterScan(string $target = 'index.php'): void
+    public function redirectAfterTableBind(string $target = 'index.php'): void
     {
         $code = trim((string) ($_GET['t'] ?? $_GET['table'] ?? ''));
         if ($code === '' || !$this->session()) {
             return;
-        }
-
-        $profile = Application::getInstance()->clientProfileService();
-        if (!$profile->isComplete()) {
-            header('Location: identite.php');
-            exit;
         }
 
         // La table est déjà en session : retirer ?t= de l'URL pour éviter une boucle de redirection.

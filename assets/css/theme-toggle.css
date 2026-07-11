@@ -1,0 +1,98 @@
+/* Interrupteur thème clair / sombre — style compact (apps pro) */
+.theme-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.theme-switch-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.theme-switch-track {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 64px;
+    height: 32px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+html.theme-light .theme-switch-track {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.theme-switch-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.12);
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.theme-switch-input:checked + .theme-switch-track .theme-switch-thumb {
+    transform: translateX(32px);
+}
+
+.theme-switch-icon {
+    position: relative;
+    z-index: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 0.82rem;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.42);
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+html.theme-light .theme-switch-icon {
+    color: rgba(0, 0, 0, 0.32);
+}
+
+html:not(.theme-light) .theme-switch-input:not(:checked) + .theme-switch-track .theme-switch-icon--dark,
+html.theme-light .theme-switch-input:checked + .theme-switch-track .theme-switch-icon--light {
+    color: #ff6f1f;
+}
+
+html.theme-light .theme-switch-input:checked + .theme-switch-track .theme-switch-icon--light {
+    color: #c45f0a;
+}
+
+.theme-switch-input:focus-visible + .theme-switch-track {
+    outline: 2px solid #ff6f1f;
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .theme-switch-thumb,
+    .theme-switch-track,
+    .theme-switch-icon {
+        transition: none;
+    }
+}

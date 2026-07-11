@@ -425,8 +425,10 @@ if ($result !== null) {
             }
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
+    <link rel="stylesheet" href="../assets/css/client-pages-theme.css?v=1">
 </head>
-<body class="client-site">
+<body class="client-site client-luxury">
     <?php ClientPage::nav('panier'); ?>
 
     <main class="container-fluid px-3 px-md-4 py-4 py-md-5">
@@ -442,7 +444,7 @@ if ($result !== null) {
         <div class="empty-panier">
             <h3>Votre panier est vide</h3>
             <p>Ajoutez des plats et boissons pour commencer votre commande</p>
-            <a href="<?php echo htmlspecialchars(ClientPage::tableLink('menu.php')); ?>" class="btn btn-primary mt-3" style="background: #ff6f1f; border-color: #ff6f1f;">
+            <a href="<?php echo htmlspecialchars(ClientPage::tableLink('menu.php')); ?>" class="btn btn-primary mt-3">
                 Voir le menu
             </a>
         </div>
@@ -530,7 +532,7 @@ if ($result !== null) {
 
                 <div class="summary-row" style="background: rgba(255,255,255,0.08); border-radius: 10px; padding: 1rem; margin-top: 0.5rem;">
                     <span style="font-size: 1.1rem; font-weight: 700;">Total TTC à payer</span>
-                    <span style="font-size: 1.25rem; font-weight: 700; color: #ff6f1f;"><?php echo Money::format($total_ttc); ?></span>
+                    <span class="panier-total-amount"><?php echo Money::format($total_ttc); ?></span>
                 </div>
 
                 <div class="text-center mt-4 pt-3" style="border-top: 1px solid rgba(255,255,255,0.1);">
@@ -539,18 +541,18 @@ if ($result !== null) {
                             ← Continuer mes achats
                         </a>
                         <?php if ($tableCtx): ?>
-                        <a href="<?php echo htmlspecialchars(ClientPage::tableLink('confirmation.php')); ?>" class="btn btn-primary btn-lg px-4" style="background: #ff6f1f; border-color: #ff6f1f;">
+                        <a href="<?php echo htmlspecialchars(ClientPage::tableLink('confirmation.php')); ?>" class="btn btn-primary btn-lg px-4">
                             Confirmer la commande
                         </a>
                         <?php else: ?>
-                        <a href="index.php?err=table" class="btn btn-warning btn-lg px-4">Scanner le QR de la table</a>
+                        <a href="index.php" class="btn btn-warning btn-lg px-4">Retour à l'accueil</a>
                         <?php endif; ?>
                     </div>
                     <p class="text-light mt-3 mb-0 small">
                         <?php if ($tableCtx): ?>
-                        Commande pour <strong><?php echo htmlspecialchars($tableCtx['label']); ?></strong> — pas de nouveau scan nécessaire.
+                        Commande pour <strong><?php echo htmlspecialchars($tableCtx['label']); ?></strong>.
                         <?php else: ?>
-                        Un scan QR sur votre table suffit pour toute la visite.
+                        Utilisez l'appareil configuré sur votre table pour commander.
                         <?php endif; ?>
                     </p>
                 </div>
@@ -571,16 +573,10 @@ if ($result !== null) {
             fetch('get_cart_count.php')
                 .then(response => response.json())
                 .then(data => {
-                    const cartBadge = document.getElementById('cartCount');
-                    if (cartBadge) {
+                    document.querySelectorAll('[data-cart-count]').forEach(function (cartBadge) {
                         cartBadge.textContent = data.count;
-                        // Cacher le badge si 0
-                        if (data.count === 0) {
-                            cartBadge.style.display = 'none';
-                        } else {
-                            cartBadge.style.display = 'block';
-                        }
-                    }
+                        cartBadge.style.display = data.count === 0 ? 'none' : 'inline-block';
+                    });
                 });
         }
         
@@ -595,9 +591,9 @@ if ($result !== null) {
             checkbox.addEventListener('change', function() {
                 const label = this.nextElementSibling;
                 if (this.checked) {
-                    label.style.background = '#ff6f1f';
-                    label.style.color = '#111';
-                    label.style.borderColor = '#ff6f1f';
+                    label.style.background = '#c5a059';
+                    label.style.color = '#0a0a0a';
+                    label.style.borderColor = '#c5a059';
                 } else {
                     label.style.background = 'rgba(255,255,255,0.08)';
                     label.style.color = '#e5e7eb';

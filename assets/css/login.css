@@ -48,37 +48,12 @@ html.theme-light body.login-page {
     z-index: 20;
 }
 
-.login-theme-bar .theme-toggle {
-    padding: 0.45rem 0.75rem;
-    border: 1px solid var(--login-switch-border);
-    border-radius: 8px;
-    background: var(--login-switch-bg);
-    gap: 0.55rem;
-}
-
-.login-theme-bar .theme-toggle-side {
-    font-size: 0.85rem;
-    color: var(--login-switch-text);
-}
-
-html:not(.theme-light) .login-theme-bar .theme-toggle-side--dark {
-    color: #ff6f1f;
-}
-
-html.theme-light .login-theme-bar .theme-toggle-side--light {
-    color: #c45f0a;
-}
-
-.login-theme-bar .theme-toggle-switch {
-    background: var(--login-switch-border);
-}
-
-html.theme-light .login-theme-bar .theme-toggle-input:checked + .theme-toggle-switch {
-    background: #c45f0a;
-}
-
-html:not(.theme-light) .login-theme-bar .theme-toggle-input:checked + .theme-toggle-switch {
-    background: #ff6f1f;
+.login-shell {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 .login-container {
@@ -232,19 +207,44 @@ html.theme-light .login-page .login-init-link {
 }
 
 @media (max-width: 480px) {
-    .login-theme-bar {
-        top: 0.65rem;
-        right: 0.65rem;
-        left: 0.65rem;
-        display: flex;
-        justify-content: flex-end;
+    body.login-page {
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+        padding: 1rem;
     }
 
-    .login-theme-bar .theme-toggle-side span {
-        display: none;
+    .login-shell {
+        gap: 1.15rem;
+    }
+
+    .login-theme-bar {
+        position: static;
+        align-self: flex-end;
     }
 
     .login-container {
-        padding: 28px 22px;
+        padding: 24px 20px;
+    }
+
+    .login-header {
+        margin-bottom: 18px;
+    }
+
+    .login-header h1 {
+        font-size: 1.55rem;
+    }
+
+    .login-page .form-group {
+        margin-bottom: 14px;
+    }
+
+    .login-page .back-link {
+        margin-top: 14px;
+    }
+
+    .login-page .login-hint {
+        margin-top: 0.65rem !important;
+        font-size: 0.82rem;
     }
 }

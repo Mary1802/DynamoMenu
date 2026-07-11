@@ -6,7 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Core\Application;
 use App\Repository\TableRepository;
-use App\Service\QrService;
+use App\Service\TableCodeService;
 use PDOException;
 
 final class TableController
@@ -39,9 +39,9 @@ final class TableController
                     $next = (int) Application::getInstance()->db()->query(
                         'SELECT COALESCE(MAX(num_table), 0) + 1 FROM table_restaurant'
                     )->fetchColumn();
-                    $code = QrService::generateTableCode($next);
+                    $code = TableCodeService::generateTableCode($next);
                     $num = $this->tables->create($places, $libelle !== '' ? $libelle : null, $code);
-                    $message = "Table n°{$num} créée avec QR.";
+                    $message = "Table n°{$num} créée.";
                 } catch (PDOException $e) {
                     $error = $e->getMessage();
                 }
@@ -54,9 +54,9 @@ final class TableController
 
             if (isset($post['regenerate_code'])) {
                 $num = (int) $post['num_table'];
-                $code = QrService::generateTableCode($num);
+                $code = TableCodeService::generateTableCode($num);
                 $this->tables->updateCode($num, $code);
-                $message = "Nouveau QR généré pour la table {$num}.";
+                $message = "Nouveau code d'accès généré pour la table {$num}.";
             }
 
             if (isset($post['update_table'])) {
@@ -86,70 +86,6 @@ final class TableController
             'message' => $message,
             'error' => $error,
             'tables' => $this->tables->findAll(),
-        ];
-    }
-
-    /**
-     * @return array{
-     *   stickers: list<array{num_table:int,label:string,places:int,code:string,url:string,qr_img:string,actif:bool}>,
-     *   printAll: bool
-     * }|null
-     */
-    public function printStickers(array $get): ?array
-    {
-        $this->tables->ensureSchema();
-        $this->tables->assignMissingCodes();
-
-        $qr = Application::getInstance()->qrService();
-        $all = isset($get['all']);
-        $numTable = isset($get['table']) ? (int) $get['table'] : 0;
-
-        if (!$all && $numTable <= 0) {
-            return null;
-        }
-
-        $rows = $this->tables->findAll();
-        if (!$all) {
-            $rows = array_values(array_filter(
-                $rows,
-                static fn(array $row): bool => (int) ($row['num_table'] ?? 0) === $numTable
-            ));
-        }
-
-        if ($rows === []) {
-            return null;
-        }
-
-        $stickers = [];
-        foreach ($rows as $t) {
-            $code = trim((string) ($t['code_table'] ?? ''));
-            if ($code === '') {
-                continue;
-            }
-
-            $num = (int) $t['num_table'];
-            $libelle = trim((string) ($t['libelle'] ?? ''));
-            $label = $libelle !== '' ? $libelle : ('Table ' . $num);
-            $url = $qr->tableEntryUrl($code);
-
-            $stickers[] = [
-                'num_table' => $num,
-                'label' => $label,
-                'places' => (int) ($t['nombre_place'] ?? 0),
-                'code' => $code,
-                'url' => $url,
-                'qr_img' => QrService::printImageUrl($url),
-                'actif' => (bool) (int) ($t['actif'] ?? 0),
-            ];
-        }
-
-        if ($stickers === []) {
-            return null;
-        }
-
-        return [
-            'stickers' => $stickers,
-            'printAll' => $all,
         ];
     }
 }

@@ -8,66 +8,41 @@ $is = static fn (string $page): string => $active === $page ? ' active' : '';
 
 <header class="navbar navbar-expand-lg navbar-dark px-3 px-md-4 py-2 py-md-3 client-navbar">
 
-    <a class="navbar-brand fw-bold text-white" href="<?php echo htmlspecialchars($tableLink('index.php')); ?>">DynamoMenu</a>
-
-    <?php if ($tableCtx): ?>
-
-    <span class="client-table-badge d-none d-sm-inline-flex"><?php echo htmlspecialchars($tableCtx['label']); ?></span>
-
-    <?php endif; ?>
-
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Menu">
-
+    <button class="navbar-toggler d-lg-none" type="button" id="clientNavToggle" aria-controls="clientNavDrawer" aria-expanded="false" aria-label="Menu">
         <span class="navbar-toggler-icon"></span>
-
     </button>
 
-    <div class="collapse navbar-collapse" id="navMenu">
+    <a class="navbar-brand fw-bold text-white ms-auto ms-lg-0" href="<?php echo htmlspecialchars($tableLink('index.php')); ?>">
+        Dynamo<span>Menu</span>
+        <?php if ($tableCtx): ?>
+        <span class="client-table-badge">Table <?php echo (int) $tableCtx['num_table']; ?></span>
+        <?php endif; ?>
+    </a>
 
-        <ul class="navbar-nav ms-auto align-items-lg-center">
-
-            <li class="nav-item"><a class="nav-link text-white<?php echo $is('index'); ?>" href="<?php echo htmlspecialchars($tableLink('index.php')); ?>">Accueil</a></li>
-
-            <li class="nav-item"><a class="nav-link text-white<?php echo $is('menu'); ?>" href="<?php echo htmlspecialchars($tableLink('menu.php')); ?>"<?php echo $active === 'menu' ? ' aria-current="page"' : ''; ?>>Menu</a></li>
-
-            <?php if (!empty($hasOrders)): ?>
-            <li class="nav-item"><a class="nav-link text-white<?php echo $is('mes_commandes'); ?>" href="<?php echo htmlspecialchars($mesCommandesUrl ?? $tableLink('mes_commandes.php')); ?>">Mes commandes</a></li>
-            <?php endif; ?>
-
-            <li class="nav-item">
-
-                <a class="nav-link text-white position-relative<?php echo $is('panier'); ?>" href="<?php echo htmlspecialchars($tableLink('panier.php')); ?>">
-
-                    Panier
-
-                    <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger client-cart-badge">0</span>
-
-                </a>
-
-            </li>
-
-            <li class="nav-item"><a class="nav-link text-white" href="../login.php">Employé</a></li>
-
-        </ul>
+    <div class="collapse navbar-collapse d-none d-lg-flex" id="clientNavDesktop">
+        <?php require __DIR__ . '/nav-links.php'; ?>
 
         <?php if ($tableCtx && !in_array($active, ['menu', 'panier', 'mes_commandes'], true)): ?>
-
         <a class="btn btn-primary btn-sm ms-lg-3 mt-3 mt-lg-0 px-3 client-nav-commander" href="<?php echo htmlspecialchars($tableLink('menu.php')); ?>">Commander</a>
-
         <?php elseif (!$tableCtx): ?>
-
-        <span class="text-secondary small ms-lg-3 mt-2 mt-lg-0 d-block d-lg-inline">Scannez le QR de votre table</span>
-
+        <span class="text-secondary small ms-lg-3 mt-2 mt-lg-0 d-none d-lg-inline client-nav-hint">Utilisez l'appareil de votre table</span>
         <?php endif; ?>
-
     </div>
 
 </header>
 
-<?php if ($tableCtx): ?>
+<nav class="client-nav-drawer d-lg-none" id="clientNavDrawer" aria-label="Menu principal" aria-hidden="true">
+    <?php require __DIR__ . '/nav-links.php'; ?>
 
-<?php \App\View\Client\ClientNavView::tableStrip($tableCtx); ?>
+    <div class="client-nav-drawer-footer">
+        <?php if ($tableCtx && !in_array($active, ['menu', 'panier', 'mes_commandes'], true)): ?>
+        <a class="btn btn-primary btn-sm px-3 client-nav-commander" href="<?php echo htmlspecialchars($tableLink('menu.php')); ?>">Commander</a>
+        <?php elseif (!$tableCtx): ?>
+        <p class="client-nav-hint mb-0">Utilisez l'appareil de votre table</p>
+        <?php endif; ?>
+    </div>
+</nav>
 
-<?php endif; ?>
+<div class="client-nav-backdrop d-lg-none" id="clientNavBackdrop" aria-hidden="true"></div>
 
-
+<script src="../assets/js/client-nav.js?v=2" defer></script>

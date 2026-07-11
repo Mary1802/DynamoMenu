@@ -20,15 +20,17 @@ if ($result !== null) {
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/login.css?v=6">
+    <link rel="stylesheet" href="assets/css/login.css?v=11">
+    <link rel="stylesheet" href="assets/css/theme-toggle.css?v=1">
     <?php ClientPage::csrfMetaTag(); ?>
 </head>
 <body class="login-page">
-    <div class="login-theme-bar">
-        <?php \App\View\Staff\DashboardLayoutView::themeToggle(); ?>
-    </div>
+    <div class="login-shell">
+        <div class="login-theme-bar">
+            <?php \App\View\Staff\DashboardLayoutView::themeToggle(); ?>
+        </div>
 
-    <div class="login-container">
+        <div class="login-container">
         <div class="login-header">
             <h1>DynamoMenu</h1>
             <p>Connexion Employé</p>
@@ -77,10 +79,11 @@ if ($result !== null) {
         <p class="login-hint text-secondary small mt-3 mb-0">
             Identifiants fournis par l'administrateur de l'établissement.
         </p>
+        </div>
     </div>
 
     <script src="assets/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/theme.js?v=2"></script>
+    <script src="assets/js/theme.js?v=3"></script>
     <script src="assets/js/csrf.js?v=1"></script>
 </body>
 </html>

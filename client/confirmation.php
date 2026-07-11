@@ -274,13 +274,15 @@ if ($result !== null) {
             color: rgba(226,232,240,0.72);
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
+    <link rel="stylesheet" href="../assets/css/client-pages-theme.css?v=1">
 </head>
-<body>
+<body class="client-site client-luxury">
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-relative py-3 confirmation-nav">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="index.php">
-                <span style="color: #ff6f1f; font-weight: 700;">Dynamo</span><span style="color: #f8fafc; margin-left: 0.25rem;">Menu</span>
+                <span class="client-brand-accent">Dynamo</span><span class="client-brand-name">Menu</span>
             </a>
             <div class="d-flex align-items-center">
                 <a href="panier.php" class="btn btn-outline-light">
@@ -292,7 +294,7 @@ if ($result !== null) {
     </nav>
 
     <div class="confirmation-container">
-        <div class="mb-4 p-4 rounded-4 confirmation-hero" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,111,31,0.15);">
+        <div class="mb-4 p-4 rounded-4 confirmation-hero">
             <h1 class="mb-2">Confirmation de commande</h1>
             <p class="mb-0">
                 Vérifiez votre commande, choisissez le mode de paiement et envoyez-la à la cuisine.
@@ -405,8 +407,8 @@ if ($result !== null) {
                 
                 if (this.checked) {
                     const label = this.nextElementSibling;
-                    label.style.borderColor = '#ff6f1f';
-                    label.style.background = 'rgba(255, 111, 31, 0.1)';
+                    label.style.borderColor = '#c5a059';
+                    label.style.background = 'rgba(197, 160, 89, 0.14)';
                 }
             });
         });
