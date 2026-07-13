@@ -27,8 +27,7 @@ if ($result !== null) {
         <div style="width: 42px;"></div>
     </header>
 
-    <div class="dashboard-shell dashboard-container">
-        <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
+    <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
             <div class="sidebar-brand">
                 <div class="brand-logo">DM</div>
                 <div class="brand-title">DynamoMenu</div>
@@ -67,6 +66,7 @@ if ($result !== null) {
             </div>
         </aside>
 
+    <div class="dashboard-shell dashboard-container">
         <!-- Main Content -->
         <main class="dashboard-main flex-grow-1">
             <!-- Header -->

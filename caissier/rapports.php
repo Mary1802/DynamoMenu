@@ -25,8 +25,7 @@ $nomsMois = ReportService::MONTH_NAMES;
         <div class="dashboard-topbar-brand">Dynamo<span>Menu</span></div>
         <div style="width:42px;"></div>
     </header>
-    <div class="dashboard-shell">
-        <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
+    <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
             <div class="sidebar-brand">
                 <div class="brand-logo">DM</div>
                 <div class="brand-title">DynamoMenu</div>
@@ -42,6 +41,7 @@ $nomsMois = ReportService::MONTH_NAMES;
                 <?php Dashboard::sidebarUserFooter('caissier'); ?>
             </div>
         </aside>
+    <div class="dashboard-shell">
         <main class="dashboard-main">
             <header class="dashboard-header">
                 <div class="header-title">
@@ -81,11 +81,11 @@ $nomsMois = ReportService::MONTH_NAMES;
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Cash</div>
-                    <div class="stat-value" style="font-size:1.35rem;"><?php echo Money::format((float) $rapport_mois['ca_especes']); ?></div>
+                    <div class="stat-value"><?php echo Money::format((float) $rapport_mois['ca_especes']); ?></div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Mobile money</div>
-                    <div class="stat-value" style="font-size:1.35rem;"><?php echo Money::format((float) $rapport_mois['ca_mobile']); ?></div>
+                    <div class="stat-value"><?php echo Money::format((float) $rapport_mois['ca_mobile']); ?></div>
                 </div>
             </div>
 

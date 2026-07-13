@@ -426,7 +426,7 @@ body.client-luxury .lux-btn-ghost:hover {
     font-size: clamp(2rem, 4.5vw, 3rem);
     font-weight: 600;
     color: var(--lux-gold);
-    margin-bottom: 0.5rem;
+    margin-bottom: 2rem;
 }
 
 .lux-menu-hero__title span {
@@ -531,7 +531,7 @@ body.client-luxury .menu-card-body .menu-desc {
 body.client-luxury .menu-card-footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 0.75rem;
     margin-top: 0.15rem;
 }
@@ -610,10 +610,6 @@ body.client-luxury .price {
     color: var(--lux-gold) !important;
     font-family: var(--lux-font);
     font-size: 1.15rem !important;
-}
-
-body.client-luxury .menu-card-footer-hint {
-    color: rgba(242, 240, 235, 0.4);
 }
 
 body.client-luxury .add-cart {
@@ -1355,10 +1351,6 @@ body.client-luxury .flavor-pick input:checked + span {
 
     body.client-luxury .menu-card-footer {
         flex-wrap: wrap;
-    }
-
-    body.client-luxury .menu-card-footer-hint {
-        display: none;
     }
 
     body.client-luxury .client-fab-cart {

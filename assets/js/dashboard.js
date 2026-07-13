@@ -41,32 +41,19 @@
             return window.matchMedia('(max-width: 991.98px)').matches;
         }
 
-        function followSidebarLink(link, e) {
+        function followSidebarLink(link) {
             if (!link || !isMobileNav()) {
                 return;
             }
-            var href = link.getAttribute('href');
-            if (!href || href === '#' || href.indexOf('javascript:') === 0) {
-                return;
-            }
-            if (e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
             closeSidebar();
-            window.setTimeout(function () {
-                window.location.href = href;
-            }, 0);
         }
 
         sidebar.addEventListener('click', function (e) {
             var link = e.target.closest('a.nav-link, a.sidebar-logout-btn');
             if (link) {
-                followSidebarLink(link, e);
+                followSidebarLink(link);
             }
-        }, true);
-
-        sidebar.style.pointerEvents = 'auto';
+        });
 
         window.addEventListener('resize', function () {
             if (window.matchMedia('(min-width: 992px)').matches) {

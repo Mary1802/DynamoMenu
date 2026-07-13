@@ -54,21 +54,21 @@ if ($result !== null) {
 
             <!-- Indicateurs CA (horizontal) -->
             <div class="admin-metrics-row">
-                <div class="metric-card dashboard-card">
+                <div class="metric-card dashboard-card metric-card--day">
                     <div class="metric-label">CA journalier</div>
                     <div class="metric-value"><?php echo Money::format((float) $stats['revenue_day']); ?></div>
                     <div class="stat-change"><?php echo (int) $ca_jour['nb']; ?> facture(s)</div>
                 </div>
-                <div class="metric-card dashboard-card">
+                <div class="metric-card dashboard-card metric-card--month">
                     <div class="metric-label">CA mensuel</div>
                     <div class="metric-value"><?php echo Money::format((float) $stats['revenue_month']); ?></div>
                     <div class="stat-change"><?php echo (int) $ca_mois['nb']; ?> facture(s)</div>
                 </div>
-                <div class="metric-card dashboard-card">
+                <div class="metric-card dashboard-card metric-card--clients">
                     <div class="metric-label">Clients</div>
                     <div class="metric-value"><?php echo (int) $stats['active_clients']; ?></div>
                 </div>
-                <div class="metric-card dashboard-card">
+                <div class="metric-card dashboard-card metric-card--orders">
                     <div class="metric-label">Commandes totales</div>
                     <div class="metric-value"><?php echo (int) $stats['total_orders']; ?></div>
                 </div>
@@ -124,26 +124,6 @@ if ($result !== null) {
                                     <?php endif; ?>
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                    
-                    <!-- Graphique d'activité horaire -->
-                    <div class="chart-container">
-                        <div class="chart-title">Activité par heure (aujourd'hui)</div>
-                        <div class="hourly-chart">
-                            <?php 
-                            // Simuler des données horaires pour l'exemple
-                            $hours_data = [8, 12, 15, 18, 20, 22];
-                            $max_value = 10;
-                            
-                            foreach ($hours_data as $hour): 
-                                $height = (rand(3, 10) / $max_value) * 100;
-                            ?>
-                            <div class="hour-bar">
-                                <div class="bar-value" style="height: <?php echo $height; ?>%"></div>
-                                <div class="bar-label"><?php echo sprintf('%02d:00', $hour); ?></div>
-                            </div>
-                            <?php endforeach; ?>
                         </div>
                     </div>
                 </div>
@@ -272,16 +252,5 @@ if ($result !== null) {
     </div>
 
     <?php Dashboard::scripts(); ?>
-    <script>
-        // Animation des barres du graphique horaire
-        document.addEventListener('DOMContentLoaded', function() {
-            const bars = document.querySelectorAll('.bar-value');
-            bars.forEach((bar, index) => {
-                setTimeout(() => {
-                    bar.style.transition = 'height 0.8s ease';
-                }, index * 100);
-            });
-        });
-    </script>
 </body>
 </html>

@@ -18,13 +18,13 @@
                     <a href="dashboard.php#cmd-<?php echo (int) $item['num_commande']; ?>">
                         #<?php echo str_pad((string) $item['num_commande'], 5, '0', STR_PAD_LEFT); ?>
                         — Table <?php echo htmlspecialchars((string) ($item['num_table'] ?? '—')); ?>
-                        <span class="text-muted small d-block">Nouvelle commande</span>
+                        <span class="notification-panel-kicker">Nouvelle commande</span>
                     </a>
                     <?php elseif ($role === 'manager'): ?>
                     <a href="<?php echo htmlspecialchars((string) ($item['href'] ?? 'dashboard.php')); ?>">
                         <?php echo htmlspecialchars((string) ($item['label'] ?? 'Commande prête')); ?>
                         <?php if (!empty($item['nom_client'])): ?>
-                        <span class="text-muted small d-block"><?php echo htmlspecialchars((string) $item['nom_client']); ?></span>
+                        <span class="notification-panel-kicker"><?php echo htmlspecialchars((string) $item['nom_client']); ?></span>
                         <?php endif; ?>
                     </a>
                     <?php else: ?>

@@ -185,6 +185,7 @@ return [
     ],
     'client/mes_commandes.php' => [
         'controller' => [OrderHistoryController::class, 'index'],
+        'args' => ['get'],
     ],
     'client/traitement_paiement.php' => [
         'controller' => [PaymentRequestController::class, 'handle'],

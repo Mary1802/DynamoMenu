@@ -11,7 +11,11 @@ if ($result !== null) {
     extract($result, EXTR_SKIP);
 }
 
-$hasActiveFilters = $q !== '' || $date !== '' || $filtre !== 'toutes';
+$hasActiveFilters = $q !== '' || $date !== '';
+$resetHref = 'commandes.php';
+if ($filtre !== 'toutes' && $filtre !== 'service') {
+    $resetHref .= '?filtre=' . rawurlencode($filtre);
+}
 ?>
 <!doctype html>
 <html lang="fr">
@@ -25,8 +29,7 @@ $hasActiveFilters = $q !== '' || $date !== '' || $filtre !== 'toutes';
         <div class="dashboard-topbar-brand">Dynamo<span>Menu</span></div>
         <div style="width:42px;"></div>
     </header>
-    <div class="dashboard-shell">
-        <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
+    <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
             <div class="sidebar-brand">
                 <div class="brand-logo">DM</div>
                 <div class="brand-title">DynamoMenu</div>
@@ -39,6 +42,7 @@ $hasActiveFilters = $q !== '' || $date !== '' || $filtre !== 'toutes';
             </nav>
             <div class="sidebar-footer"><?php Dashboard::sidebarUserFooter('manager'); ?></div>
         </aside>
+    <div class="dashboard-shell">
         <main class="dashboard-main manager-commandes-page">
             <header class="dashboard-header dashboard-header--kitchen">
                 <div class="header-title">
@@ -68,6 +72,7 @@ $hasActiveFilters = $q !== '' || $date !== '' || $filtre !== 'toutes';
                     <h3 class="card-title mb-0">Recherche avancée</h3>
                 </div>
                 <form method="GET" class="manager-commandes-filters-form">
+                    <input type="hidden" name="filtre" value="<?php echo htmlspecialchars($filtre); ?>">
                     <div class="manager-commandes-filters-grid">
                         <div class="manager-filter-field">
                             <label class="form-label small text-secondary" for="manager-search-q">Recherche</label>
@@ -85,18 +90,10 @@ $hasActiveFilters = $q !== '' || $date !== '' || $filtre !== 'toutes';
                             <label class="form-label small text-secondary" for="manager-search-date">Date</label>
                             <input type="date" id="manager-search-date" name="date" class="form-control" value="<?php echo htmlspecialchars($date); ?>">
                         </div>
-                        <div class="manager-filter-field">
-                            <label class="form-label small text-secondary" for="manager-search-filtre">Statut</label>
-                            <select id="manager-search-filtre" name="filtre" class="form-select">
-                                <option value="toutes"<?php echo $filtre === 'toutes' || $filtre === 'service' ? ' selected' : ''; ?>>Toutes (prêtes et livrées)</option>
-                                <option value="a_livrer"<?php echo $filtre === 'a_livrer' ? ' selected' : ''; ?>>À livrer uniquement</option>
-                                <option value="livrees"<?php echo $filtre === 'livrees' ? ' selected' : ''; ?>>Livrées uniquement</option>
-                            </select>
-                        </div>
                         <div class="manager-filter-actions">
                             <button type="submit" class="btn-primary">Appliquer</button>
                             <?php if ($hasActiveFilters): ?>
-                            <a href="commandes.php" class="btn-details">Réinitialiser</a>
+                            <a href="<?php echo htmlspecialchars($resetHref); ?>" class="btn-details">Réinitialiser</a>
                             <?php endif; ?>
                         </div>
                     </div>

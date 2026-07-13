@@ -281,7 +281,7 @@ if ($result === null || empty($result)) {
 </head>
 <body>
     <button type="button" class="screen-only back-btn" onclick="window.location.replace('paiement.php')">← Retour aux paiements</button>
-    <button type="button" class="screen-only print-btn" onclick="window.print()">🖨️ Imprimer la facture</button>
+    <button type="button" class="screen-only print-btn" onclick="window.print()">Imprimer la facture</button>
     
     <div class="facture-container">
         <!-- En-tête -->

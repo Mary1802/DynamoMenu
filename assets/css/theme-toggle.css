@@ -77,15 +77,15 @@ html.theme-light .theme-switch-icon {
 
 html:not(.theme-light) .theme-switch-input:not(:checked) + .theme-switch-track .theme-switch-icon--dark,
 html.theme-light .theme-switch-input:checked + .theme-switch-track .theme-switch-icon--light {
-    color: #ff6f1f;
+    color: #c5a059;
 }
 
 html.theme-light .theme-switch-input:checked + .theme-switch-track .theme-switch-icon--light {
-    color: #c45f0a;
+    color: #9a7b3c;
 }
 
 .theme-switch-input:focus-visible + .theme-switch-track {
-    outline: 2px solid #ff6f1f;
+    outline: 2px solid #c5a059;
     outline-offset: 3px;
 }
 

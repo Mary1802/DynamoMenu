@@ -97,6 +97,178 @@ body.client-luxury .order-statut {
     color: var(--lux-gold-light) !important;
 }
 
+body.client-luxury .order-statut.is-ready {
+    background: rgba(40, 167, 69, 0.2) !important;
+    color: #7dcea0 !important;
+}
+
+body.client-luxury .order-statut.is-done {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: rgba(242, 240, 235, 0.72) !important;
+}
+
+/* Page mes commandes */
+body.client-luxury .client-orders-wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: calc(var(--lux-content-offset) + 1.5rem) 1rem 2.5rem;
+    text-align: center;
+}
+
+body.client-luxury .client-orders-header {
+    margin-bottom: 1.5rem;
+}
+
+body.client-luxury .client-orders-header h1 {
+    font-family: var(--lux-font);
+    font-size: clamp(1.35rem, 4vw, 1.75rem);
+    font-weight: 600;
+    color: var(--lux-text);
+    margin-bottom: 0.35rem;
+}
+
+body.client-luxury .client-orders-header p {
+    color: var(--lux-text-muted);
+    font-size: 0.9rem;
+    margin: 0 auto;
+    max-width: 28rem;
+    line-height: 1.5;
+}
+
+body.client-luxury .client-orders-wrap .order-card {
+    text-align: center;
+    border-radius: var(--lux-radius-card);
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.75rem;
+}
+
+body.client-luxury .client-orders-wrap .order-card > .d-flex {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+body.client-luxury .client-orders-wrap .order-card .text-end {
+    text-align: center !important;
+}
+
+body.client-luxury .client-orders-wrap .order-statut {
+    display: inline-block;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+body.client-luxury .client-orders-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+body.client-luxury .client-order-detail-back {
+    margin-bottom: 1rem;
+}
+
+body.client-luxury .client-order-detail-card {
+    text-align: left;
+    margin-top: 0.5rem;
+}
+
+body.client-luxury .client-order-detail-meta {
+    color: var(--lux-text-muted);
+    font-size: 0.85rem;
+    margin: 0.65rem 0 0;
+}
+
+body.client-luxury .client-order-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.25rem;
+    text-align: left;
+}
+
+body.client-luxury .client-order-detail-label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--lux-text-muted);
+    margin-bottom: 0.2rem;
+}
+
+body.client-luxury .client-order-detail-value {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--lux-text);
+}
+
+body.client-luxury .client-order-detail-section {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--lux-text);
+    margin: 0 0 0.75rem;
+    text-align: left;
+}
+
+body.client-luxury .client-order-detail-lines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+}
+
+body.client-luxury .client-order-detail-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.9rem;
+}
+
+body.client-luxury .client-order-detail-line-name small {
+    display: block;
+    color: var(--lux-text-muted);
+    font-size: 0.78rem;
+    margin-top: 0.15rem;
+}
+
+body.client-luxury .client-order-detail-line-price {
+    color: var(--lux-gold);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+body.client-luxury .client-order-detail-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(197, 160, 89, 0.28);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--lux-gold);
+}
+
+@media (max-width: 991.98px) {
+    body.client-luxury .client-orders-wrap {
+        padding-top: calc(var(--lux-content-offset) + 1rem);
+    }
+
+    body.client-luxury .client-order-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Identité client */
 body.client-luxury .identite-card {
     background: var(--page-card) !important;

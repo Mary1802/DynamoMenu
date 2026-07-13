@@ -19,7 +19,7 @@ if ($result !== null) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../assets/css/style.css?v=11">
-    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
+    <link rel="stylesheet" href="../assets/css/client-luxury.css?v=18">
     <?php ClientPage::csrfMetaTag(); ?>
     <style>
         a.position-fixed .floating-badge {
@@ -43,9 +43,7 @@ if ($result !== null) {
 
     <main class="container-fluid px-3 px-md-4 client-main-menu">
         <section class="lux-menu-hero">
-            <p class="lux-eyebrow mb-2">Notre carte</p>
-            <h1 class="lux-menu-hero__title">Notre <span>Menu</span></h1>
-            <p class="lux-menu-hero__subtitle">Parcourez nos créations, filtrez par catégorie et ajoutez vos favoris au panier en un clic.</p>
+            <h1 class="lux-menu-hero__title">MENU</h1>
             <div id="categories" class="d-flex justify-content-center flex-wrap gap-2"></div>
         </section>
 
@@ -305,7 +303,6 @@ if ($result !== null) {
                             </div>
                             <p class="text-muted menu-desc">${descText}</p>
                             <div class="menu-card-footer">
-                                <span class="menu-card-footer-hint">Ajouter au panier</span>
                                 <span class="price">${fmtMoney(menuUnitToCdf(i.price))}</span>
                             </div>
                         </div>

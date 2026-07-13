@@ -23,8 +23,7 @@ if ($result !== null) {
         <div class="dashboard-topbar-brand">Dynamo<span>Menu</span></div>
         <div style="width:42px;"></div>
     </header>
-    <div class="dashboard-shell">
-        <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
+    <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
             <div class="sidebar-brand">
                 <div class="brand-logo">DM</div>
                 <div class="brand-title">DynamoMenu</div>
@@ -38,6 +37,7 @@ if ($result !== null) {
             </nav>
             <div class="sidebar-footer"><?php Dashboard::sidebarUserFooter('caissier'); ?></div>
         </aside>
+    <div class="dashboard-shell">
         <main class="dashboard-main">
             <header class="dashboard-header dashboard-header--kitchen">
                 <div class="header-title">
