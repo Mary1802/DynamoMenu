@@ -1,109 +1,230 @@
 # DynamoMenu
 
-Application web **PHP + MySQL (WAMP)** pour un restaurant : les clients consultent le menu via un QR code, passent commande depuis leur table, la cuisine suit la préparation, puis le caissier encaisse et génère la facture.
+Application web **PHP + MySQL (WAMP)** pour digitaliser le service en salle d’un restaurant (contexte Kinshasa / RDC, devise **CDF / FC**, TVA **16 %**).
+
+À chaque table, une **tablette** est déjà ouverte sur l’application client. Le client compose sa commande, suit la préparation, puis le personnel assure le flux **cuisine → manager (livraison) → caisse (encaissement / ticket)**.
+
+---
 
 ## Stack
 
-- **PHP** (>= 8.0)
-- **MySQL**
-- **HTML/CSS** + **Bootstrap 5** + **Bootstrap Icons**
-- **JavaScript** vanilla (pas de framework front)
-- **Composer** uniquement pour l’autoload PSR-4 (pas de framework PHP)
+| Couche | Technologie |
+|--------|-------------|
+| Backend | **PHP** ≥ 8.0 (`strict_types`), OOP, PDO |
+| Base de données | **MySQL** |
+| Autoload | **Composer** PSR-4 uniquement (pas de framework PHP) |
+| Front | HTML/CSS, **Bootstrap 5**, **Bootstrap Icons**, **JavaScript vanilla** |
+| PDF / tickets | Générateur PDF maison + ticket thermique **80 mm** (impression navigateur) |
+| Serveur local | **WAMP** (Apache + MySQL + PHP) |
 
-## Démarrage rapide (WAMP)
-
-1. Mettre le projet dans le dossier web, par ex. `C:\wamp64\www\DynamoMenu`.
-2. Vérifier la config BDD dans `config/db.php`.
-3. (Première installation) Initialiser la base :
-   - Dans le navigateur : `http://localhost/DynamoMenu/init_db.php`
-   - Ou en CLI : `php init_db.php`
-4. Se connecter : `http://localhost/DynamoMenu/login.php`
-
-## Configuration
-
-- **Base de données** : `config/db.php`
-- **Paramètres appli** : `config/app.php`
-  - `base_url` (ex. `http://localhost/DynamoMenu`)
-  - devise (CDF/FC), sessions, et accès scripts setup
-  - `allow_web_setup` : autorise `init_db.php` / `run_update.php` via navigateur (accès admin requis)
+---
 
 ## Parcours fonctionnel
 
 ### Côté client
 
-1. Le client scanne un **QR code de table**
-2. Il consulte le **menu** et gère son **panier**
-3. Il **confirme** la commande (infos client + table + mode de paiement prévu)
-4. Il suit l’avancement dans **Suivi commande** (statuts et récapitulatif)
+1. Accès depuis la **tablette de table** (application déjà ouverte, table associée en session)  
+2. **Identité** (nom, prénom, email, téléphone) — unicité email + téléphone  
+3. Consultation du **menu** (plats + boissons, personnalisations)  
+4. Gestion du **panier** (quantités, validation stock boissons)  
+5. **Confirmation** de commande (+ mode de paiement souhaité : espèces ou mobile money)  
+6. **Suivi** en temps quasi réel (polling statut + countdown de préparation)  
+7. Historique (`mes_commandes`), nouvelle commande, annulation avant validation (vide panier / session / profil)
 
-### Côté staff
+### Chaîne opérationnelle (staff)
 
-- **Cuisine** : voit les commandes et fait avancer les statuts (préparation → prête → livrée)
-- **Caissier** : encaisse les commandes livrées, crée la facture et empêche le double encaissement
-- **Admin** : gère tables/QR, menu (plats), employés, commandes, rapports, etc.
+```
+en_attente → en_preparation → prete → livree
+                 ↑ cuisine        ↑ manager    → encaissement (caissier)
+                                    (ou annulee)
+```
 
-## Comptes de démonstration
+| Rôle | Rôle métier |
+|------|-------------|
+| **Cuisine** | File d’attente : démarrer la préparation (chrono figé) → marquer « prête » |
+| **Manager** | Livraison en salle des commandes prêtes → statut `livree` |
+| **Caissier** | Encaissement, facture, ticket 80 mm ; anti double-paiement |
+| **Admin** | Gestion complète + tableaux de bord + rapports PDF |
 
-Après `init_db.php`, des comptes de test sont créés (affichés sur la page de succès) :
+---
 
-- **Admin** : `admin@dynamomenu.fr` / `admin123`
-- **Cuisinier** : `pierre@dynamomenu.fr` / `chef123`
-- **Caissier** : `jean@dynamomenu.fr` / `caisse123`
+## Fonctionnalités principales
+
+### Client
+- Accès client via **tablette** déjà configurée pour la table
+- Menu plats & boissons (rupture gérée pour les **boissons** uniquement)
+- Panier session + compteur
+- Identité obligatoire avant validation ; profil verrouillable
+- Modes paiement **souhaités** : `especes` | `mobile_money` (préférence ; confirmation à la caisse)
+- Suivi avec countdown : **Σ (temps_préparation × quantité)** sur les plats ; figé au démarrage cuisine
+- Message « Bon appétit ! » lorsque le statut est `livree`
+- Annulation côté confirmation : nettoyage panier / session / client
+
+### Admin
+- Dashboard : CA jour/mois, commandes récentes, **meilleurs plats** (vendus plus de 5 fois)
+- CRUD **plats** / **boissons** (images, stock boissons, temps de préparation)
+- CRUD **tables** (libellé, places, code interne, actif) — pour lier chaque tablette à une table
+- CRUD **employés** (admin, cuisinier, caissier, manager)
+- CRUD **clients** (édition, suppression, tri alphabétique)
+- Commandes, logs d’activité, paramètres (contacts, horaires)
+- Rapports PDF (journalier / mensuel) — export & impression
+
+### Cuisine
+- Dashboard file d’attente
+- Passage `en_attente` → `en_preparation` → `prete`
+- Liste des commandes, paramètres staff
+
+### Manager
+- Dashboard des commandes **prêtes**
+- Marquage **livrée**
+- Liste des commandes, paramètres staff
+
+### Caissier
+- Encaissement des commandes (modes facture : `especes` | `mobile` | `carte`)
+- Protection contre le **double encaissement**
+- **Ticket de caisse thermique 80 mm** + impression navigateur
+- Rapports PDF caisse
+
+### API JSON
+Endpoints sous `api/` (détail dans `config/routes.php`) :
+- Statut commande client (`api/client/commande_statut.php`)
+- Menu, commande, paiement, employés, stats
+
+---
+
+## Règles métier importantes
+
+1. **Stock** : suivi et décrémentation pour les **boissons** uniquement ; restauration en cas d’annulation. Les plats n’ont pas de stock quantitatif.
+2. **Identité unique** : email et téléphone uniques et cohérents (conflit si l’un est déjà lié à un autre couple).
+3. **Téléphone** : 10–13 caractères ; si commence par `0` → max 10 ; si par `+` → max 13.
+4. **TVA 16 %** : montants en TTC ; HT/TVA dérivés à la facture.
+5. **Devise** : CDF (FC) ; multiplicateur legacy € → CDF configurable (`eur_to_cdf`).
+6. **Paiement à deux niveaux** : préférence client ≠ mode réel d’encaissement caisse (pas encore de passerelle Mobile Money / CinetPay).
+7. **Countdown** : somme des temps de préparation des plats × quantités ; boissons n’allongent pas l’estimé métier.
+8. Modules retirés / simplifiés : notifications applicatives dédiées, fidélité / points, stock plats.
+
+---
 
 ## Architecture (MVC maison)
 
-Le projet est organisé autour d’un MVC léger, sans framework.
+Pas de framework PHP lourd. Flux :
 
-### Points d’entrée publics
+```
+page publique (client|admin|…)
+  → bootstrap/app.php
+  → FrontController / Kernel
+  → config/routes.php (auth, setup, controller, template)
+  → Service / Repository (PDO)
+  → View::render (templates PHP)
+```
 
-Dossiers accessibles via l’URL :
+### Points d’entrée
 
-- `client/` (pages clients)
-- `cuisine/` (dashboard cuisine)
-- `caissier/` (dashboard caisse)
-- `admin/` (dashboard admin)
-- `api/` (endpoints JSON)
-- `login.php`, `logout.php`
+| Dossier / fichier | Contenu |
+|-------------------|---------|
+| `client/` | Parcours client |
+| `admin/` | Administration |
+| `cuisine/` | Cuisine |
+| `manager/` | Service / livraison |
+| `caissier/` | Encaissement & factures |
+| `api/` | Endpoints JSON |
+| `login.php` / `logout.php` | Authentification staff |
 
-Chaque page publique charge le bootstrap puis délègue au **dispatcher** :
+### Code applicatif (`src/App/`)
 
-- `bootstrap/app.php` : boot + autoload
-- `App\Http\Kernel` : dispatch via `config/routes.php`
+| Dossier | Rôle |
+|---------|------|
+| `Core/` | Conteneur léger, config, BDD |
+| `Http/` | Kernel, FrontController, helpers pages |
+| `Controller/` | Admin, Client, Cuisine, Manager, Caissier, Api, Staff |
+| `Service/` | Logique métier (panier, commande, stock, paiement, rapports…) |
+| `Repository/` | Requêtes PDO |
+| `View/` | Layouts + templates |
+| `Model/` | Statuts, lignes de commande, etc. |
+| `Auth/` | Sessions client & staff |
+| `Security/` | CSRF, tokens commande, hash mots de passe |
+| `Setup/` | Init BDD & upgrades de schéma |
 
-### Code applicatif
+---
 
-Namespace `App\` (autoload PSR-4) → `src/App/` :
+## Démarrage rapide (WAMP)
 
-- `src/App/Core/` : `Application` (conteneur), `Config`, `Database`
-- `src/App/Http/` : `Kernel` + helpers pages (Admin/Staff/Client)
-- `src/App/Controller/` : contrôleurs (Admin, Client, Cuisine, Caissier, Api, Staff…)
-- `src/App/Service/` : logique métier (panier, commandes, paiement, schéma…)
-- `src/App/Repository/` : accès BDD (requêtes PDO)
-- `src/App/View/` : vues/layouts + templates
-- `src/App/Security/` : CSRF, accès commande par token, etc.
-- `src/App/Setup/` : installation/migrations (utilisées par `init_db.php` / `run_update.php`)
+1. Placer le projet dans le dossier web, ex. `C:\wamp64\www\DynamoMenu`.
+2. Vérifier `config/db.php` (hôte, base `dynamomenu`, utilisateur MySQL).
+3. Installer les dépendances Composer (autoload) :
+   ```bash
+   composer install
+   ```
+4. Initialiser la base (une fois) :
+   - Navigateur : `http://localhost/DynamoMenu/init_db.php`
+   - Ou CLI : `php init_db.php`
+5. (Si besoin) appliquer les upgrades de schéma : `run_update.php`
+6. Connexion staff : `http://localhost/DynamoMenu/login.php`
+7. Accès client : ouvrir l’URL client sur la tablette de table (association table gérée côté admin → Tables)
 
-## Scripts base de données
+---
 
-- `init_db.php` : **crée** la base/tables et des données de démonstration (à exécuter une fois)
-- `run_update.php` : applique des **mises à jour** idempotentes du schéma (si besoin)
+## Configuration
 
-> La connexion quotidienne de l’app ne dépend pas de ces scripts : elle passe par `bootstrap/app.php` + `config/db.php`.
+- **`config/db.php`** — connexion MySQL  
+- **`config/app.php`** — `base_url`, devise CDF, TVA, sessions, contacts restaurant, `session_secret`, `allow_web_setup`  
+- **`config/routes.php`** — mapping routes → controllers / templates / auth  
 
-## Sécurité (résumé)
+Scripts BDD :
+- `init_db.php` — création schéma + données de démonstration  
+- `run_update.php` — migrations / upgrades idempotentes  
 
-- **Sessions staff** dédiées (auth par rôle : admin / cuisinier / caissier)
-- **CSRF** sur les formulaires POST
-- **Accès suivi commande** protégé (token / session) pour éviter l’accès non autorisé
+> L’app au quotidien utilise `bootstrap/app.php` + `config/db.php` ; les scripts setup ne sont pas nécessaires à chaque requête.
 
-## API (aperçu)
+---
 
-Endpoints JSON sous `api/` (statut commande, notifications, menu, paiement, stats…).  
-Le mapping exact est dans `config/routes.php`.
+## Comptes de démonstration
+
+Après `init_db.php`, un **admin** est créé. Les autres rôles peuvent être ajoutés via **Admin → Employés** (ou selon l’affichage de la page de succès d’init).
+
+| Rôle | Email (indicatif) | Mot de passe (indicatif) |
+|------|-------------------|--------------------------|
+| Admin | `admin@dynamomenu.fr` | `admin123` |
+| Cuisinier | `pierre@dynamomenu.fr` | `chef123` |
+| Caissier | `jean@dynamomenu.fr` | `caisse123` |
+
+Le rôle **manager** se crée depuis l’admin (rôle `manager`).
+
+> Changez ces mots de passe en environnement réel.
+
+---
+
+## Sécurité
+
+- Sessions **staff** et **client** séparées (durées configurables)
+- Auth par rôle (`admin`, `cuisinier`, `caissier`, `manager`)
+- **CSRF** sur les formulaires POST sensibles
+- Mots de passe hashés
+- Accès suivi commande protégé (token / session)
+- Scripts `init_db` / `run_update` via navigateur contrôlés par `allow_web_setup` + admin
+
+---
+
+## Perspectives
+
+- Intégration **Mobile Money** réelle (ex. **CinetPay**) via API + webhook → confirmation automatique du paiement
+- Déploiement production (HTTPS, `session_secret` fort, désactivation du setup web)
+- Amélioration des analytics / rapports
+
+---
 
 ## Dépannage
 
-- Erreur BDD : vérifier `config/db.php` et que MySQL est démarré (WAMP vert)
-- Problème de schéma : lancer `run_update.php`
-- Après modifications CSS : forcer le rechargement (Ctrl+F5)
+| Problème | Piste |
+|----------|--------|
+| Erreur BDD | Vérifier `config/db.php` et que MySQL (WAMP) est démarré |
+| Colonnes / schéma manquants | Lancer `run_update.php` |
+| CSS / JS obsolète | Rechargement forcé (Ctrl+F5) |
+| Boisson en « rupture » indûment | Stock `quantite_boisson` ; les plats sans stock doivent rester commandables |
+| Mauvaise URL client | Vérifier `base_url` et l’association de la tablette à la bonne table (admin → Tables) |
 
+---
+
+## Licence / projet
+
+Projet pédagogique / applicatif restaurant — `dynamomenu/app` (Composer).
