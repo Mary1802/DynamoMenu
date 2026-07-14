@@ -86,4 +86,16 @@ final class CommandeListController
         header('Location: ' . $redirect);
         exit;
     }
+
+    /**
+     * @param array<string, mixed> $get
+     * @param array<string, mixed> $post
+     * @return array<string, mixed>
+     */
+    public function handle(array $get, array $post): array
+    {
+        $this->handlePost($post);
+
+        return $this->index($get);
+    }
 }

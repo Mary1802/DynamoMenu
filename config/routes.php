@@ -7,7 +7,6 @@ use App\Controller\Admin\CommandeController as AdminCommandeController;
 use App\Controller\Admin\DashboardController;
 use App\Controller\Admin\EmployeController;
 use App\Controller\Admin\LogController;
-use App\Controller\Admin\NotificationController;
 use App\Controller\Admin\ParametresController;
 use App\Controller\Admin\PlatController;
 use App\Controller\Admin\ReportController as AdminReportController;
@@ -15,7 +14,6 @@ use App\Controller\Admin\TableController;
 use App\Controller\Api\Client\CartCountController;
 use App\Controller\Api\Client\CartKeyController;
 use App\Controller\Api\Client\CommandeStatutController;
-use App\Controller\Api\Client\NotificationsController;
 use App\Controller\Api\Commande\CommandeController as ApiCommandeController;
 use App\Controller\Api\Employe\EmployeController as ApiEmployeController;
 use App\Controller\Api\Menu\MenuController as ApiMenuController;
@@ -50,16 +48,19 @@ use App\Controller\Staff\ParametresController as StaffParametresController;
 return [
     // ── Admin ──────────────────────────────────────────────────────────
     'admin/dashboard.php' => [
+        'template' => 'admin/dashboard',
         'auth' => 'staff:admin',
         'controller' => [DashboardController::class, 'index'],
         'args' => [],
     ],
     'admin/clients.php' => [
+        'template' => 'admin/clients',
         'auth' => 'admin',
         'controller' => [ClientController::class, 'handle'],
         'args' => ['get', 'post'],
     ],
     'admin/commandes.php' => [
+        'template' => 'admin/commandes',
         'auth' => 'admin',
         'setup' => ['schema'],
         'controller' => [AdminCommandeController::class, 'handle'],
@@ -71,27 +72,26 @@ return [
         'preserve_query' => true,
     ],
     'admin/employes.php' => [
+        'template' => 'admin/employes',
         'auth' => 'admin',
         'setup' => ['schema'],
         'controller' => [EmployeController::class, 'handle'],
         'args' => ['get', 'post', 'session'],
     ],
     'admin/logs.php' => [
+        'template' => 'admin/logs',
         'auth' => 'admin',
         'controller' => [LogController::class, 'handle'],
         'args' => ['get'],
     ],
-    'admin/notifications.php' => [
-        'auth' => 'admin',
-        'controller' => [NotificationController::class, 'handle'],
-        'args' => ['get', 'post'],
-    ],
     'admin/parametres.php' => [
+        'template' => 'admin/parametres',
         'auth' => 'admin',
         'controller' => [ParametresController::class, 'handle'],
         'args' => ['get', 'post', 'staff_user'],
     ],
     'admin/plats.php' => [
+        'template' => 'admin/plats',
         'auth' => 'admin',
         'controller' => [PlatController::class, 'handle'],
         'args' => ['get', 'post', 'files'],
@@ -109,11 +109,13 @@ return [
         'response' => 'action',
     ],
     'admin/rapports.php' => [
+        'template' => 'admin/rapports',
         'auth' => 'admin',
         'controller' => [AdminReportController::class, 'index'],
         'args' => ['get'],
     ],
     'admin/tables.php' => [
+        'template' => 'admin/tables',
         'auth' => 'admin',
         'controller' => [TableController::class, 'handle'],
         'args' => ['post'],
@@ -121,19 +123,23 @@ return [
 
     // ── Client ─────────────────────────────────────────────────────────
     'client/index.php' => [
+        'template' => 'client/index',
         'controller' => [HomeController::class, 'index'],
         'args' => [],
     ],
     'client/identite.php' => [
+        'template' => 'client/identite',
         'auth' => 'client.session',
         'controller' => [ClientIdentificationController::class, 'handle'],
         'args' => ['post'],
     ],
     'client/menu.php' => [
+        'template' => 'client/menu',
         'controller' => [MenuController::class, 'index'],
         'args' => [],
     ],
     'client/panier.php' => [
+        'template' => 'client/panier',
         'controller' => [CartController::class, 'handle'],
         'args' => ['get', 'post'],
     ],
@@ -164,26 +170,32 @@ return [
         'response' => 'action',
     ],
     'client/confirmation.php' => [
+        'template' => 'client/confirmation',
         'controller' => [ConfirmationController::class, 'handle'],
         'args' => ['post'],
     ],
     'client/confirmation_paiement.php' => [
+        'template' => 'client/confirmation_paiement',
         'controller' => [PaymentConfirmationController::class, 'show'],
         'args' => ['get'],
     ],
     'client/confirmation_success.php' => [
+        'template' => 'client/confirmation_success',
         'controller' => [OrderSuccessController::class, 'show'],
         'args' => ['get'],
     ],
     'client/paiement_client.php' => [
+        'template' => 'client/paiement_client',
         'controller' => [PaymentController::class, 'show'],
         'args' => ['get'],
     ],
     'client/suivi_commande.php' => [
+        'template' => 'client/suivi_commande',
         'controller' => [OrderTrackingController::class, 'show'],
         'args' => ['get'],
     ],
     'client/mes_commandes.php' => [
+        'template' => 'client/mes_commandes',
         'controller' => [OrderHistoryController::class, 'index'],
         'args' => ['get'],
     ],
@@ -195,20 +207,19 @@ return [
 
     // ── Cuisine ────────────────────────────────────────────────────────
     'cuisine/dashboard.php' => [
+        'template' => 'cuisine/dashboard',
         'auth' => 'staff:cuisinier',
-        'invoke' => static function (): array {
-            $kitchen = new KitchenDashboardController();
-            $kitchen->handlePost($_POST);
-
-            return $kitchen->index();
-        },
+        'controller' => [KitchenDashboardController::class, 'handle'],
+        'args' => ['post'],
     ],
     'cuisine/commandes.php' => [
+        'template' => 'cuisine/commandes',
         'auth' => 'staff:cuisinier',
         'controller' => [CuisineCommandeListController::class, 'index'],
         'args' => ['get'],
     ],
     'cuisine/parametres.php' => [
+        'template' => 'cuisine/parametres',
         'auth' => 'staff:cuisinier',
         'controller' => [StaffParametresController::class, 'index'],
         'args' => ['staff_user'],
@@ -216,24 +227,19 @@ return [
 
     // ── Manager ──────────────────────────────────────────────────────
     'manager/dashboard.php' => [
+        'template' => 'manager/dashboard',
         'auth' => 'staff:manager',
-        'invoke' => static function (): array {
-            $manager = new ManagerDashboardController();
-            $manager->handlePost($_POST);
-
-            return $manager->index();
-        },
+        'controller' => [ManagerDashboardController::class, 'handle'],
+        'args' => ['post'],
     ],
     'manager/commandes.php' => [
+        'template' => 'manager/commandes',
         'auth' => 'staff:manager',
-        'invoke' => static function (): array {
-            $list = new ManagerCommandeListController();
-            $list->handlePost($_POST);
-
-            return $list->index($_GET);
-        },
+        'controller' => [ManagerCommandeListController::class, 'handle'],
+        'args' => ['get', 'post'],
     ],
     'manager/parametres.php' => [
+        'template' => 'manager/parametres',
         'auth' => 'staff:manager',
         'controller' => [StaffParametresController::class, 'index'],
         'args' => ['staff_user'],
@@ -241,21 +247,25 @@ return [
 
     // ── Caissier ───────────────────────────────────────────────────────
     'caissier/commandes.php' => [
+        'template' => 'caissier/commandes',
         'auth' => 'staff:caissier',
         'controller' => [CaissierCommandeListController::class, 'index'],
         'args' => [],
     ],
     'caissier/generer_facture.php' => [
+        'template' => 'caissier/generer_facture',
         'auth' => 'staff:caissier',
         'controller' => [FactureController::class, 'show'],
         'args' => ['get'],
     ],
     'caissier/paiement.php' => [
+        'template' => 'caissier/paiement',
         'auth' => 'staff:caissier',
         'controller' => [CaissierPaiementController::class, 'handle'],
         'args' => ['get', 'post'],
     ],
     'caissier/parametres.php' => [
+        'template' => 'caissier/parametres',
         'auth' => 'staff:caissier',
         'controller' => [StaffParametresController::class, 'index'],
         'args' => ['staff_user'],
@@ -273,6 +283,7 @@ return [
         'response' => 'action',
     ],
     'caissier/rapports.php' => [
+        'template' => 'caissier/rapports',
         'auth' => 'staff:caissier',
         'controller' => [CaissierReportController::class, 'index'],
         'args' => ['get'],
@@ -281,11 +292,6 @@ return [
     // ── API ────────────────────────────────────────────────────────────
     'api/client/commande_statut.php' => [
         'controller' => [CommandeStatutController::class, 'handle'],
-        'args' => ['get'],
-        'response' => 'action',
-    ],
-    'api/client/notifications.php' => [
-        'controller' => [NotificationsController::class, 'handle'],
         'args' => ['get'],
         'response' => 'action',
     ],
@@ -317,6 +323,7 @@ return [
 
     // ── Racine ─────────────────────────────────────────────────────────
     'login.php' => [
+        'template' => 'login',
         'setup' => ['schema'],
         'controller' => [LoginController::class, 'handle'],
         'args' => [],

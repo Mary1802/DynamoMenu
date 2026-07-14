@@ -9,8 +9,10 @@ return [
     'currency_code' => 'CDF',
     'currency_symbol' => 'FC',
     /** Taux : 1 unité menu (ancien tarif euro) × ce multiplicateur = franc congolais */
-    'eur_to_cdf' => 2800,
+    'eur_to_cdf' => 2300,
     'currency_decimals' => 0,
+    /** TVA applicable (ex. 0.16 = 16 %) */
+    'tva_rate' => 0.16,
     /** Clé secrète pour tokens commande — changez en production */
     'session_secret' => 'change-me-in-production',
     /** Durée session staff (secondes) — défaut 8 h */

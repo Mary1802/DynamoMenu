@@ -109,13 +109,23 @@ final class ClientProfileService
             return ['success' => false, 'error' => 'Adresse e-mail invalide.'];
         }
 
+        $phoneCheck = self::validateTelephone($telephone);
+        if ($phoneCheck !== null) {
+            return ['success' => false, 'error' => $phoneCheck];
+        }
+        $telephone = self::normalizeTelephone($telephone);
+
         $this->clients->ensureSchema();
-        $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
+        try {
+            $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
+        } catch (\RuntimeException $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
 
         $this->session->start();
         $_SESSION['client_nom'] = $nom;
         $_SESSION['client_prenom'] = $prenom;
-        $_SESSION['client_email'] = $email;
+        $_SESSION['client_email'] = mb_strtolower($email, 'UTF-8');
         $_SESSION['client_telephone'] = $telephone;
         $_SESSION['id_client'] = $idClient;
         $_SESSION['client_identite_locked'] = true;
@@ -169,5 +179,67 @@ final class ClientProfileService
             $_SESSION['client_identite_locked'],
             $_SESSION['identite_return_to'],
         );
+    }
+
+    /**
+     * Efface la session et supprime le client en base (après annulation de commande).
+     */
+    public function eraseFromDatabase(): void
+    {
+        $this->session->start();
+        $idClient = isset($_SESSION['id_client']) ? (int) $_SESSION['id_client'] : 0;
+
+        if ($idClient <= 0) {
+            $email = trim((string) ($_SESSION['client_email'] ?? ''));
+            $telephone = trim((string) ($_SESSION['client_telephone'] ?? ''));
+            if ($email !== '' && $telephone !== '') {
+                $idClient = (int) ($this->clients->findIdByEmailAndTelephone($email, $telephone) ?? 0);
+            }
+        }
+
+        if ($idClient > 0) {
+            $this->clients->delete($idClient);
+        }
+
+        $this->clear();
+    }
+
+    public static function normalizeTelephone(string $telephone): string
+    {
+        $telephone = trim($telephone);
+        $telephone = preg_replace('/[\s\-\.\(\)]/', '', $telephone) ?? '';
+
+        return $telephone;
+    }
+
+    public static function validateTelephone(string $telephone): ?string
+    {
+        $telephone = self::normalizeTelephone($telephone);
+        if ($telephone === '') {
+            return 'Veuillez remplir tous les champs obligatoires.';
+        }
+
+        if (!preg_match('/^\+?\d+$/', $telephone)) {
+            return 'Le numéro ne doit contenir que des chiffres, avec éventuellement un + pour l\'indicatif pays (ex. +243).';
+        }
+
+        if (str_contains($telephone, '+') && $telephone[0] !== '+') {
+            return 'Le signe + ne peut figurer qu\'au début du numéro (indicatif pays).';
+        }
+
+        $length = strlen($telephone);
+        if ($length < 10 || $length > 13) {
+            return 'Le numéro de téléphone doit contenir entre 10 et 13 caractères.';
+        }
+
+        if (str_starts_with($telephone, '0') && $length > 10) {
+            return 'Un numéro commençant par 0 doit comporter au maximum 10 caractères (ex. 0812345678).';
+        }
+
+        if (str_starts_with($telephone, '+') && $length > 13) {
+            return 'Un numéro commençant par + doit comporter au maximum 13 caractères (ex. +243812345678).';
+        }
+
+        return null;
     }
 }

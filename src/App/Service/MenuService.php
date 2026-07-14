@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Core\Application;
 use App\Data\MenuSeed;
+use App\Repository\BoissonRepository;
 use App\Support\MenuImageIndex;
 use PDO;
 use PDOException;
@@ -47,9 +48,9 @@ final class MenuService
 
                     if (!$existing) {
                         $stmt2 = $this->pdo->prepare(
-                            'INSERT INTO plat (nom_plat, prix_unitaire, categorie, quantite_plat, image_url) VALUES (?, ?, ?, ?, ?)'
+                            'INSERT INTO plat (nom_plat, prix_unitaire, categorie, image_url) VALUES (?, ?, ?, ?)'
                         );
-                        $stmt2->execute([$sname, $sprice, $scat, 0, $imgPath]);
+                        $stmt2->execute([$sname, $sprice, $scat, $imgPath]);
                     } else {
                         $currentCategory = trim((string) ($existing['categorie'] ?? ''));
                         $currentImage = trim((string) ($existing['image_url'] ?? ''));
@@ -66,10 +67,13 @@ final class MenuService
                     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
                     if (!$existing) {
+                        $typeId = $this->defaultTypeIdForSeedDrink($sname);
+                        $fruitOpts = $this->defaultFruitOptionsForSeedDrink($sname);
                         $stmt2 = $this->pdo->prepare(
-                            'INSERT INTO boisson (nom_boisson, id_type, dosage, quantite_boisson, prix_unitaire, options_fruits, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)'
+                            'INSERT INTO boisson (nom_boisson, id_type, dosage, quantite_boisson, prix_unitaire, options_fruits, image_url)
+                             VALUES (?, ?, ?, ?, ?, ?, ?)'
                         );
-                        $stmt2->execute([$sname, 1, '', 0, $sprice, '', $imgPath]);
+                        $stmt2->execute([$sname, $typeId, '', 50, $sprice, $fruitOpts, $imgPath]);
                     } elseif (trim((string) ($existing['image_url'] ?? '')) === '' && $imgPath !== null) {
                         $stmt2 = $this->pdo->prepare('UPDATE boisson SET image_url = ? WHERE nom_boisson = ?');
                         $stmt2->execute([$imgPath, $sname]);
@@ -102,6 +106,8 @@ final class MenuService
                     'prep_min' => (int) ($r['temps_preparation_min'] ?? 15),
                     'id_plat' => (int) $r['id_plat'],
                     'id_boisson' => null,
+                    'stock' => null,
+                    'available' => true,
                 ];
             }
 
@@ -114,38 +120,47 @@ final class MenuService
             ) > 0;
 
             if (in_array('id_type', $boissonCols, true) && $typeBoissonTableExists) {
+                $fruitCol = in_array('options_fruits', $boissonCols, true) ? ', b.options_fruits' : '';
                 $stmt = $this->pdo->query(
                     "SELECT b.id_boisson, b.nom_boisson, COALESCE(tb.nom_type, 'soda') AS type_boisson,
-                            b.dosage, b.quantite_boisson, b.options_fruits, b.prix_unitaire, b.image_url
+                            b.dosage, b.quantite_boisson, b.prix_unitaire, b.image_url{$fruitCol}
                      FROM boisson b
                      LEFT JOIN type_boisson tb ON b.id_type = tb.id_type
                      ORDER BY COALESCE(tb.nom_type, 'soda'), b.nom_boisson"
                 );
             } else {
+                $fruitCol = in_array('options_fruits', $boissonCols, true) ? ', options_fruits' : '';
                 $stmt = $this->pdo->query(
                     "SELECT id_boisson, nom_boisson, 'soda' AS type_boisson, dosage, quantite_boisson,
-                            options_fruits, prix_unitaire, image_url
+                            prix_unitaire, image_url{$fruitCol}
                      FROM boisson ORDER BY nom_boisson"
                 );
             }
 
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 $typeLabel = trim((string) ($r['type_boisson'] ?? ''));
-                $desc = trim(
-                    trim((string) ($r['dosage'] ?? ''))
-                    . (!empty($r['options_fruits']) ? ' - ' . $r['options_fruits'] : '')
-                    . ($typeLabel !== '' ? ' - ' . $typeLabel : '')
+                $fruitOptions = \App\Repository\BoissonRepository::parseFruitOptions(
+                    isset($r['options_fruits']) ? (string) $r['options_fruits'] : ''
                 );
+                $descParts = array_filter([
+                    trim((string) ($r['dosage'] ?? '')),
+                    $typeLabel,
+                    $fruitOptions !== [] ? ('Goûts : ' . implode(', ', $fruitOptions)) : '',
+                ], static fn (string $p): bool => $p !== '');
+                $stock = (int) ($r['quantite_boisson'] ?? 0);
                 $menuItems[] = [
                     'category' => 'Boissons',
                     'type' => $typeLabel,
                     'name' => $r['nom_boisson'],
-                    'desc' => $desc,
+                    'desc' => implode(' — ', $descParts),
                     'price' => isset($r['prix_unitaire']) ? (float) $r['prix_unitaire'] : 0.0,
                     'img' => MenuImageIndex::normalizePath($r['image_url'] ?: null),
                     'prep_min' => 2,
                     'id_plat' => null,
                     'id_boisson' => (int) $r['id_boisson'],
+                    'stock' => $stock,
+                    'available' => $stock > 0,
+                    'fruit_options' => $fruitOptions,
                 ];
             }
         } catch (PDOException) {
@@ -153,6 +168,38 @@ final class MenuService
         }
 
         return $menuItems;
+    }
+
+    private function defaultFruitOptionsForSeedDrink(string $name): string
+    {
+        return match ($name) {
+            'Jus de Fruit', 'Milkshake', 'Cocktail de Fruits'
+                => 'Orange,Banane,Pomme,Ananas,Mangue,Fraise',
+            'Smoothie Banane' => 'Banane,Fraise,Mangue,Ananas',
+            default => '',
+        };
+    }
+
+    private function defaultTypeIdForSeedDrink(string $name): int
+    {
+        $byName = [
+            'Jus de Fruit' => 'jus',
+            'Cocktail de Fruits' => 'jus',
+            'Smoothie Banane' => 'jus',
+            'Milkshake' => 'soda',
+            'Coca-Cola, Fanta, Sprite' => 'soda',
+            'Eau Minérale' => 'eau',
+            'Pinacolada' => 'alcool',
+            'Mojito' => 'alcool',
+            'Jack Daniels' => 'alcool',
+            'Red Label' => 'alcool',
+            'Heinekein' => 'alcool',
+        ];
+
+        $typeName = $byName[$name] ?? 'soda';
+        $id = Application::getInstance()->boissonRepository()->resolveTypeId($typeName);
+
+        return $id ?? 1;
     }
 
     private function findImagePathInAssets(string $name): ?string

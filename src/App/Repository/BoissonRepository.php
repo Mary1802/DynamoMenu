@@ -52,7 +52,32 @@ final class BoissonRepository extends BaseRepository
             return null;
         }
 
-        $stmt = $this->pdo->prepare('SELECT id_type FROM type_boisson WHERE nom_type = ?');
+        $aliases = [
+            'alcoolise' => 'alcool',
+            'alcoolisé' => 'alcool',
+            'alcoolisée' => 'alcool',
+            'alcohol' => 'alcool',
+            'naturelle' => 'jus',
+            'naturel' => 'jus',
+            'juice' => 'jus',
+            'soft' => 'soda',
+            'gazeux' => 'soda',
+            'water' => 'eau',
+        ];
+
+        $normalized = mb_strtolower($nomType, 'UTF-8');
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $normalized);
+        $ascii = is_string($ascii) ? strtolower(preg_replace('/[^a-z]/', '', $ascii) ?? '') : preg_replace('/[^a-z]/', '', $normalized) ?? '';
+
+        if (isset($aliases[$normalized])) {
+            $nomType = $aliases[$normalized];
+        } elseif (isset($aliases[$ascii])) {
+            $nomType = $aliases[$ascii];
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT id_type FROM type_boisson WHERE LOWER(TRIM(nom_type)) = LOWER(?) LIMIT 1'
+        );
         $stmt->execute([$nomType]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -68,8 +93,10 @@ final class BoissonRepository extends BaseRepository
         string $optionsFruits,
         ?string $imagePath
     ): void {
+        $optionsFruits = $this->normalizeFruitOptions($optionsFruits);
         $stmt = $this->pdo->prepare(
-            'INSERT INTO boisson (nom_boisson, id_type, dosage, quantite_boisson, prix_unitaire, options_fruits, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO boisson (nom_boisson, id_type, dosage, quantite_boisson, prix_unitaire, options_fruits, image_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([$nom, $idType, $dosage, $quantite, $prix, $optionsFruits, $imagePath]);
     }
@@ -84,17 +111,57 @@ final class BoissonRepository extends BaseRepository
         string $optionsFruits,
         ?string $imagePath
     ): void {
+        $optionsFruits = $this->normalizeFruitOptions($optionsFruits);
         if ($imagePath !== null) {
             $stmt = $this->pdo->prepare(
-                'UPDATE boisson SET nom_boisson = ?, id_type = ?, dosage = ?, quantite_boisson = ?, prix_unitaire = ?, options_fruits = ?, image_url = ? WHERE id_boisson = ?'
+                'UPDATE boisson SET nom_boisson = ?, id_type = ?, dosage = ?, quantite_boisson = ?, prix_unitaire = ?,
+                 options_fruits = ?, image_url = ? WHERE id_boisson = ?'
             );
             $stmt->execute([$nom, $idType, $dosage, $quantite, $prix, $optionsFruits, $imagePath, $id]);
         } else {
             $stmt = $this->pdo->prepare(
-                'UPDATE boisson SET nom_boisson = ?, id_type = ?, dosage = ?, quantite_boisson = ?, prix_unitaire = ?, options_fruits = ? WHERE id_boisson = ?'
+                'UPDATE boisson SET nom_boisson = ?, id_type = ?, dosage = ?, quantite_boisson = ?, prix_unitaire = ?,
+                 options_fruits = ? WHERE id_boisson = ?'
             );
             $stmt->execute([$nom, $idType, $dosage, $quantite, $prix, $optionsFruits, $id]);
         }
+    }
+
+    /** Normalise "orange, pomme ; ananas" → "Orange,Pomme,Ananas". */
+    public function normalizeFruitOptions(string $raw): string
+    {
+        $parts = preg_split('/[,;|]+/', $raw) ?: [];
+        $clean = [];
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            $clean[] = mb_convert_case(mb_strtolower($part, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+        }
+
+        return implode(',', array_values(array_unique($clean)));
+    }
+
+    /** @return list<string> */
+    public static function parseFruitOptions(?string $raw): array
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return [];
+        }
+
+        $parts = preg_split('/[,;|]+/', $raw) ?: [];
+        $out = [];
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            $out[] = mb_convert_case(mb_strtolower($part, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+        }
+
+        return array_values(array_unique($out));
     }
 
     public function delete(int $id): void
@@ -106,19 +173,32 @@ final class BoissonRepository extends BaseRepository
     /** @return list<string> */
     public function listTypeNames(): array
     {
+        $canonical = ['soda', 'eau', 'jus', 'alcool'];
+
         try {
             $check = $this->pdo->query("SHOW TABLES LIKE 'type_boisson'");
             if ($check === false || $check->fetchColumn() === false) {
-                return [];
+                return $canonical;
             }
             $stmt = $this->pdo->query('SELECT nom_type FROM type_boisson ORDER BY nom_type ASC');
-
-            return array_values(array_filter(
+            $existing = array_values(array_filter(
                 array_map(static fn ($row): string => trim((string) $row), $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []),
                 static fn (string $name): bool => $name !== ''
             ));
+
+            $byLower = [];
+            foreach ($existing as $name) {
+                $byLower[mb_strtolower($name, 'UTF-8')] = $name;
+            }
+
+            $ordered = [];
+            foreach ($canonical as $want) {
+                $ordered[] = $byLower[$want] ?? $want;
+            }
+
+            return $ordered;
         } catch (PDOException) {
-            return [];
+            return $canonical;
         }
     }
 }

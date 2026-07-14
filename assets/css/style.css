@@ -514,6 +514,13 @@ body > * {
     color: rgba(255, 255, 255, 0.72);
 }
 
+.client-order-tile__bon-appetit {
+    margin-left: 0.35rem;
+    color: var(--dm-secondary, #c5a059);
+    font-weight: 700;
+    font-style: italic;
+}
+
 .client-recent-orders__footer {
     margin-top: 1rem;
     padding-top: 0.85rem;

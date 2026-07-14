@@ -57,7 +57,9 @@ final class DatabaseInitializer
         prenom_client VARCHAR(100),
         email_client VARCHAR(100),
         telephone_client VARCHAR(20),
-        date_inscription TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        date_inscription TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_client_email (email_client),
+        UNIQUE KEY uq_client_telephone (telephone_client)
     )");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS table_restaurant (
@@ -73,8 +75,6 @@ final class DatabaseInitializer
         id_client INT,
         num_table INT,
         date_commande TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        quantite_plats INT DEFAULT 0,
-        quantite_boissons INT DEFAULT 0,
         statut ENUM('en_attente', 'en_preparation', 'prete', 'livree', 'annulee') DEFAULT 'en_attente',
         montant_total DECIMAL(10, 2) DEFAULT 0.00,
         mode_paiement_souhaite ENUM('especes', 'mobile_money') NULL,
@@ -192,18 +192,18 @@ final class DatabaseInitializer
         foreach ([
             ['Soda Frais', 'soda', '33cl', 50, ''],
             ['Eau Minérale', 'eau', '50cl', 40, ''],
-            ['Jus de Fruit', 'jus', '25cl', 30, 'orange,pomme,ananas,mangue'],
+            ['Jus de Fruit', 'jus', '25cl', 30, 'Orange,Banane,Pomme,Ananas,Mangue,Fraise'],
             ['Coca-Cola', 'soda', '33cl', 50, ''],
-            ['Jus d\'Orange', 'jus', '25cl', 30, 'orange'],
-            ['Jus de Pomme', 'jus', '25cl', 30, 'pomme'],
+            ['Jus d\'Orange', 'jus', '25cl', 30, 'Orange'],
+            ['Jus de Pomme', 'jus', '25cl', 30, 'Pomme'],
         ] as $boisson) {
             $stmt->execute($boisson);
         }
 
-        $pdo->exec("INSERT IGNORE INTO commande (id_client, num_table, quantite_plats, quantite_boissons, statut, montant_total) VALUES
-        (1, 1, 2, 1, 'en_attente', 20.00),
-        (2, 2, 1, 1, 'en_preparation', 18.50),
-        (3, 3, 1, 1, 'prete', 14.50)");
+        $pdo->exec("INSERT IGNORE INTO commande (id_client, num_table, statut, montant_total) VALUES
+        (1, 1, 'en_attente', 20.00),
+        (2, 2, 'en_preparation', 18.50),
+        (3, 3, 'prete', 14.50)");
 
         $pdo->exec("INSERT IGNORE INTO contient (num_commande, id_plat, id_boisson, quantite, prix, sous_total) VALUES
         (1, 1, NULL, 2, 8.50, 17.00),

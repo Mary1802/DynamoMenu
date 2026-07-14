@@ -1,0 +1,511 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\Dashboard;
+use App\Support\Money;
+?>
+<!doctype html>
+<html lang="fr">
+<head>
+    <?php Dashboard::assetLinks('Caissier - Paiement des commandes'); ?>
+</head>
+<body class="dashboard-body">
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+    <header class="dashboard-topbar">
+        <button type="button" class="dashboard-menu-toggle" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="dashboardSidebar">
+            <i class="bi bi-list" aria-hidden="true"></i>
+        </button>
+        <div class="dashboard-topbar-brand">Dynamo<span>Menu</span></div>
+        <div style="width: 42px;"></div>
+    </header>
+
+    <aside class="dashboard-sidebar d-flex flex-column" id="dashboardSidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo">DM</div>
+                <div class="brand-title">DynamoMenu</div>
+                <div class="brand-subtitle">Caisse</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-item">
+                    <a class="nav-link active" href="paiement.php">
+                        <span class="nav-icon"><i class="bi bi-credit-card" aria-hidden="true"></i></span>
+                        <span>Paiements</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="rapports.php">
+                        <span class="nav-icon"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i></span>
+                        <span>Rapports</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="commandes.php">
+                        <span class="nav-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                        <span>Commandes</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="parametres.php">
+                        <span class="nav-icon"><i class="bi bi-gear" aria-hidden="true"></i></span>
+                        <span>Paramètres</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <?php Dashboard::sidebarUserFooter('caissier'); ?>
+            </div>
+        </aside>
+
+    <div class="dashboard-shell dashboard-container">
+        <!-- Main Content -->
+        <main class="dashboard-main flex-grow-1">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-title">
+                    <span class="header-eyebrow">Caisse</span>
+                    <h1>Paiement des commandes</h1>
+                    <p>Facturation des commandes livrées aux tables</p>
+                </div>
+                
+                <div class="header-actions">
+                    <div class="search-box">
+                        <input type="search" class="search-input" data-dashboard-search placeholder="Nom, tél., table, n° commande…" aria-label="Rechercher une commande">
+                        <span class="search-icon"><i class="bi bi-search" aria-hidden="true"></i></span>
+                    </div>
+                    
+                    <?php Dashboard::renderNotifications('caissier', $notif_items, $notif_count); ?>
+                </div>
+            </header>
+
+            <?php if (isset($_GET['success'])): ?>
+            <div class="success-message" role="status">
+                <i class="bi bi-check-circle" aria-hidden="true"></i>
+                Paiement de la commande #<?php echo htmlspecialchars($_GET['commande'] ?? '', ENT_QUOTES, 'UTF-8'); ?> effectué avec succès.
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($error)): ?>
+            <div class="success-message" style="color: var(--danger-color); border-color: rgba(220,53,69,0.35); background: rgba(220,53,69,0.1);">
+                <?php echo htmlspecialchars($error); ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($dashboard_error)): ?>
+            <div class="success-message" style="color: var(--danger-color); border-color: rgba(220,53,69,0.35); background: rgba(220,53,69,0.1);">
+                <?php echo htmlspecialchars($dashboard_error); ?>
+                <div class="mt-2 small">
+                    <a href="../run_update.php" class="link-invoice">Exécuter run_update.php</a>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Statistiques -->
+            <div class="stats-row stats-row--3">
+                <div class="stat-box">
+                    <div class="stat-value"><?php echo count($commandes_a_payer); ?></div>
+                    <div class="stat-label">À Payer</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value"><?php echo Money::format((float) ($stats_jour['total_ca'] ?? 0)); ?></div>
+                    <div class="stat-label">CA Aujourd'hui</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value"><?php echo $stats_jour['total_paiements'] ?? 0; ?></div>
+                    <div class="stat-label">Paiements</div>
+                </div>
+            </div>
+
+            <!-- Contenu principal -->
+            <div class="main-content">
+                <!-- Section Demandes de paiement -->
+                <?php if (!empty($demandes_paiement)): ?>
+                <div class="commandes-section mb-4">
+                    <div class="section-title">
+                        Demandes de paiement
+                        <span class="section-count">(<?php echo count($demandes_paiement); ?> en attente)</span>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <?php foreach ($demandes_paiement as $demande): ?>
+                        <div class="col-12">
+                            <div class="commande-item demande-highlight" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($demande)); ?>">
+                                <div class="commande-header">
+                                    <div class="commande-id">
+                                        Demande #<?php echo str_pad((string) $demande['id_demande'], 4, '0', STR_PAD_LEFT); ?>
+                                        <span style="font-size: 0.85rem; color: var(--text-muted);">
+                                            (Commande #<?php echo str_pad((string) $demande['num_commande'], 5, '0', STR_PAD_LEFT); ?>)
+                                        </span>
+                                    </div>
+                                    <div class="commande-montant"><?php echo Money::format((float) $demande['montant']); ?></div>
+                                </div>
+                                
+                                <div class="commande-details">
+                                    <div>
+                                        <span>Table <?php echo $demande['num_table'] ?? 'N/A'; ?></span>
+                                        <span> • </span>
+                                        <span><?php echo htmlspecialchars(trim(($demande['prenom_client'] ?? '') . ' ' . ($demande['nom_client'] ?? ''))); ?></span>
+                                    </div>
+                                    <div>
+                                        <?php
+                                        $mode_labels = [
+                                            'carte' => 'Carte',
+                                            'especes' => 'Espèces',
+                                            'mobile' => 'Mobile',
+                                        ];
+                                        ?>
+                                        <span class="mode-badge mode-<?php echo htmlspecialchars($demande['mode_paiement'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            <?php echo $mode_labels[$demande['mode_paiement']] ?? ucfirst($demande['mode_paiement']); ?>
+                                        </span>
+                                        <span> • </span>
+                                        <span><?php echo date('H:i', strtotime($demande['date_demande'])); ?></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="commande-actions">
+                                    <a href="?voir_commande=<?php echo $demande['num_commande']; ?>" class="btn-details">
+                                        <i class="bi bi-list-ul" aria-hidden="true"></i> Voir détails
+                                    </a>
+                                    <a href="?voir_commande=<?php echo $demande['num_commande']; ?>" class="btn-payer">
+                                        <i class="bi bi-cash-coin" aria-hidden="true"></i> Traiter le paiement
+                                    </a>
+                                    <form method="POST" class="d-flex flex-grow-1" action="paiement.php">
+                                        <?php Dashboard::csrfField(); ?>
+                                        <input type="hidden" name="demande_id" value="<?php echo $demande['id_demande']; ?>">
+                                        <button type="submit" name="annuler_demande" class="btn-details btn-danger-outline w-100">
+                                            <i class="bi bi-x-lg" aria-hidden="true"></i> Annuler
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Section Commandes à payer -->
+                <div class="commandes-section">
+                    <div class="section-title">
+                        Commandes livrées à encaisser
+                        <span class="section-count">(<?php echo count($commandes_a_payer); ?> en attente)</span>
+                    </div>
+                    <div class="caisse-section-scroll order-scroll-panel">
+                    <?php if (empty($commandes_a_payer)): ?>
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-wallet2" aria-hidden="true"></i></div>
+                        <h4>Aucune commande à payer</h4>
+                        <p>Toutes les commandes ont été réglées</p>
+                    </div>
+                    <?php else: ?>
+                    <div class="row g-3">
+                        <?php foreach ($commandes_a_payer as $commande): ?>
+                        <div class="col-12">
+                            <div class="commande-item" data-commande-id="<?php echo $commande['num_commande']; ?>" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($commande)); ?>">
+                                <div class="commande-header">
+                                    <div class="commande-id">Commande #<?php echo str_pad((string) $commande['num_commande'], 5, '0', STR_PAD_LEFT); ?></div>
+                                    <div class="commande-montant"><?php echo Money::format((float) $commande['montant_total']); ?></div>
+                                </div>
+                                
+                                <div class="commande-details">
+                                    <div>
+                                        <span>Table <?php echo htmlspecialchars((string) ($commande['num_table'] ?? 'N/A')); ?></span>
+                                        <span> • </span>
+                                        <span><?php echo htmlspecialchars(trim(($commande['prenom_client'] ?? '') . ' ' . ($commande['nom_client'] ?? 'Client'))); ?></span>
+                                        <?php if (!empty($commande['telephone_client'])): ?>
+                                        <span> • <?php echo htmlspecialchars($commande['telephone_client']); ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($commande['mode_paiement_souhaite'])): ?>
+                                        <span> • <?php echo $commande['mode_paiement_souhaite'] === 'mobile_money' ? 'Mobile money' : 'Cash'; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div>
+                                        <span><?php echo $commande['nombre_items']; ?> article(s)</span>
+                                        <span> • </span>
+                                        <span><?php echo date('H:i', strtotime($commande['date_commande'])); ?></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="commande-actions">
+                                    <a href="?voir_commande=<?php echo $commande['num_commande']; ?>" class="btn-details">
+                                        <i class="bi bi-list-ul" aria-hidden="true"></i> Voir détails
+                                    </a>
+                                    <a href="?voir_commande=<?php echo $commande['num_commande']; ?>" class="btn-payer">
+                                        <i class="bi bi-cash-coin" aria-hidden="true"></i> Payer maintenant
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Section Paiements récents -->
+                <div class="paiements-section">
+                    <div class="section-title">Paiements récents</div>
+                    <div class="caisse-section-scroll order-scroll-panel">
+                    <?php if (empty($paiements_recents)): ?>
+                    <div class="empty-state py-3">
+                        <div class="empty-icon"><i class="bi bi-receipt" aria-hidden="true"></i></div>
+                        <p>Aucun paiement récent</p>
+                    </div>
+                    <?php else: ?>
+                    <div class="row g-2">
+                        <?php foreach ($paiements_recents as $paiement): ?>
+                        <div class="col-12">
+                            <div class="paiement-item" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::paiementSearchBlob($paiement)); ?>">
+                                <div class="paiement-header">
+                                    <div class="paiement-id">Facture #F-<?php echo str_pad((string) $paiement['num_facture'], 4, '0', STR_PAD_LEFT); ?></div>
+                                    <div class="paiement-montant"><?php echo Money::format((float) $paiement['total_paye']); ?></div>
+                                </div>
+                                
+                                <div class="paiement-details">
+                                    <div>
+                                        <span>Table <?php echo $paiement['num_table'] ?? 'N/A'; ?></span>
+                                        <span> • </span>
+                                        <span><?php echo htmlspecialchars(trim(($paiement['prenom_client'] ?? '') . ' ' . ($paiement['nom_client'] ?? ''))); ?></span>
+                                    </div>
+                                    <div>
+                                        <span class="mode-badge mode-<?php echo htmlspecialchars($paiement['mode_paiement'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            <?php echo ucfirst($paiement['mode_paiement']); ?>
+                                        </span>
+                                        <span> • </span>
+                                        <span><?php echo date('H:i', strtotime($paiement['date_facture'])); ?></span>
+                                        <span> • </span>
+                                        <a href="generer_facture.php?facture=<?php echo $paiement['num_facture']; ?>" target="_blank" rel="noopener" class="link-invoice">
+                                            <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Facture
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div><!-- /.dashboard-shell -->
+
+    <!-- Modal de paiement -->
+    <?php
+    $openPaymentModal = !empty($commande_details)
+        && (!empty($show_payment_modal) || !empty($payment_completed) || isset($_GET['voir_commande']));
+    ?>
+    <div class="modal-overlay<?php echo $openPaymentModal ? ' is-open' : ''; ?>" id="paiementModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title"><?php echo !empty($payment_completed) ? 'Commande encaissée' : 'Paiement de la commande'; ?></div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <?php if ($commande_details): ?>
+                <div class="commande-info-grid">
+                    <div class="info-item">
+                        <div class="info-label">N° Commande</div>
+                        <div class="info-value">#<?php echo str_pad((string) $commande_details['num_commande'], 5, '0', STR_PAD_LEFT); ?></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Table</div>
+                        <div class="info-value"><?php echo $commande_details['table_num'] ?? $commande_details['num_table'] ?? 'N/A'; ?></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Client</div>
+                        <div class="info-value"><?php echo htmlspecialchars(trim(($commande_details['prenom_client'] ?? '') . ' ' . ($commande_details['nom_client'] ?? 'Client'))); ?></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Téléphone</div>
+                        <div class="info-value"><?php echo htmlspecialchars($commande_details['telephone_client'] ?? '—'); ?></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Date</div>
+                        <div class="info-value"><?php echo date('d/m/Y H:i', strtotime($commande_details['date_commande'])); ?></div>
+                    </div>
+                </div>
+                
+                <table class="items-table-detail">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Qté</th>
+                            <th>Prix unit.</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($commande_lignes as $ligne): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars(Dashboard::lineLabel($ligne)); ?></td>
+                            <td><?php echo (int) $ligne['quantite']; ?></td>
+                            <td><?php echo Money::format((float) $ligne['prix']); ?></td>
+                            <td><?php echo Money::format((float) $ligne['sous_total']); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                
+                <?php
+                $ttc = (float) $commande_details['montant_total'];
+                $money = \App\Core\Application::getInstance()->moneyFormatter();
+                $ht = $money->htFromTtc($ttc);
+                $tva = $money->tvaFromTtc($ttc);
+                $tvaPct = (int) round($money->tvaRate() * 100);
+                ?>
+                <div class="total-row">
+                    <div>Total HT</div>
+                    <div><?php echo Money::format($ht); ?></div>
+                </div>
+                <div class="total-row">
+                    <div>TVA (<?php echo $tvaPct; ?> %)</div>
+                    <div><?php echo Money::format($tva); ?></div>
+                </div>
+                <div class="total-row">
+                    <div><strong>Total TTC</strong></div>
+                    <div><strong><?php echo Money::format($ttc); ?></strong></div>
+                </div>
+
+                <?php if (!empty($payment_completed)): ?>
+                <div class="success-message mt-3" role="status">
+                    <i class="bi bi-check-circle" aria-hidden="true"></i>
+                    Paiement enregistré — facture #F-<?php echo str_pad((string) $num_facture_encaisse, 4, '0', STR_PAD_LEFT); ?>
+                    <?php if (!empty($mode_paiement_encaisse)): ?>
+                    <span class="ms-1">(<?php echo htmlspecialchars(Dashboard::modePaiementLabel($mode_paiement_encaisse)); ?>)</span>
+                    <?php endif; ?>
+                </div>
+                <div class="commande-actions mt-3">
+                    <a href="generer_facture.php?facture=<?php echo (int) $num_facture_encaisse; ?>" target="_blank" rel="noopener" class="btn-details">
+                        <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Voir / imprimer la facture
+                    </a>
+                </div>
+                <?php else: ?>
+                <?php if (!empty($error)): ?>
+                <div class="success-message mt-3" style="color: var(--danger-color); border-color: rgba(220,53,69,0.35); background: rgba(220,53,69,0.1);" role="alert">
+                    <?php echo htmlspecialchars($error); ?>
+                </div>
+                <?php endif; ?>
+                <div id="paymentFormBlock">
+                <?php
+                $defaultMode = 'especes';
+                if (!empty($commande_details['mode_paiement_souhaite'])) {
+                    $defaultMode = $commande_details['mode_paiement_souhaite'] === 'mobile_money' ? 'mobile' : 'especes';
+                }
+                ?>
+                <form method="POST" id="paiementForm" data-payment-form action="paiement.php">
+                    <?php Dashboard::csrfField(); ?>
+                    <input type="hidden" name="commande_id" value="<?php echo $commande_details['num_commande']; ?>">
+                    <input type="hidden" name="montant_paye" value="<?php echo $commande_details['montant_total']; ?>">
+                    <?php if (!empty($payment_token)): ?>
+                    <input type="hidden" name="pay_token" value="<?php echo htmlspecialchars($payment_token); ?>">
+                    <?php endif; ?>
+                    <input type="hidden" name="mode_paiement" value="<?php echo htmlspecialchars($defaultMode); ?>" id="selectedMode">
+                    
+                    <div class="paiement-options">
+                        <div class="paiement-option<?php echo $defaultMode === 'especes' ? ' active' : ''; ?>" data-mode="especes" role="button" tabindex="0">
+                            <div class="option-icon"><i class="bi bi-cash-stack" aria-hidden="true"></i></div>
+                            <div class="option-label">Cash</div>
+                        </div>
+                        <div class="paiement-option<?php echo $defaultMode === 'mobile' ? ' active' : ''; ?>" data-mode="mobile" role="button" tabindex="0">
+                            <div class="option-icon"><i class="bi bi-phone" aria-hidden="true"></i></div>
+                            <div class="option-label">Mobile money</div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" name="payer_commande" value="1" class="btn-confirm" id="paiementSubmitBtn">
+                        <i class="bi bi-check-lg" aria-hidden="true"></i>
+                        Confirmer le paiement de <?php echo Money::format((float) $commande_details['montant_total']); ?>
+                    </button>
+                </form>
+                </div>
+                <div id="paymentProcessing" class="success-message mt-3" hidden role="status">
+                    <i class="bi bi-hourglass-split" aria-hidden="true"></i> Traitement du paiement en cours…
+                </div>
+                <?php endif; ?>
+                <?php else: ?>
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></div>
+                    <p>Impossible de charger les détails de la commande</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <?php Dashboard::scripts(); ?>
+    <script>
+        function closeModal() {
+            var modal = document.getElementById('paiementModal');
+            modal.classList.remove('is-open');
+            modal.style.removeProperty('display');
+            window.location.replace(window.location.pathname);
+        }
+
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+
+        <?php if (!empty($payment_completed)): ?>
+        if (window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+        <?php endif; ?>
+        
+        // Fermer le modal en cliquant à l'extérieur
+        document.getElementById('paiementModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // Gestion des options de paiement
+        document.addEventListener('DOMContentLoaded', function() {
+            const options = document.querySelectorAll('.paiement-option');
+            const modeInput = document.getElementById('selectedMode');
+            
+            if (modeInput) {
+                options.forEach(option => {
+                    option.addEventListener('click', function() {
+                        options.forEach(opt => opt.classList.remove('active'));
+                        this.classList.add('active');
+                        modeInput.value = this.getAttribute('data-mode') || 'especes';
+                    });
+                });
+            }
+
+            const paymentForm = document.getElementById('paiementForm');
+            const submitBtn = document.getElementById('paiementSubmitBtn');
+            const paymentFormBlock = document.getElementById('paymentFormBlock');
+            const paymentProcessing = document.getElementById('paymentProcessing');
+            if (paymentForm && submitBtn) {
+                paymentForm.addEventListener('submit', function (e) {
+                    if (paymentForm.dataset.submitting === '1') {
+                        e.preventDefault();
+                        return;
+                    }
+                    paymentForm.dataset.submitting = '1';
+                    submitBtn.setAttribute('aria-busy', 'true');
+                    if (paymentFormBlock) {
+                        paymentFormBlock.hidden = true;
+                    }
+                    if (paymentProcessing) {
+                        paymentProcessing.hidden = false;
+                    }
+                });
+            }
+
+            const modal = document.getElementById('paiementModal');
+            if (modal && modal.classList.contains('is-open')) {
+                modal.style.removeProperty('display');
+            }
+        });
+    </script>
+</body>
+</html>

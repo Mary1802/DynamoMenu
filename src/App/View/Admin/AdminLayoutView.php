@@ -20,7 +20,6 @@ final class AdminLayoutView
                 'commandes' => ['url' => 'commandes.php', 'icon' => 'bi-receipt', 'label' => 'Commandes'],
                 'plats' => ['url' => 'plats.php', 'icon' => 'bi-grid', 'label' => 'Menu (plats)'],
                 'clients' => ['url' => 'clients.php', 'icon' => 'bi-people', 'label' => 'Clients'],
-                'notifications' => ['url' => 'notifications.php', 'icon' => 'bi-bell', 'label' => 'Notifications'],
                 'employes' => ['url' => 'employes.php', 'icon' => 'bi-person-badge', 'label' => 'Employés'],
                 'rapports' => ['url' => 'rapports.php', 'icon' => 'bi-file-earmark-bar-graph', 'label' => 'Rapports ventes'],
                 'parametres' => ['url' => 'parametres.php', 'icon' => 'bi-gear', 'label' => 'Paramètres'],

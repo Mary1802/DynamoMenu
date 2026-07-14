@@ -53,7 +53,6 @@ final class PlatController
                         trim((string) $post['nom_plat']),
                         (float) $post['prix_unitaire'],
                         trim((string) ($post['categorie'] ?? '')),
-                        (int) ($post['quantite_plat'] ?? 0),
                         $imagePath,
                         (int) ($post['temps_preparation_min'] ?? 15)
                     );
@@ -62,14 +61,11 @@ final class PlatController
                 }
                 if (isset($post['update_plat'])) {
                     $imagePath = $this->uploads->upload($files['image_plat'] ?? []);
-                    $existing = $this->plats->findById((int) $post['id_plat']);
-                    $quantitePlat = (int) ($existing['quantite_plat'] ?? 0);
                     $this->plats->update(
                         (int) $post['id_plat'],
                         trim((string) $post['nom_plat']),
                         (float) $post['prix_unitaire'],
                         trim((string) ($post['categorie'] ?? '')),
-                        $quantitePlat,
                         $imagePath,
                         (int) ($post['temps_preparation_min'] ?? 15)
                     );

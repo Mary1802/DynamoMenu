@@ -39,16 +39,15 @@ final class PlatRepository extends BaseRepository
         string $nom,
         float $prix,
         string $categorie,
-        int $quantite,
         ?string $imagePath,
         int $tempsPreparationMin = 15,
     ): void {
         $tempsPreparationMin = max(1, min(180, $tempsPreparationMin));
         $stmt = $this->pdo->prepare(
-            'INSERT INTO plat (nom_plat, prix_unitaire, categorie, quantite_plat, temps_preparation_min, image_url)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO plat (nom_plat, prix_unitaire, categorie, temps_preparation_min, image_url)
+             VALUES (?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$nom, $prix, $categorie, $quantite, $tempsPreparationMin, $imagePath]);
+        $stmt->execute([$nom, $prix, $categorie, $tempsPreparationMin, $imagePath]);
     }
 
     public function update(
@@ -56,23 +55,22 @@ final class PlatRepository extends BaseRepository
         string $nom,
         float $prix,
         string $categorie,
-        int $quantite,
         ?string $imagePath,
         int $tempsPreparationMin = 15,
     ): void {
         $tempsPreparationMin = max(1, min(180, $tempsPreparationMin));
         if ($imagePath !== null) {
             $stmt = $this->pdo->prepare(
-                'UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?, quantite_plat = ?,
+                'UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?,
                  temps_preparation_min = ?, image_url = ? WHERE id_plat = ?'
             );
-            $stmt->execute([$nom, $prix, $categorie, $quantite, $tempsPreparationMin, $imagePath, $id]);
+            $stmt->execute([$nom, $prix, $categorie, $tempsPreparationMin, $imagePath, $id]);
         } else {
             $stmt = $this->pdo->prepare(
-                'UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?, quantite_plat = ?,
+                'UPDATE plat SET nom_plat = ?, prix_unitaire = ?, categorie = ?,
                  temps_preparation_min = ? WHERE id_plat = ?'
             );
-            $stmt->execute([$nom, $prix, $categorie, $quantite, $tempsPreparationMin, $id]);
+            $stmt->execute([$nom, $prix, $categorie, $tempsPreparationMin, $id]);
         }
     }
 

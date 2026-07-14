@@ -109,9 +109,6 @@ final class CartService
     public function drinkKind(string $name): ?string
     {
         $n = mb_strtolower(trim($name));
-        if (in_array($n, ['jus de fruit', 'milkshake', 'cocktail de fruits'], true)) {
-            return 'fruit';
-        }
         if ($n === 'coca-cola, fanta, sprite' || (str_contains($n, 'coca') && str_contains($n, 'fanta') && str_contains($n, 'sprite'))) {
             return 'soda';
         }
@@ -146,6 +143,22 @@ final class CartService
 
         if ($name === '' || $price <= 0) {
             return ['success' => false, 'message' => 'Données invalides'];
+        }
+
+        if ($idBoisson > 0) {
+            $stock = StockService::fromApp();
+            $already = $stock->quantityAlreadyInCart($_SESSION['panier'], $idBoisson);
+            $needed = $already + $quantite;
+            $available = $stock->availableBoisson($idBoisson);
+            if ($available <= 0) {
+                return ['success' => false, 'message' => '« ' . $name . ' » est en rupture de stock.'];
+            }
+            if ($needed > $available) {
+                return [
+                    'success' => false,
+                    'message' => "Stock insuffisant pour « {$name} » (disponible : {$available}).",
+                ];
+            }
         }
 
         $cartKey = self::makeKey($type, $name, $category, $personnalisation);
@@ -190,6 +203,7 @@ final class CartService
         $type = (string) ($post['type'] ?? '');
         $id = (int) ($post['id'] ?? 0);
         $quantite = (int) ($post['quantite'] ?? 1);
+        $stock = StockService::fromApp();
 
         if ($type === 'plat' && $id > 0) {
             $stmt = $pdo->prepare('SELECT * FROM plat WHERE id_plat = ?');
@@ -203,6 +217,7 @@ final class CartService
                 $_SESSION['panier'][] = [
                     'type' => 'plat',
                     'id' => $id,
+                    'id_plat' => $id,
                     'nom' => $item['nom_plat'],
                     'prix' => $item['prix_unitaire'],
                     'quantite' => $quantite,
@@ -216,14 +231,22 @@ final class CartService
             $item = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($item) {
+                $already = $stock->quantityAlreadyInCart($_SESSION['panier'], $id);
+                $available = $stock->availableBoisson($id);
+                if ($already + $quantite > $available) {
+                    return;
+                }
+
                 $personnalisation = (string) ($post['personnalisation_boisson'] ?? '');
+                $prix = isset($item['prix_unitaire']) ? (float) $item['prix_unitaire'] : 2.50;
                 $_SESSION['panier'][] = [
                     'type' => 'boisson',
                     'id' => $id,
+                    'id_boisson' => $id,
                     'nom' => $item['nom_boisson'],
-                    'prix' => 2.50,
+                    'prix' => $prix,
                     'quantite' => $quantite,
-                    'sous_total' => 2.50 * $quantite,
+                    'sous_total' => $prix * $quantite,
                     'personnalisation' => $personnalisation,
                 ];
             }
@@ -239,7 +262,19 @@ final class CartService
         }
 
         if ($action === 'plus') {
-            $_SESSION['panier'][$index]['quantite']++;
+            $item = $_SESSION['panier'][$index];
+            $idBoisson = (int) ($item['id_boisson'] ?? ($item['type'] === 'boisson' ? ($item['id'] ?? 0) : 0));
+            $nextQty = (int) $item['quantite'] + 1;
+
+            if ($idBoisson > 0) {
+                $stock = StockService::fromApp();
+                $alreadyOthers = $stock->quantityAlreadyInCart($_SESSION['panier'], $idBoisson, $index);
+                if ($alreadyOthers + $nextQty > $stock->availableBoisson($idBoisson)) {
+                    return;
+                }
+            }
+
+            $_SESSION['panier'][$index]['quantite'] = $nextQty;
             $_SESSION['panier'][$index]['sous_total'] =
                 $_SESSION['panier'][$index]['prix'] * $_SESSION['panier'][$index]['quantite'];
         } elseif ($action === 'minus' && $_SESSION['panier'][$index]['quantite'] > 1) {
@@ -268,9 +303,11 @@ final class CartService
      *   total_ttc: float
      * }
      */
-    public function totals(float $tvaRate = 0.16): array
+    public function totals(?float $tvaRate = null): array
     {
         $this->ensureCart();
+
+        $tvaRate ??= Application::getInstance()->moneyFormatter()->tvaRate();
 
         $total = 0.0;
         $count = 0;

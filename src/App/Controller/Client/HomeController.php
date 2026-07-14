@@ -53,7 +53,7 @@ final class HomeController
 
         $tableAccessError = isset($_GET['err']) && $_GET['err'] === 'table' && $tableCtx === null;
 
-        $orderNums = OrderHistoryController::sessionOrderIds();
+        $orderNums = OrderHistoryController::resolveAccessibleOrderIds();
         $commandeRepo = Application::getInstance()->commandeRepository();
         Application::getInstance()->schemaUpgrade()->run();
         $recentRows = $commandeRepo->findClientOrderSummaries($orderNums);
@@ -71,7 +71,7 @@ final class HomeController
                     'livree', 'annulee' => 'is-done',
                     default => '',
                 },
-                'detail_url' => $this->tables->link('suivi_commande.php') . '?commande=' . $num,
+                'detail_url' => $this->tables->linkWithQuery('suivi_commande.php', ['commande' => $num]),
                 'countdown_active' => $countdown['countdown_active'],
                 'prep_end_unix' => $countdown['prep_end_unix'],
                 'prep_remaining_seconds' => $countdown['prep_remaining_seconds'],

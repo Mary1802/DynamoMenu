@@ -52,13 +52,6 @@ final class TableController
                 $message = 'Statut de la table mis à jour.';
             }
 
-            if (isset($post['regenerate_code'])) {
-                $num = (int) $post['num_table'];
-                $code = TableCodeService::generateTableCode($num);
-                $this->tables->updateCode($num, $code);
-                $message = "Nouveau code d'accès généré pour la table {$num}.";
-            }
-
             if (isset($post['update_table'])) {
                 $num = (int) $post['num_table'];
                 $places = max(1, (int) ($post['nombre_place'] ?? 2));

@@ -36,7 +36,7 @@ final class DashboardController
         return [
             'stats' => $this->stats->dashboardStats((float) $caJour['ca'], (float) $caMois['ca']),
             'recent_orders' => $this->stats->recentOrders(3),
-            'top_plats' => $this->stats->topPlats(3),
+            'top_plats' => $this->stats->topPlats(25),
             'ca_jour' => $caJour,
             'ca_mois' => $caMois,
         ];

@@ -156,6 +156,16 @@ html.theme-light body.login-page .theme-switch-input:checked + .theme-switch-tra
     padding-right: 2.75rem;
 }
 
+/* Masquer l’œil natif du navigateur (Edge/Chrome) — un seul bouton custom */
+.login-password-wrap .form-control::-ms-reveal,
+.login-password-wrap .form-control::-ms-clear {
+    display: none;
+}
+
+.login-password-wrap .form-control::-webkit-textfield-decoration-container {
+    display: none;
+}
+
 .login-password-toggle {
     position: absolute;
     top: 50%;

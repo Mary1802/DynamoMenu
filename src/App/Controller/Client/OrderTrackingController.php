@@ -47,12 +47,26 @@ final class OrderTrackingController
 
         $numCommande = (int) ($get['commande'] ?? $_SESSION['suivi_commande_id'] ?? 0);
         if ($numCommande <= 0) {
-            return null;
+            $this->tables->redirectToIndex();
         }
 
         $commande = $this->commandes->findForTracking($numCommande);
         if ($commande === null) {
-            return null;
+            $this->tables->redirectToIndex();
+        }
+
+        if ($this->commandes->isOrderPaid($numCommande)) {
+            if (!empty($_SESSION['suivi_commande_id']) && (int) $_SESSION['suivi_commande_id'] === $numCommande) {
+                unset($_SESSION['suivi_commande_id']);
+            }
+            if (!empty($_SESSION['order_access']) && is_array($_SESSION['order_access'])) {
+                $_SESSION['order_access'] = array_values(array_filter(
+                    array_map('intval', $_SESSION['order_access']),
+                    static fn (int $n): bool => $n > 0 && $n !== $numCommande
+                ));
+            }
+            header('Location: ' . $this->tables->link('index.php'), true, 302);
+            exit;
         }
 
         $accessToken = trim((string) ($get['token'] ?? ''));

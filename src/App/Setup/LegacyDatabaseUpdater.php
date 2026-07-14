@@ -29,9 +29,9 @@ final class LegacyDatabaseUpdater
 
         try {
             $this->app->schemaUpgrade()->run();
-            $log[] = '✅ Schéma notifications : appliqué';
+            $log[] = '✅ Schéma base : appliqué';
         } catch (PDOException $e) {
-            $log[] = '❌ Schéma notifications : ' . $e->getMessage();
+            $log[] = '❌ Schéma base : ' . $e->getMessage();
         }
 
         foreach ($this->legacyQueries() as $sql => $description) {

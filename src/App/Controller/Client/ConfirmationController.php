@@ -62,6 +62,14 @@ final class ConfirmationController
 
         $error = null;
 
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($post['annuler_commande'])) {
+            $this->session->verifyPostCsrf();
+            Application::getInstance()->clientProfileService()->eraseFromDatabase();
+            $this->cart->clearCart();
+            header('Location: ' . $this->tables->link('menu.php'));
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($post['confirmer_commande'])) {
             $this->session->verifyPostCsrf();
 

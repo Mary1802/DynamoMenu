@@ -14,6 +14,7 @@ final class OrderCreationService
     public function __construct(
         private readonly PDO $pdo,
         private readonly ClientRepository $clients,
+        private readonly StockService $stock,
     ) {
     }
 
@@ -23,7 +24,8 @@ final class OrderCreationService
 
         return new self(
             $app->db(),
-            $app->clientRepository()
+            $app->clientRepository(),
+            StockService::fromApp($app)
         );
     }
 
@@ -38,8 +40,9 @@ final class OrderCreationService
         string $numTable,
         float $totalPanier,
         ?array $clientProfile = null,
-        float $tvaRate = 0.16
+        ?float $tvaRate = null
     ): array {
+        $tvaRate ??= Application::getInstance()->moneyFormatter()->tvaRate();
         $nom = trim((string) ($post['nom'] ?? $clientProfile['nom'] ?? ''));
         $prenom = trim((string) ($post['prenom'] ?? $clientProfile['prenom'] ?? ''));
         $email = trim((string) ($post['email'] ?? $clientProfile['email'] ?? ''));
@@ -51,12 +54,28 @@ final class OrderCreationService
             return ['success' => false, 'error' => 'Veuillez remplir tous les champs obligatoires (nom, prénom, email, téléphone).'];
         }
 
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'error' => 'Adresse e-mail invalide.'];
+        }
+
+        $phoneCheck = ClientProfileService::validateTelephone($telephone);
+        if ($phoneCheck !== null) {
+            return ['success' => false, 'error' => $phoneCheck];
+        }
+        $telephone = ClientProfileService::normalizeTelephone($telephone);
+        $email = mb_strtolower(trim($email), 'UTF-8');
+
         if (!in_array($modePaiement, ['especes', 'mobile_money'], true)) {
             return ['success' => false, 'error' => 'Veuillez choisir un mode de paiement.'];
         }
 
         if ($cartItems === []) {
             return ['success' => false, 'error' => 'Votre panier est vide.'];
+        }
+
+        $stockError = $this->stock->validateCartAvailability($cartItems);
+        if ($stockError !== null) {
+            return ['success' => false, 'error' => $stockError];
         }
 
         $this->clients->ensureSchema();
@@ -68,7 +87,15 @@ final class OrderCreationService
         $this->pdo->beginTransaction();
 
         try {
-            $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
+            try {
+                $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
+            } catch (\RuntimeException $e) {
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
+
+                return ['success' => false, 'error' => $e->getMessage()];
+            }
 
             $stmt = $this->pdo->prepare("
                 INSERT INTO commande (id_client, num_table, montant_total, mode_paiement_souhaite, instructions_speciales, statut)
@@ -83,6 +110,7 @@ final class OrderCreationService
             ]);
             $numCommande = (int) $this->pdo->lastInsertId();
 
+            $this->stock->decrementForCart($cartItems);
             $this->insertCartLines($numCommande, $cartItems);
 
             $this->pdo->commit();
@@ -136,10 +164,7 @@ final class OrderCreationService
                     $item['personnalisation'] ?? '',
                 ]);
             } elseif ($type === 'menu_item') {
-                $label = (string) $item['nom'];
-                if (!empty($item['personnalisation'])) {
-                    $label .= ' — ' . $item['personnalisation'];
-                }
+                $personnalisation = trim((string) ($item['personnalisation'] ?? ''));
 
                 $idPlat = (int) ($item['id_plat'] ?? 0);
                 $idBoisson = (int) ($item['id_boisson'] ?? 0);
@@ -151,9 +176,10 @@ final class OrderCreationService
                 }
 
                 if ($idPlat > 0) {
+                    // Le nom du plat vient de id_plat — ne surtout pas le recopier ici.
                     $stmt = $this->pdo->prepare("
-                        INSERT INTO contient (num_commande, id_plat, quantite, prix, sous_total, personnalisation_boisson)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO contient (num_commande, id_plat, quantite, prix, sous_total, sauces, personnalisation_boisson)
+                        VALUES (?, ?, ?, ?, ?, ?, '')
                     ");
                     $stmt->execute([
                         $numCommande,
@@ -161,9 +187,10 @@ final class OrderCreationService
                         $item['quantite'],
                         $item['prix'],
                         $item['sous_total'],
-                        $label,
+                        $personnalisation !== '' ? $personnalisation : (string) ($item['sauces'] ?? ''),
                     ]);
                 } elseif ($idBoisson > 0) {
+                    // Uniquement le goût / la variante, pas le nom de la boisson.
                     $stmt = $this->pdo->prepare("
                         INSERT INTO contient (num_commande, id_boisson, quantite, prix, sous_total, personnalisation_boisson)
                         VALUES (?, ?, ?, ?, ?, ?)
@@ -174,9 +201,14 @@ final class OrderCreationService
                         $item['quantite'],
                         $item['prix'],
                         $item['sous_total'],
-                        $label,
+                        $personnalisation,
                     ]);
                 } else {
+                    // Article orphelin : on garde le libellé lisible faute d'id.
+                    $label = trim((string) ($item['nom'] ?? ''));
+                    if ($personnalisation !== '') {
+                        $label = $label !== '' ? ($label . ' — ' . $personnalisation) : $personnalisation;
+                    }
                     $stmt = $this->pdo->prepare("
                         INSERT INTO contient (num_commande, id_plat, id_boisson, quantite, prix, sous_total, personnalisation_boisson)
                         VALUES (?, NULL, NULL, ?, ?, ?, ?)

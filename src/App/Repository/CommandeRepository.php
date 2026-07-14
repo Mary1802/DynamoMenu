@@ -26,14 +26,17 @@ final class CommandeRepository extends BaseRepository
             cl.telephone_client,
             COUNT(d.id_detail) AS nombre_items,
             GROUP_CONCAT(
-                CONCAT(COALESCE(p.nom_plat, b.nom_boisson), ' (x', d.quantite, ')')
+                CONCAT(
+                    COALESCE(NULLIF(p.nom_plat, ''), NULLIF(b.nom_boisson, ''), NULLIF(d.personnalisation_boisson, ''), 'Article'),
+                    ' (x', d.quantite, ')'
+                )
                 SEPARATOR ', '
             ) AS details_plats
         FROM commande c
         LEFT JOIN client cl ON c.id_client = cl.id_client
         LEFT JOIN contient d ON c.num_commande = d.num_commande
-        LEFT JOIN plat p ON d.id_plat = p.id_plat
-        LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
+        LEFT JOIN plat p ON d.id_plat = p.id_plat AND d.id_plat IS NOT NULL AND d.id_plat > 0
+        LEFT JOIN boisson b ON d.id_boisson = b.id_boisson AND d.id_boisson IS NOT NULL AND d.id_boisson > 0
     ";
 
     private const KITCHEN_GROUP = "
@@ -215,6 +218,8 @@ final class CommandeRepository extends BaseRepository
 
         $stmt = $this->pdo->prepare("
             SELECT
+                d.id_plat,
+                d.id_boisson,
                 d.quantite,
                 d.prix,
                 d.sous_total,
@@ -223,8 +228,8 @@ final class CommandeRepository extends BaseRepository
                 p.nom_plat,
                 b.nom_boisson
             FROM contient d
-            LEFT JOIN plat p ON d.id_plat = p.id_plat
-            LEFT JOIN boisson b ON d.id_boisson = b.id_boisson
+            LEFT JOIN plat p ON d.id_plat = p.id_plat AND d.id_plat IS NOT NULL AND d.id_plat > 0
+            LEFT JOIN boisson b ON d.id_boisson = b.id_boisson AND d.id_boisson IS NOT NULL AND d.id_boisson > 0
             WHERE d.num_commande = ?
             ORDER BY d.id_detail
         ");
@@ -240,6 +245,15 @@ final class CommandeRepository extends BaseRepository
         $stmt->execute([$statut]);
 
         return (int) $stmt->fetchColumn();
+    }
+
+    public function findStatut(int $numCommande): ?string
+    {
+        $stmt = $this->pdo->prepare('SELECT statut FROM commande WHERE num_commande = ?');
+        $stmt->execute([$numCommande]);
+        $statut = $stmt->fetchColumn();
+
+        return $statut === false ? null : (string) $statut;
     }
 
     public function updateStatut(int $numCommande, string $statut): void
@@ -265,28 +279,23 @@ final class CommandeRepository extends BaseRepository
             && (int) ($current['temps_preparation_estime_sec'] ?? 0) > 0;
 
         if ($alreadyRunning) {
-            $freshSeconds = $this->calculateEstimatedPrepSeconds($numCommande);
-            if ($freshSeconds > 0 && $freshSeconds !== (int) ($current['temps_preparation_estime_sec'] ?? 0)) {
-                $this->pdo->prepare(
-                    'UPDATE commande SET temps_preparation_estime_sec = ? WHERE num_commande = ?'
-                )->execute([$freshSeconds, $numCommande]);
-            } else {
-                $this->pdo->prepare(
-                    "UPDATE commande SET statut = 'en_preparation' WHERE num_commande = ?"
-                )->execute([$numCommande]);
-            }
+            // Ne pas prolonger un timer déjà lancé.
+            $this->pdo->prepare(
+                "UPDATE commande SET statut = 'en_preparation' WHERE num_commande = ?"
+            )->execute([$numCommande]);
 
             return;
         }
 
+        $startedAt = time();
         $stmt = $this->pdo->prepare("
             UPDATE commande
             SET statut = 'en_preparation',
-                date_debut_preparation = NOW(),
+                date_debut_preparation = FROM_UNIXTIME(?),
                 temps_preparation_estime_sec = ?
             WHERE num_commande = ?
         ");
-        $stmt->execute([$seconds, $numCommande]);
+        $stmt->execute([$startedAt, $seconds, $numCommande]);
     }
 
     public function calculateEstimatedPrepSeconds(int $numCommande): int
@@ -294,6 +303,10 @@ final class CommandeRepository extends BaseRepository
         return $this->calculateEstimatedPrepMinutes($numCommande) * 60;
     }
 
+    /**
+     * Temps estimé = somme (temps_préparation × quantité) sur les plats.
+     * Ex. 3× frites à 15 min → 45 min. Les boissons ne prolongent pas le countdown.
+     */
     public function calculateEstimatedPrepMinutes(int $numCommande): int
     {
         $rows = $this->fetchContientRowsForTracking($numCommande);
@@ -303,6 +316,11 @@ final class CommandeRepository extends BaseRepository
 
         $total = 0;
         foreach ($rows as $row) {
+            $idBoisson = (int) ($row['id_boisson'] ?? 0);
+            if ($idBoisson > 0 || !empty($row['is_boisson_line'])) {
+                continue;
+            }
+
             $qty = max(1, (int) ($row['quantite'] ?? 1));
             $total += $this->resolveLinePrepMinutes($row) * $qty;
         }
@@ -361,6 +379,18 @@ final class CommandeRepository extends BaseRepository
         $value = trim($value);
         if ($value === '') {
             return null;
+        }
+
+        // Interpréter via MySQL pour rester aligné avec FROM_UNIXTIME / NOW() session.
+        try {
+            $stmt = $this->pdo->prepare('SELECT UNIX_TIMESTAMP(?)');
+            $stmt->execute([$value]);
+            $ts = $stmt->fetchColumn();
+            if ($ts !== false && (int) $ts > 0) {
+                return (int) $ts;
+            }
+        } catch (\PDOException) {
+            // fallback ci-dessous
         }
 
         $dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $value);
@@ -452,21 +482,6 @@ final class CommandeRepository extends BaseRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function syncPreparationDuration(int $numCommande, int $seconds): void
-    {
-        if ($numCommande <= 0 || $seconds <= 0) {
-            return;
-        }
-
-        try {
-            $this->pdo->prepare(
-                'UPDATE commande SET temps_preparation_estime_sec = ? WHERE num_commande = ? AND statut = ?'
-            )->execute([$seconds, $numCommande, 'en_preparation']);
-        } catch (\PDOException) {
-            // ignore
-        }
-    }
-
     /**
      * @param array<string, mixed> $row
      * @return array{
@@ -489,11 +504,12 @@ final class CommandeRepository extends BaseRepository
 
         $numCommande = (int) ($row['num_commande'] ?? 0);
         $storedSec = (int) ($row['temps_preparation_estime_sec'] ?? 0);
-        $estimatedSec = $numCommande > 0 ? $this->calculateEstimatedPrepSeconds($numCommande) : 0;
-        $totalSec = $estimatedSec > 0 ? $estimatedSec : $storedSec;
-
-        if ($isPreparing && $numCommande > 0 && $estimatedSec > 0 && $storedSec !== $estimatedSec) {
-            $this->syncPreparationDuration($numCommande, $estimatedSec);
+        // Une fois démarré, on fige la durée stockée (évite de prolonger à chaque refresh).
+        if ($isPreparing && $storedSec > 0) {
+            $totalSec = $storedSec;
+        } else {
+            $estimatedSec = $numCommande > 0 ? $this->calculateEstimatedPrepSeconds($numCommande) : 0;
+            $totalSec = $estimatedSec > 0 ? $estimatedSec : $storedSec;
         }
 
         $active = $isPreparing && $startedAt !== '' && $totalSec > 0;
@@ -511,9 +527,7 @@ final class CommandeRepository extends BaseRepository
             'countdown_active' => $active && !$isReady && $endTs !== null,
             'prep_started_at' => $startedAt !== '' ? $startedAt : null,
             'prep_total_seconds' => $totalSec,
-            'prep_total_minutes' => $numCommande > 0
-                ? $this->calculateEstimatedPrepMinutes($numCommande)
-                : (int) round($totalSec / 60),
+            'prep_total_minutes' => $totalSec > 0 ? (int) round($totalSec / 60) : 0,
             'prep_remaining_seconds' => $remaining,
             'prep_end_unix' => $endTs,
             'server_unix' => $now,
@@ -531,15 +545,92 @@ final class CommandeRepository extends BaseRepository
 
         $placeholders = implode(',', array_fill(0, count($nums), '?'));
         $stmt = $this->pdo->prepare("
-            SELECT num_commande, statut, date_commande, montant_total, num_table,
-                   date_debut_preparation, temps_preparation_estime_sec
-            FROM commande
-            WHERE num_commande IN ({$placeholders})
-            ORDER BY date_commande DESC
+            SELECT c.num_commande, c.statut, c.date_commande, c.montant_total, c.num_table,
+                   c.date_debut_preparation, c.temps_preparation_estime_sec
+            FROM commande c
+            WHERE c.num_commande IN ({$placeholders})
+              AND NOT EXISTS (
+                  SELECT 1 FROM facture f WHERE f.num_commande = c.num_commande
+              )
+            ORDER BY c.date_commande DESC
         ");
         $stmt->execute($nums);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Commandes non encore encaissées (sans facture).
+     *
+     * @param list<int> $nums
+     * @return list<int>
+     */
+    public function filterUnpaidOrderIds(array $nums): array
+    {
+        $nums = array_values(array_filter(array_map('intval', $nums), static fn (int $n): bool => $n > 0));
+        if ($nums === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($nums), '?'));
+        $stmt = $this->pdo->prepare("
+            SELECT c.num_commande
+            FROM commande c
+            WHERE c.num_commande IN ({$placeholders})
+              AND NOT EXISTS (
+                  SELECT 1 FROM facture f WHERE f.num_commande = c.num_commande
+              )
+        ");
+        $stmt->execute($nums);
+
+        /** @var list<int> */
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function isOrderPaid(int $numCommande): bool
+    {
+        if ($numCommande <= 0) {
+            return false;
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT 1 FROM facture WHERE num_commande = ? LIMIT 1'
+        );
+        $stmt->execute([$numCommande]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Commandes récentes pour une table (historique client sur la tablette).
+     *
+     * @return list<int>
+     */
+    public function findRecentNumCommandesForTable(int $numTable, ?int $sinceUnix = null, int $limit = 30): array
+    {
+        if ($numTable <= 0) {
+            return [];
+        }
+
+        if ($sinceUnix === null || $sinceUnix <= 0) {
+            $sinceUnix = time() - 86400;
+        }
+
+        $stmt = $this->pdo->prepare('
+            SELECT c.num_commande
+            FROM commande c
+            WHERE c.num_table = ?
+              AND c.date_commande >= FROM_UNIXTIME(?)
+              AND NOT EXISTS (
+                  SELECT 1 FROM facture f WHERE f.num_commande = c.num_commande
+              )
+            ORDER BY c.date_commande DESC
+            LIMIT ' . (int) $limit . '
+        ');
+        $stmt->execute([$numTable, $sinceUnix]);
+
+        /** @var list<int> */
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     public function markDelivered(int $numCommande): void

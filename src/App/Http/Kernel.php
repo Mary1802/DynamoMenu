@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace App\Http;
 
 use App\Core\Application;
+use App\View\View;
 use RuntimeException;
 
-/** Dispatch uniforme des points d'entrée (Phase 2). */
+/** Dispatch uniforme des points d'entrée (contrôleur frontal OOP). */
 final class Kernel
 {
     /** @var array<string, array<string, mixed>>|null */
     private static ?array $routes = null;
 
     /**
-     * Résout une route à partir du script PHP courant et retourne les données vue.
+     * Résout une route à partir du script PHP courant.
+     * Si la route définit `template`, le HTML est rendu immédiatement (retour null).
      *
-     * @return array<string, mixed>|null null si redirect/API (réponse déjà envoyée)
+     * @return array<string, mixed>|null données vue si pas de template (legacy) ; null sinon
      */
     public static function forFile(string $entryFile): ?array
     {
@@ -46,7 +48,7 @@ final class Kernel
                 return null;
             }
 
-            return is_array($result) ? $result : [];
+            return self::finalizeHtml($route, is_array($result) ? $result : []);
         }
 
         $controller = $route['controller'] ?? null;
@@ -64,7 +66,24 @@ final class Kernel
             return null;
         }
 
-        return $result;
+        return self::finalizeHtml($route, $result);
+    }
+
+    /**
+     * @param array<string, mixed> $route
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>|null
+     */
+    private static function finalizeHtml(array $route, array $data): ?array
+    {
+        $template = $route['template'] ?? null;
+        if (!is_string($template) || $template === '') {
+            return $data;
+        }
+
+        View::render($template, $data);
+
+        return null;
     }
 
     /** @return array<string, mixed> */

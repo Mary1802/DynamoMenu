@@ -40,8 +40,9 @@ final class FactureController
 
         $articles = $this->factures->fetchInvoiceArticles((int) $facture['num_commande']);
         $totalPaye = (float) $facture['total_paye'];
-        $tva = $totalPaye * 0.20;
-        $ht = $totalPaye - $tva;
+        $money = Application::getInstance()->moneyFormatter();
+        $ht = $money->htFromTtc($totalPaye);
+        $tva = $money->tvaFromTtc($totalPaye);
 
         return [
             'num_facture' => $numFacture,

@@ -45,7 +45,6 @@ final class CommandeService
     public function markReady(int $numCommande): void
     {
         $this->repository->updateStatut($numCommande, CommandeStatut::PRETE);
-        Application::getInstance()->notificationService()->notifyCommandePrete($numCommande);
     }
 
     public function markDelivered(int $numCommande): void
@@ -77,6 +76,8 @@ final class CommandeService
             return;
         }
 
+        $previous = $this->repository->findStatut($numCommande);
+
         if ($statut === CommandeStatut::EN_PREPARATION) {
             $this->repository->startPreparationTracking($numCommande);
         } else {
@@ -84,8 +85,12 @@ final class CommandeService
         }
         $this->activityLog->log('commande_statut', "Commande #{$numCommande} → {$statut}", $logModule);
 
-        if ($statut === CommandeStatut::PRETE) {
-            Application::getInstance()->notificationService()->notifyCommandePrete($numCommande);
+        if (
+            $statut === CommandeStatut::ANNULEE
+            && $previous !== null
+            && $previous !== CommandeStatut::ANNULEE
+        ) {
+            StockService::fromApp()->restoreForOrder($numCommande);
         }
     }
 

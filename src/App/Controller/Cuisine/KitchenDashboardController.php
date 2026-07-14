@@ -37,6 +37,14 @@ final class KitchenDashboardController
         exit;
     }
 
+    /** @param array<string, mixed> $post */
+    public function handle(array $post): array
+    {
+        $this->handlePost($post);
+
+        return $this->index();
+    }
+
     /**
      * @return array{
      *   stats: array{en_attente:int,en_preparation:int,prete:int},

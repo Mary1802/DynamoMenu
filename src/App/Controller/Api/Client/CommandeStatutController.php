@@ -62,6 +62,7 @@ final class CommandeStatutController
             'num_table' => $row['num_table'],
             'pret' => $statut === CommandeStatut::PRETE,
             'livree' => $statut === CommandeStatut::LIVREE,
+            'payee' => Application::getInstance()->commandeRepository()->isOrderPaid($num),
             'countdown_active' => $countdown['countdown_active'],
             'prep_started_at' => $countdown['prep_started_at'],
             'prep_total_seconds' => $countdown['prep_total_seconds'],

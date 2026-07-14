@@ -1,7 +1,9 @@
 <?php
 
-require_once dirname(__DIR__, 2) . '/bootstrap/app.php';
+declare(strict_types=1);
 
-use App\Http\Kernel;
+require_once __DIR__ . '/../bootstrap/app.php';
 
-Kernel::forFile(__FILE__);
+use App\Http\FrontController;
+
+FrontController::run(__FILE__);

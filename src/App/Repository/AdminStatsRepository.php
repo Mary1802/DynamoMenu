@@ -80,14 +80,17 @@ final class AdminStatsRepository extends BaseRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /** @return list<array<string, mixed>> */
+    /** Plats vendus plus de 5 fois (quantité totale). @return list<array<string, mixed>> */
     public function topPlats(int $limit = 3): array
     {
         $stmt = $this->pdo->prepare("
-            SELECT p.nom_plat, COUNT(d.id_detail) AS ventes, SUM(d.sous_total) AS revenu
+            SELECT p.nom_plat,
+                   COALESCE(SUM(d.quantite), 0) AS ventes,
+                   COALESCE(SUM(d.sous_total), 0) AS revenu
             FROM contient d
             JOIN plat p ON d.id_plat = p.id_plat
             GROUP BY p.id_plat, p.nom_plat
+            HAVING COALESCE(SUM(d.quantite), 0) > 5
             ORDER BY ventes DESC
             LIMIT " . (int) $limit
         );

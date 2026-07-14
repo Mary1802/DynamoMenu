@@ -27,7 +27,7 @@ final class ClientNavView
 
         $tables = Application::getInstance()->tableContextService();
         Application::getInstance()->clientSession()->start();
-        $hasOrders = OrderHistoryController::sessionOrderIds() !== [];
+        $hasOrders = OrderHistoryController::resolveAccessibleOrderIds() !== [];
 
         View::render('client/nav', [
             'active' => $active,

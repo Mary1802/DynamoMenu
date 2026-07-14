@@ -52,7 +52,7 @@ final class OrderHistoryController
             );
         }
 
-        $nums = self::sessionOrderIds();
+        $nums = self::resolveAccessibleOrderIds();
         $rows = $this->commandes->findClientOrderSummaries($nums);
 
         $orders = [];
@@ -65,7 +65,7 @@ final class OrderHistoryController
                 'statut_label' => CommandeStatut::clientLabel($statut),
                 'date_commande' => (string) ($row['date_commande'] ?? ''),
                 'montant_total' => (float) ($row['montant_total'] ?? 0),
-                'detail_url' => $listUrl . '?commande=' . $num,
+                'detail_url' => $this->tables->linkWithQuery('mes_commandes.php', ['commande' => $num]),
             ];
         }
 
@@ -86,6 +86,12 @@ final class OrderHistoryController
     {
         $commande = $this->commandes->findForTracking($numCommande);
         if ($commande === null) {
+            return null;
+        }
+
+        if ($this->commandes->isOrderPaid($numCommande)) {
+            self::prunePaidOrderFromSession($numCommande);
+
             return null;
         }
 
@@ -130,5 +136,71 @@ final class OrderHistoryController
         }
 
         return array_reverse($nums);
+    }
+
+    /** Session + commandes récentes non encaissées de la table. @return list<int> */
+    public static function resolveAccessibleOrderIds(?Application $app = null): array
+    {
+        $app ??= Application::getInstance();
+        $app->clientSession()->start();
+
+        $nums = self::sessionOrderIds();
+
+        try {
+            $tables = $app->tableContextService();
+            $tables->bootstrap();
+            $ctx = $tables->session();
+            if ($ctx !== null) {
+                $since = isset($_SESSION['_client_started_at']) ? (int) $_SESSION['_client_started_at'] : null;
+                $tableNums = $app->commandeRepository()->findRecentNumCommandesForTable(
+                    (int) $ctx['num_table'],
+                    $since
+                );
+                foreach ($tableNums as $n) {
+                    $n = (int) $n;
+                    if ($n > 0 && !in_array($n, $nums, true)) {
+                        $nums[] = $n;
+                    }
+                }
+            }
+
+            $nums = $app->commandeRepository()->filterUnpaidOrderIds($nums);
+            self::syncSessionOrderIds($nums);
+        } catch (\Throwable) {
+            // Garder les ids session si la BDD est indisponible.
+        }
+
+        return $nums;
+    }
+
+    /** @param list<int> $activeNums */
+    private static function syncSessionOrderIds(array $activeNums): void
+    {
+        if (!empty($_SESSION['suivi_commande_id'])
+            && !in_array((int) $_SESSION['suivi_commande_id'], $activeNums, true)
+        ) {
+            unset($_SESSION['suivi_commande_id']);
+        }
+
+        if (!empty($_SESSION['order_access']) && is_array($_SESSION['order_access'])) {
+            $_SESSION['order_access'] = array_values(array_filter(
+                array_map('intval', $_SESSION['order_access']),
+                static fn (int $n): bool => $n > 0 && in_array($n, $activeNums, true)
+            ));
+        }
+    }
+
+    private static function prunePaidOrderFromSession(int $numCommande): void
+    {
+        if (!empty($_SESSION['suivi_commande_id']) && (int) $_SESSION['suivi_commande_id'] === $numCommande) {
+            unset($_SESSION['suivi_commande_id']);
+        }
+
+        if (!empty($_SESSION['order_access']) && is_array($_SESSION['order_access'])) {
+            $_SESSION['order_access'] = array_values(array_filter(
+                array_map('intval', $_SESSION['order_access']),
+                static fn (int $n): bool => $n > 0 && $n !== $numCommande
+            ));
+        }
     }
 }

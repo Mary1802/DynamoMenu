@@ -146,10 +146,24 @@ final class TableContextService
 
 
         return $path . $sep . 't=' . rawurlencode((string) $ctx['code_table']);
-
     }
 
+    /**
+     * @param array<string, int|string|null> $params
+     */
+    public function linkWithQuery(string $path, array $params = []): string
+    {
+        $url = $this->link($path);
+        foreach ($params as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $sep = str_contains($url, '?') ? '&' : '?';
+            $url .= $sep . rawurlencode((string) $key) . '=' . rawurlencode((string) $value);
+        }
 
+        return $url;
+    }
 
     public function redirectAfterTableBind(string $target = 'index.php'): void
     {

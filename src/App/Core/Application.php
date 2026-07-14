@@ -28,7 +28,6 @@ use App\Service\CommandeService;
 use App\Service\EmployePasswordService;
 use App\Service\MenuImageUploadService;
 use App\Service\MenuService;
-use App\Service\NotificationService;
 use App\Service\OrderCreationService;
 use App\Service\PaiementService;
 use App\Service\ReportService;
@@ -58,7 +57,6 @@ final class Application
     private ?CommandeService $commandeService = null;
     private ?FactureRepository $factureRepository = null;
     private ?PaiementService $paiementService = null;
-    private ?NotificationService $notificationService = null;
     private ?CartService $cartService = null;
     private ?TableContextService $tableContextService = null;
     private ?ClientProfileService $clientProfileService = null;
@@ -238,15 +236,6 @@ final class Application
         }
 
         return $this->paiementService;
-    }
-
-    public function notificationService(): NotificationService
-    {
-        if ($this->notificationService === null) {
-            $this->notificationService = new NotificationService($this->db());
-        }
-
-        return $this->notificationService;
     }
 
     public function cartService(): CartService
