@@ -22,17 +22,7 @@ ADD COLUMN personnalisation_boisson VARCHAR(255) DEFAULT '' AFTER sauces;
 ALTER TABLE facture 
 ADD COLUMN mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL AFTER total_paye;
 
--- 5. Créer la table demande_paiement
-CREATE TABLE IF NOT EXISTS demande_paiement (
-    id_demande INT PRIMARY KEY AUTO_INCREMENT,
-    num_commande INT NOT NULL,
-    mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL,
-    montant DECIMAL(10, 2) NOT NULL,
-    statut ENUM('en_attente', 'traitee', 'annulee') DEFAULT 'en_attente',
-    date_demande TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_traitement TIMESTAMP NULL,
-    FOREIGN KEY (num_commande) REFERENCES commande(num_commande) ON DELETE CASCADE
-);
+-- 5. (supprimé) table demande_paiement — non utilisée
 
 -- 6. Mettre à jour les types de boissons existantes
 UPDATE boisson SET type_boisson = 'soda' WHERE nom_boisson LIKE '%Soda%' OR nom_boisson LIKE '%Coca%';

@@ -32,14 +32,12 @@ final class PaiementController
      *   commande_details: array<string,mixed>|null,
      *   commande_lignes: list<array<string,mixed>>,
      *   paiements_recents: list<array<string,mixed>>,
-     *   demandes_paiement: list<array<string,mixed>>,
      *   stats_jour: array{total_paiements:int, total_ca:float},
      *   dashboard_error: string|null,
      *   notif_items: list<array<string,mixed>>,
      *   notif_count: int,
      *   payment_completed: bool,
      *   num_facture_encaisse: int,
-     *   mode_paiement_encaisse: string|null,
      *   mode_paiement_encaisse: string|null,
      *   show_payment_modal: bool,
      *   payment_token: string|null
@@ -93,12 +91,6 @@ final class PaiementController
                 $error = $result['error'] ?? 'Erreur inconnue.';
                 $voirCommande = $numCommande;
             }
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($post['annuler_demande'])) {
-            $this->paiement->cancelDemande((int) ($post['demande_id'] ?? 0));
-            header('Location: paiement.php', true, 303);
-            exit;
         }
 
         $flash = $this->consumeEncaisseFlash();
@@ -157,7 +149,7 @@ final class PaiementController
         }
 
         $notifItems = $this->app->staffNotificationService()->forRole('caissier');
-        $notifCount = count($data['commandes_a_payer']) + count($data['demandes_paiement']);
+        $notifCount = count($data['commandes_a_payer']);
 
         $showPaymentModal = $commandeDetails !== null
             && ($paymentCompleted || isset($get['voir_commande']) || ($error !== null && $voirCommande !== null));
@@ -168,7 +160,6 @@ final class PaiementController
             'commande_details' => $commandeDetails,
             'commande_lignes' => $commandeLignes,
             'paiements_recents' => $data['paiements_recents'],
-            'demandes_paiement' => $data['demandes_paiement'],
             'stats_jour' => $data['stats_jour'],
             'dashboard_error' => $data['dashboard_error'],
             'notif_items' => $notifItems,

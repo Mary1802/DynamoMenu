@@ -18,7 +18,7 @@ final class LoginController
     }
 
     /**
-     * @return array{error:string,success:string,postRole:string}
+     * @return array{error:string,success:string,postEmail:string}
      */
     public function handle(): array
     {
@@ -45,34 +45,30 @@ final class LoginController
             exit;
         }
 
-        $postRole = (string) ($_POST['role'] ?? '');
+        $postEmail = '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$this->app->csrf()->verify()) {
                 $error = 'Session expirée. Rechargez la page et réessayez.';
             } else {
-                $email = trim($_POST['email'] ?? '');
+                $email = trim((string) ($_POST['email'] ?? ''));
                 $password = (string) ($_POST['password'] ?? '');
-                $role = (string) ($_POST['role'] ?? '');
+                $postEmail = $email;
 
-                if ($email === '' || $password === '' || $role === '') {
-                    $error = 'Veuillez remplir tous les champs.';
+                if ($email === '' || $password === '') {
+                    $error = 'Veuillez renseigner votre e-mail et votre mot de passe.';
                 } else {
                     try {
                         $employe = $this->app->employeRepository()->findByEmail($email);
 
                         if ($employe === null) {
-                            $error = 'Email, mot de passe ou rôle incorrect.';
+                            $error = 'E-mail ou mot de passe incorrect.';
                         } elseif (!isset(EmployeController::ROLES[$employe->role])) {
-                            $error = 'Ce compte existe mais son rôle n\'est pas valide. Un administrateur doit le corriger dans Admin → Employés (lancez aussi run_update.php si besoin).';
-                        } elseif ($employe->role !== $role) {
-                            $error = 'Ce compte est enregistré avec le rôle « '
-                                . $this->app->staffAuth()->roleLabel($employe->role)
-                                . ' ». Sélectionnez ce rôle à la connexion.';
+                            $error = 'Ce compte existe mais son rôle n\'est pas valide. Un administrateur doit le corriger dans Admin → Employés.';
                         } elseif (
                             !$this->app->passwordHasher()->verify($password, (string) $employe->motDePasse)
                         ) {
-                            $error = 'Email, mot de passe ou rôle incorrect.';
+                            $error = 'E-mail ou mot de passe incorrect.';
                         } else {
                             if ($this->app->passwordHasher()->needsRehash((string) $employe->motDePasse)) {
                                 $this->app->employeRepository()->updatePassword(
@@ -80,6 +76,7 @@ final class LoginController
                                     $this->app->passwordHasher()->hash($password)
                                 );
                             }
+                            $role = $employe->role;
                             $auth->login($employe->toLoginArray(), $role);
                             header('Location: ' . $auth->dashboardUrl($role));
                             exit;
@@ -94,7 +91,7 @@ final class LoginController
         return [
             'error' => $error,
             'success' => $success,
-            'postRole' => $postRole,
+            'postEmail' => $postEmail,
         ];
     }
 }

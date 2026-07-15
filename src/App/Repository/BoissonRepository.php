@@ -20,7 +20,7 @@ final class BoissonRepository extends BaseRepository
         ) > 0;
 
         if ($typeTableExists && in_array('id_type', $boissonCols, true)) {
-            $baseSql = 'SELECT b.*, tb.nom_type AS type_boisson FROM boisson b LEFT JOIN type_boisson tb ON b.id_type = tb.id_type';
+            $baseSql = 'SELECT b.*, tb.nom_type AS type_boisson FROM boisson b INNER JOIN type_boisson tb ON b.id_type = tb.id_type';
             if ($query !== null && $query !== '') {
                 $pattern = '%' . $query . '%';
                 $stmt = $this->pdo->prepare($baseSql . ' WHERE nom_boisson LIKE ? ORDER BY nom_boisson');

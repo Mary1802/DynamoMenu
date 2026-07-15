@@ -20,7 +20,7 @@ final class HorairesRepository extends BaseRepository
         $count = (int) $this->pdo->query('SELECT COUNT(*) FROM restaurant_horaires')->fetchColumn();
         if ($count === 0) {
             $stmt = $this->pdo->prepare('INSERT INTO restaurant_horaires (id, contenu) VALUES (1, ?)');
-            $stmt->execute([$this->legacyFallback()]);
+            $stmt->execute([$this->configFallback()]);
         }
     }
 
@@ -33,7 +33,7 @@ final class HorairesRepository extends BaseRepository
 
             return is_string($value) ? trim($value) : '';
         } catch (PDOException) {
-            return $this->legacyFallback();
+            return $this->configFallback();
         }
     }
 
@@ -72,26 +72,13 @@ final class HorairesRepository extends BaseRepository
         return $lines !== [] ? $lines : [$horaires];
     }
 
-    private function legacyFallback(): string
+    /** Valeur initiale depuis config/app.php uniquement. */
+    private function configFallback(): string
     {
-        try {
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'contact'");
-            if ($stmt && $stmt->fetchColumn() !== false) {
-                $row = $this->pdo->query(
-                    "SELECT horaires FROM contact WHERE horaires IS NOT NULL AND TRIM(horaires) <> '' ORDER BY id_contact ASC LIMIT 1"
-                )->fetch(PDO::FETCH_ASSOC);
-                if (is_array($row) && trim((string) ($row['horaires'] ?? '')) !== '') {
-                    return trim((string) $row['horaires']);
-                }
-            }
-        } catch (PDOException) {
-            // ignore
-        }
-
         $app = is_file(dirname(__DIR__, 3) . '/config/app.php')
             ? require dirname(__DIR__, 3) . '/config/app.php'
             : [];
 
-        return trim((string) (($app['contacts']['horaires'] ?? '') ?: ''));
+        return trim((string) (($app['horaires'] ?? $app['contacts']['horaires'] ?? '') ?: ''));
     }
 }

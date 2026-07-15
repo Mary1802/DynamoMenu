@@ -28,6 +28,7 @@ final class SchemaUpgradeService
     {
         $this->ensureContientSchema();
         $this->dropNotificationTable();
+        $this->dropDemandePaiementTable();
         $this->ensureCommandeColumns();
         $this->ensurePlatColumns();
         $this->ensureBoissonColumns();
@@ -35,6 +36,8 @@ final class SchemaUpgradeService
         $this->ensureEmployeRoleEnum();
         $this->app->clientRepository()->ensureSchema();
         $this->bootstrapStockIfEmpty();
+        // Migrer contact.horaires → restaurant_horaires puis supprimer la colonne redondante.
+        $this->app->contactRepository()->ensureSchema();
         $this->app->horairesRepository()->ensureTable();
         $this->normalizeMenuImages();
         $this->app->menuService()->seedStaticItems();
@@ -168,6 +171,60 @@ final class SchemaUpgradeService
     {
         try {
             $this->pdo->exec('DROP TABLE IF EXISTS notification');
+        } catch (PDOException) {
+            // ignore
+        }
+    }
+
+    private function dropDemandePaiementTable(): void
+    {
+        try {
+            $this->pdo->exec('DROP TABLE IF EXISTS demande_paiement');
+        } catch (PDOException) {
+            // ignore
+        }
+    }
+
+    private function dropForeignKeyIfExists(string $table, string $constraintName): void
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT CONSTRAINT_NAME
+                FROM information_schema.TABLE_CONSTRAINTS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND CONSTRAINT_NAME = ?
+                  AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+                LIMIT 1
+            ");
+            $stmt->execute([$table, $constraintName]);
+            if ($stmt->fetchColumn() === false) {
+                // Peut exister sous un autre nom (MySQL auto) : chercher FK sur id_type.
+                if ($table === 'boisson' && $constraintName === 'fk_boisson_type_boisson') {
+                    $fks = $this->pdo->query("
+                        SELECT CONSTRAINT_NAME
+                        FROM information_schema.KEY_COLUMN_USAGE
+                        WHERE TABLE_SCHEMA = DATABASE()
+                          AND TABLE_NAME = 'boisson'
+                          AND COLUMN_NAME = 'id_type'
+                          AND REFERENCED_TABLE_NAME = 'type_boisson'
+                    ")->fetchAll(PDO::FETCH_COLUMN);
+                    foreach ($fks as $fkName) {
+                        $safe = str_replace('`', '``', (string) $fkName);
+                        try {
+                            $this->pdo->exec("ALTER TABLE boisson DROP FOREIGN KEY `{$safe}`");
+                        } catch (PDOException) {
+                            // ignore
+                        }
+                    }
+                }
+
+                return;
+            }
+
+            $safeTable = str_replace('`', '``', $table);
+            $safeName = str_replace('`', '``', $constraintName);
+            $this->pdo->exec("ALTER TABLE `{$safeTable}` DROP FOREIGN KEY `{$safeName}`");
         } catch (PDOException) {
             // ignore
         }
@@ -432,19 +489,28 @@ final class SchemaUpgradeService
             $boissonCols = array_column($this->pdo->query('SHOW COLUMNS FROM boisson')->fetchAll(PDO::FETCH_ASSOC), 'Field');
         }
 
-        // Ne forcer le type soda que pour les lignes sans type — ne jamais écraser un choix admin.
+        // Toute boisson doit avoir un type : combler les NULL puis imposer NOT NULL.
         if (in_array('id_type', $boissonCols, true)) {
             $sodaId = (int) ($this->pdo->query("SELECT id_type FROM type_boisson WHERE nom_type = 'soda' LIMIT 1")->fetchColumn() ?: 0);
             if ($sodaId > 0) {
                 $stmt = $this->pdo->prepare('UPDATE boisson SET id_type = ? WHERE id_type IS NULL OR id_type = 0');
                 $stmt->execute([$sodaId]);
             }
-        }
 
-        try {
-            $this->pdo->exec('ALTER TABLE boisson ADD CONSTRAINT fk_boisson_type_boisson FOREIGN KEY (id_type) REFERENCES type_boisson(id_type) ON DELETE SET NULL');
-        } catch (PDOException) {
-            // ignore
+            $this->dropForeignKeyIfExists('boisson', 'fk_boisson_type_boisson');
+            try {
+                $this->pdo->exec('ALTER TABLE boisson MODIFY COLUMN id_type INT NOT NULL');
+            } catch (PDOException) {
+                // ignore
+            }
+            try {
+                $this->pdo->exec(
+                    'ALTER TABLE boisson ADD CONSTRAINT fk_boisson_type_boisson
+                     FOREIGN KEY (id_type) REFERENCES type_boisson(id_type) ON DELETE RESTRICT'
+                );
+            } catch (PDOException) {
+                // ignore si déjà présent
+            }
         }
 
         $this->repairKnownBoissonTypes();

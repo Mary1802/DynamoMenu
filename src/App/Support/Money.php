@@ -25,6 +25,12 @@ final class Money
         return Application::getInstance()->moneyFormatter()->format($amountCdf);
     }
 
+    /** Montant à encaisser en CDF (arrondi aux coupures 50 / 100 FC). */
+    public static function roundPayable(float $amountCdf): float
+    {
+        return Application::getInstance()->moneyFormatter()->roundPayable($amountCdf);
+    }
+
     /** @return array<string, mixed> */
     public static function jsConfig(): array
     {

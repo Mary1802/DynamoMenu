@@ -59,13 +59,12 @@ use App\Support\Money;
                         <div class="empty-state"><p>Aucune commande pour ce filtre.</p></div>
                         <?php else: ?>
                         <?php foreach ($commandes as $c): ?>
-                        <div class="commande-item" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($c)); ?>">
+                        <div class="commande-item" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($c, false)); ?>">
                             <div class="commande-header">
                                 <div class="commande-id">#<?php echo str_pad((string) $c['num_commande'], 5, '0', STR_PAD_LEFT); ?> — Table <?php echo htmlspecialchars((string) ($c['num_table'] ?? '—')); ?></div>
                                 <div class="commande-montant"><?php echo Money::format((float) $c['montant_total']); ?></div>
                             </div>
                             <div class="commande-details">
-                                <span><?php echo htmlspecialchars(trim(($c['prenom_client'] ?? '') . ' ' . ($c['nom_client'] ?? ''))); ?></span>
                                 <span><?php echo htmlspecialchars($statut_labels[$c['statut']] ?? $c['statut']); ?></span>
                                 <span><?php echo date('d/m H:i', strtotime($c['date_commande'])); ?></span>
                             </div>
@@ -92,7 +91,7 @@ use App\Support\Money;
                         <p class="text-secondary small mb-0">Aucune commande récente.</p>
                         <?php else: ?>
                         <?php foreach ($commandes_recentes as $r): ?>
-                        <div class="commande-item" style="margin-bottom:0.65rem;" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($r)); ?>">
+                        <div class="commande-item" style="margin-bottom:0.65rem;" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($r, false)); ?>">
                             <div class="commande-header">
                                 <div class="commande-id" style="font-size:0.9rem;">#<?php echo str_pad((string) $r['num_commande'], 5, '0', STR_PAD_LEFT); ?></div>
                                 <?php

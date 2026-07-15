@@ -49,21 +49,24 @@ final class OrderCreationService
         $telephone = trim((string) ($post['telephone'] ?? $clientProfile['telephone'] ?? ''));
         $modePaiement = (string) ($post['mode_paiement_souhaite'] ?? '');
         $instructions = mb_substr(trim((string) ($post['instructions'] ?? '')), 0, 1000);
+        $existingClientId = (int) ($clientProfile['id_client'] ?? 0);
 
-        if ($nom === '' || $prenom === '' || $email === '' || $telephone === '' || $numTable === '') {
-            return ['success' => false, 'error' => 'Veuillez remplir tous les champs obligatoires (nom, prénom, email, téléphone).'];
+        if ($nom === '' || $prenom === '' || $numTable === '') {
+            return ['success' => false, 'error' => 'Veuillez renseigner votre nom, prénom et votre table.'];
         }
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return ['success' => false, 'error' => 'Adresse e-mail invalide.'];
         }
 
-        $phoneCheck = ClientProfileService::validateTelephone($telephone);
-        if ($phoneCheck !== null) {
-            return ['success' => false, 'error' => $phoneCheck];
+        if ($telephone !== '') {
+            $phoneCheck = ClientProfileService::validateTelephone($telephone);
+            if ($phoneCheck !== null) {
+                return ['success' => false, 'error' => $phoneCheck];
+            }
+            $telephone = ClientProfileService::normalizeTelephone($telephone);
         }
-        $telephone = ClientProfileService::normalizeTelephone($telephone);
-        $email = mb_strtolower(trim($email), 'UTF-8');
+        $email = $email !== '' ? mb_strtolower(trim($email), 'UTF-8') : '';
 
         if (!in_array($modePaiement, ['especes', 'mobile_money'], true)) {
             return ['success' => false, 'error' => 'Veuillez choisir un mode de paiement.'];
@@ -88,7 +91,13 @@ final class OrderCreationService
 
         try {
             try {
-                $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
+                if ($existingClientId > 0) {
+                    $idClient = $existingClientId;
+                } elseif ($telephone !== '' || $email !== '') {
+                    $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
+                } else {
+                    $idClient = $this->clients->createGuest($nom, $prenom);
+                }
             } catch (\RuntimeException $e) {
                 if ($this->pdo->inTransaction()) {
                     $this->pdo->rollBack();

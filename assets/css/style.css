@@ -403,6 +403,29 @@ body > * {
     background: rgba(var(--dm-primary-rgb), 0.06);
 }
 
+.client-order-tile.is-overdue {
+    flex-wrap: wrap;
+    border-color: rgba(251, 191, 36, 0.45);
+    background: rgba(251, 191, 36, 0.08);
+}
+
+.client-order-tile.is-overdue .client-order-tile__timer {
+    color: #fbbf24;
+}
+
+.client-order-tile__overdue {
+    flex: 1 1 100%;
+    margin: 0.15rem 0 0;
+    padding: 0.45rem 0.55rem;
+    border-radius: 0.55rem;
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    color: #fde68a;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
 .client-order-tile__content {
     display: flex;
     flex-direction: column;

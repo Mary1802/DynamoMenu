@@ -23,7 +23,9 @@ final class FactureController
      *   facture: array<string,mixed>,
      *   articles: list<array<string,mixed>>,
      *   ht: float,
-     *   tva: float
+     *   tva: float,
+     *   total_ttc: float,
+     *   total_a_payer: float
      * }|null
      */
     public function show(array $get): ?array
@@ -39,10 +41,14 @@ final class FactureController
         }
 
         $articles = $this->factures->fetchInvoiceArticles((int) $facture['num_commande']);
-        $totalPaye = (float) $facture['total_paye'];
         $money = Application::getInstance()->moneyFormatter();
-        $ht = $money->htFromTtc($totalPaye);
-        $tva = $money->tvaFromTtc($totalPaye);
+        $totalTtc = (float) ($facture['montant_total'] ?? $facture['total_paye'] ?? 0);
+        $totalAPayer = (float) ($facture['total_paye'] ?? 0);
+        if ($totalAPayer <= 0) {
+            $totalAPayer = $money->roundPayable($totalTtc);
+        }
+        $ht = $money->htFromTtc($totalTtc);
+        $tva = $money->tvaFromTtc($totalTtc);
 
         return [
             'num_facture' => $numFacture,
@@ -50,6 +56,8 @@ final class FactureController
             'articles' => $articles,
             'ht' => $ht,
             'tva' => $tva,
+            'total_ttc' => $totalTtc,
+            'total_a_payer' => $totalAPayer,
         ];
     }
 }

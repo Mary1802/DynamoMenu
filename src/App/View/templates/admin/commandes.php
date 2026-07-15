@@ -5,9 +5,8 @@ declare(strict_types=1);
 use App\Http\AdminPage;
 use App\Support\Money;
 
-AdminPage::shellStart('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes', 'Suivi et modification des statuts.');
+AdminPage::shellStart('Admin — Commandes', 'commandes', 'Exploitation', 'Commandes', 'Consultation des commandes (lecture seule).');
 ?>
-<?php if ($message): ?><div class="success-message"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
 
 <div class="chart-container mb-4">
     <div class="chart-title">Rechercher</div>
@@ -41,7 +40,6 @@ AdminPage::shellStart('Admin — Commandes', 'commandes', 'Exploitation', 'Comma
                     <th>Table</th>
                     <th>Total</th>
                     <th>Statut</th>
-                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -53,17 +51,6 @@ AdminPage::shellStart('Admin — Commandes', 'commandes', 'Exploitation', 'Comma
                     <td><?php echo (int) $c['num_table']; ?></td>
                     <td><?php echo Money::format((float) $c['montant_total']); ?></td>
                     <td><span class="status-badge"><?php echo htmlspecialchars($statuts[$c['statut']] ?? $c['statut']); ?></span></td>
-                    <td>
-                        <form method="post" class="d-flex gap-1 flex-wrap" style="align-items:flex-end;">
-                            <input type="hidden" name="num_commande" value="<?php echo (int) $c['num_commande']; ?>">
-                            <select name="statut" class="form-select form-select-sm" style="width:140px; min-width:140px;">
-                                <?php foreach ($statuts as $k => $label): ?>
-                                <option value="<?php echo $k; ?>"<?php echo $c['statut'] === $k ? ' selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="submit" name="update_statut" class="btn-details btn-sm" style="width:60px; min-width:60px;">OK</button>
-                        </form>
-                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

@@ -334,8 +334,15 @@ use App\Support\Money;
                     <h3 class="section-title">Vos informations</h3>
                     <div class="mb-4 p-3 rounded-3 client-info-box" style="background:rgba(255,255,255,0.04);border:1px solid rgba(148,163,184,0.16);">
                         <p class="mb-2"><strong><?php echo htmlspecialchars(trim($clientProfile['prenom'] . ' ' . $clientProfile['nom'])); ?></strong></p>
-                        <p class="mb-1 text-secondary small"><?php echo htmlspecialchars($clientProfile['email']); ?></p>
+                        <?php if (!empty($clientProfile['fidele'])): ?>
+                        <p class="mb-1 text-secondary small"><i class="bi bi-star-fill text-warning" aria-hidden="true"></i> Client fidèle</p>
+                        <?php endif; ?>
+                        <?php if (trim((string) ($clientProfile['telephone'] ?? '')) !== ''): ?>
                         <p class="mb-1 text-secondary small"><?php echo htmlspecialchars($clientProfile['telephone']); ?></p>
+                        <?php endif; ?>
+                        <?php if (trim((string) ($clientProfile['email'] ?? '')) !== ''): ?>
+                        <p class="mb-1 text-secondary small"><?php echo htmlspecialchars($clientProfile['email']); ?></p>
+                        <?php endif; ?>
                         <p class="mb-0 text-secondary small">Table : <?php echo htmlspecialchars($tableCtx['label']); ?></p>
                     </div>
 

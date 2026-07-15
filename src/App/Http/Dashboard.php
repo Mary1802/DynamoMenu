@@ -40,12 +40,6 @@ final class Dashboard
         DashboardLayoutView::sidebarUserFooter($context);
     }
 
-    /** @return list<array<string, mixed>> */
-    public static function fetchDemandesPaiement(PDO $pdo): array
-    {
-        return Application::getInstance()->factureRepository()->findPendingDemandes();
-    }
-
     public static function orderItemsList(?string $detailsPlats): array
     {
         if ($detailsPlats === null || $detailsPlats === '') {
@@ -86,18 +80,21 @@ final class Dashboard
     }
 
     /** @param array<string, mixed> $row */
-    public static function orderSearchBlob(array $row): string
+    public static function orderSearchBlob(array $row, bool $includeClient = true): string
     {
         $parts = [
             $row['num_commande'] ?? '',
-            $row['nom_client'] ?? '',
-            $row['prenom_client'] ?? '',
-            $row['telephone_client'] ?? '',
             $row['num_table'] ?? '',
             $row['details_plats'] ?? '',
             $row['details_search'] ?? '',
             $row['instructions_speciales'] ?? '',
         ];
+
+        if ($includeClient) {
+            $parts[] = $row['nom_client'] ?? '';
+            $parts[] = $row['prenom_client'] ?? '';
+            $parts[] = $row['telephone_client'] ?? '';
+        }
 
         if (!empty($row['lignes']) && is_array($row['lignes'])) {
             foreach ($row['lignes'] as $line) {

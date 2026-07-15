@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Core\Application;
-use App\Repository\FactureRepository;
 use PDO;
 
 final class StaffNotificationService
 {
     public function __construct(
         private readonly PDO $pdo,
-        private readonly FactureRepository $factures,
     ) {
     }
 
@@ -20,7 +18,7 @@ final class StaffNotificationService
     {
         $app ??= Application::getInstance();
 
-        return new self($app->db(), $app->factureRepository());
+        return new self($app->db());
     }
 
     /** @return list<array<string, mixed>> */
@@ -73,14 +71,6 @@ final class StaffNotificationService
 
         if ($role === 'caissier') {
             $items = [];
-            foreach ($this->factures->findPendingDemandes() as $d) {
-                $items[] = [
-                    'type' => 'demande',
-                    'num_commande' => $d['num_commande'],
-                    'label' => 'Demande paiement table ' . ($d['num_table'] ?? '?'),
-                    'href' => 'paiement.php?voir_commande=' . (int) $d['num_commande'],
-                ];
-            }
             $stmt = $this->pdo->query("
                 SELECT c.num_commande, c.num_table, cl.nom_client
                 FROM commande c

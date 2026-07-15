@@ -79,9 +79,12 @@ use App\Http\ClientPage;
                             </span>
                         </div>
                         <div class="client-order-tile__timer-pill" data-role="countdown-wrap"<?php echo $countdownActive ? '' : ' hidden'; ?>>
-                            <span class="client-order-tile__timer-label">Reste</span>
+                            <span class="client-order-tile__timer-label" data-role="countdown-label">Reste</span>
                             <span class="client-order-tile__timer" data-role="countdown"><?php echo htmlspecialchars($initialCountdown ?: '--:--'); ?></span>
                         </div>
+                        <p class="client-order-tile__overdue" data-role="overdue" hidden>
+                            Temps écoulé — merci de patienter encore un peu
+                        </p>
                     </a>
                     <?php endforeach; ?>
                 </div>
@@ -228,16 +231,30 @@ use App\Http\ClientPage;
                 const prepEnd = parseInt(tile.dataset.prepEnd || '0', 10);
                 const wrap = tile.querySelector('[data-role="countdown-wrap"]');
                 const display = tile.querySelector('[data-role="countdown"]');
+                const label = tile.querySelector('[data-role="countdown-label"]');
+                const overdue = tile.querySelector('[data-role="overdue"]');
 
                 if (!active || !prepEnd || !wrap || !display) {
                     wrap?.setAttribute('hidden', '');
-                    tile.classList.remove('has-countdown');
+                    overdue?.setAttribute('hidden', '');
+                    tile.classList.remove('has-countdown', 'is-overdue');
                     return;
                 }
 
+                const remaining = Math.max(0, prepEnd - serverNowUnix());
                 wrap.removeAttribute('hidden');
                 tile.classList.add('has-countdown');
-                display.textContent = formatCountdown(prepEnd - serverNowUnix());
+                display.textContent = formatCountdown(remaining);
+
+                if (remaining <= 0) {
+                    tile.classList.add('is-overdue');
+                    if (label) label.textContent = 'Dépassé';
+                    overdue?.removeAttribute('hidden');
+                } else {
+                    tile.classList.remove('is-overdue');
+                    if (label) label.textContent = 'Reste';
+                    overdue?.setAttribute('hidden', '');
+                }
             }
 
             function refreshOrderFromApi(tile) {

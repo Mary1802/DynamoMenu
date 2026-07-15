@@ -76,6 +76,17 @@ use App\Http\ClientPage;
             margin-bottom: 1.5rem;
             border: 1px solid rgba(248,215,218,0.35);
         }
+        .fidele-box {
+            background: rgba(255,111,31,0.08);
+            border: 1px solid rgba(255,111,31,0.22);
+            border-radius: 16px;
+            padding: 1rem 1.15rem;
+        }
+        .fidele-box .form-check-label {
+            color: #f8fafc;
+            font-weight: 600;
+        }
+        .fidele-fields.d-none { display: none !important; }
     </style>
     <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
     <link rel="stylesheet" href="../assets/css/client-pages-theme.css?v=1">
@@ -97,9 +108,9 @@ use App\Http\ClientPage;
             <h1 class="h3 mb-2">Vos informations</h1>
             <p class="text-secondary mb-4">
                 <?php if (!empty($isCheckout)): ?>
-                Avant de valider votre commande, merci de renseigner vos coordonnées. Elles seront utilisées pour le suivi et la facturation.
+                Avant de valider votre commande, indiquez au moins votre nom et prénom.
                 <?php else: ?>
-                Merci de renseigner vos coordonnées pour votre commande et le suivi.
+                Indiquez au moins votre nom et prénom pour démarrer votre commande.
                 <?php endif; ?>
             </p>
 
@@ -107,7 +118,7 @@ use App\Http\ClientPage;
             <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
 
-            <form method="POST">
+            <form method="POST" id="identite-form">
                 <?php ClientPage::csrfField(); ?>
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -120,23 +131,43 @@ use App\Http\ClientPage;
                         <input type="text" id="prenom" name="prenom" class="form-control" required
                                value="<?php echo htmlspecialchars($prenom); ?>" autocomplete="given-name">
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label required" for="email">E-mail</label>
-                        <input type="email" id="email" name="email" class="form-control" required
-                               value="<?php echo htmlspecialchars($email); ?>" autocomplete="email">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label required" for="telephone">Téléphone</label>
-                        <input type="tel" id="telephone" name="telephone" class="form-control" required
-                               value="<?php echo htmlspecialchars($telephone); ?>" autocomplete="tel"
-                               inputmode="tel" minlength="10" maxlength="13"
-                               pattern="(\+[0-9]{9,12}|0[0-9]{9}|[1-9][0-9]{9,12})"
-                               title="10 à 13 caractères : local (0812345678) ou avec indicatif (+243812345678)">
-                        <div class="form-text text-secondary small mt-1">
-                            10 à 13 caractères — local débutant par 0 (10 car. max, ex. 0812345678) ou international avec + (13 car. max, ex. +243812345678)
+
+                    <div class="col-12">
+                        <div class="fidele-box">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="client_fidele" name="client_fidele"
+                                    <?php echo !empty($fidele) ? ' checked' : ''; ?>>
+                                <label class="form-check-label" for="client_fidele">
+                                    Voulez-vous être un client fidèle ?
+                                </label>
+                            </div>
+                            <p class="text-secondary small mb-0 mt-2">
+                                Oui → nous enregistrons votre téléphone (obligatoire) pour vous reconnaître lors de vos prochaines visites. L’e-mail reste facultatif.
+                            </p>
                         </div>
                     </div>
                 </div>
+
+                <div id="fidele-fields" class="row g-3 mt-1 fidele-fields<?php echo !empty($fidele) ? '' : ' d-none'; ?>">
+                    <div class="col-md-6">
+                        <label class="form-label required" for="telephone">Téléphone</label>
+                        <input type="tel" id="telephone" name="telephone" class="form-control"
+                               value="<?php echo htmlspecialchars($telephone); ?>" autocomplete="tel"
+                               inputmode="tel" minlength="10" maxlength="13"
+                               pattern="(\+[0-9]{9,12}|0[0-9]{9}|[1-9][0-9]{9,12})"
+                               title="10 à 13 caractères : local (0812345678) ou avec indicatif (+243812345678)"
+                               <?php echo !empty($fidele) ? ' required' : ''; ?>>
+                        <div class="form-text text-secondary small mt-1">
+                            10 à 13 caractères — local (ex. 0812345678) ou international (ex. +243812345678)
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="email">E-mail <span class="text-secondary fw-normal">(facultatif)</span></label>
+                        <input type="email" id="email" name="email" class="form-control"
+                               value="<?php echo htmlspecialchars($email); ?>" autocomplete="email">
+                    </div>
+                </div>
+
                 <button type="submit" name="enregistrer_identite" class="btn-continue mt-4">
                     <?php echo !empty($isCheckout) ? 'Continuer vers la validation' : 'Continuer'; ?>
                 </button>
@@ -146,18 +177,41 @@ use App\Http\ClientPage;
     <script src="../assets/js/csrf.js?v=1"></script>
     <script>
     (function () {
+        var fideleCheck = document.getElementById('client_fidele');
+        var fideleFields = document.getElementById('fidele-fields');
         var phone = document.getElementById('telephone');
+        var email = document.getElementById('email');
+
+        function syncFideleFields() {
+            var on = !!(fideleCheck && fideleCheck.checked);
+            if (fideleFields) {
+                fideleFields.classList.toggle('d-none', !on);
+            }
+            if (phone) {
+                phone.required = on;
+                if (!on) {
+                    phone.value = '';
+                }
+            }
+            if (email && !on) {
+                email.value = '';
+            }
+        }
+
+        if (fideleCheck) {
+            fideleCheck.addEventListener('change', syncFideleFields);
+            syncFideleFields();
+        }
+
         if (phone) {
             function limitPhone() {
                 var raw = this.value.replace(/[^\d+]/g, '');
                 var hasLeadingPlus = raw.charAt(0) === '+';
                 var digits = raw.replace(/\+/g, '');
                 if (hasLeadingPlus) {
-                    // + + jusqu'à 12 chiffres = 13 caractères max
                     this.value = '+' + digits.slice(0, 12);
                     this.maxLength = 13;
                 } else if (digits.charAt(0) === '0') {
-                    // Local : 10 caractères max
                     this.value = digits.slice(0, 10);
                     this.maxLength = 10;
                 } else {

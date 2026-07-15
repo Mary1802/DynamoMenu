@@ -94,6 +94,10 @@ use App\Support\Money;
             background: rgba(255,111,31,0.08);
             border: 1px solid rgba(255,111,31,0.22);
         }
+        .countdown-ring.is-overdue {
+            background: rgba(251, 191, 36, 0.10);
+            border-color: rgba(251, 191, 36, 0.35);
+        }
         .countdown-time {
             font-size: 2.5rem;
             font-weight: 800;
@@ -102,6 +106,18 @@ use App\Support\Money;
             letter-spacing: 0.04em;
         }
         .countdown-label { color: rgba(255,255,255,0.65); font-size: 0.9rem; margin-top: 0.35rem; }
+        #countdownOverdue {
+            display: none;
+            margin-top: 0.85rem;
+            padding: 0.85rem 1rem;
+            border-radius: 12px;
+            background: rgba(251, 191, 36, 0.12);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            color: #fde68a;
+            font-size: 0.95rem;
+            line-height: 1.45;
+        }
+        #countdownOverdue.is-visible { display: block; }
         .prep-badge { color: rgba(255,255,255,0.5); font-size: 0.8rem; }
     </style>
     <link rel="stylesheet" href="../assets/css/client-luxury.css?v=16">
@@ -122,9 +138,14 @@ use App\Support\Money;
             </div>
 
             <div id="countdownBlock" class="countdown-ring<?php echo !empty($countdown['countdown_active']) ? ' is-active' : ''; ?>">
-                <div class="countdown-label">Temps estimé restant</div>
+                <div class="countdown-label" id="countdownTitle">Temps estimé restant</div>
                 <div class="countdown-time" id="countdownDisplay">--:--</div>
-                <div class="countdown-label">La cuisine prépare votre commande</div>
+                <div class="countdown-label" id="countdownSubtitle">La cuisine prépare votre commande</div>
+                <div id="countdownOverdue" role="status" aria-live="polite">
+                    <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                    Le temps estimé est écoulé, mais votre commande n’est pas encore terminée.
+                    Merci de patienter encore quelques minutes — la cuisine finalise votre plat.
+                </div>
             </div>
 
             <p class="status-pill<?php echo ($statutCode ?? '') === 'prete' ? ' is-ready' : ''; ?>" id="statusPill"><?php echo htmlspecialchars($statutInitial); ?></p>
@@ -208,6 +229,7 @@ use App\Support\Money;
         serverClockOffset = <?php echo (int) $countdown['server_unix']; ?> - Math.floor(Date.now() / 1000);
         <?php endif; ?>
         let countdownTimer = null;
+        let overdueNotified = false;
 
         function serverNowUnix() {
             return Math.floor(Date.now() / 1000) + serverClockOffset;
@@ -229,15 +251,44 @@ use App\Support\Money;
             return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
         }
 
+        function setOverdueVisible(visible) {
+            const block = document.getElementById('countdownBlock');
+            const overdue = document.getElementById('countdownOverdue');
+            const title = document.getElementById('countdownTitle');
+            const subtitle = document.getElementById('countdownSubtitle');
+            if (!block || !overdue) return;
+
+            overdue.classList.toggle('is-visible', visible);
+            block.classList.toggle('is-overdue', visible);
+
+            if (title) {
+                title.textContent = visible ? 'Temps estimé dépassé' : 'Temps estimé restant';
+            }
+            if (subtitle) {
+                subtitle.style.display = visible ? 'none' : '';
+            }
+
+            if (visible && !overdueNotified) {
+                overdueNotified = true;
+                showBrowserNotification(
+                    'DynamoMenu',
+                    'Le temps estimé est écoulé. Votre commande n’est pas encore terminée — merci de patienter encore quelques minutes.'
+                );
+            }
+        }
+
         function updateCountdownDisplay() {
             const block = document.getElementById('countdownBlock');
             const display = document.getElementById('countdownDisplay');
             if (!countdownActive || !prepEndUnix) {
-                block.classList.remove('is-active');
+                block.classList.remove('is-active', 'is-overdue');
+                setOverdueVisible(false);
                 return;
             }
             block.classList.add('is-active');
-            display.textContent = formatCountdown(getRemainingSeconds());
+            const remaining = getRemainingSeconds();
+            display.textContent = formatCountdown(remaining);
+            setOverdueVisible(remaining <= 0);
         }
 
         function ensureCountdownTimer() {
@@ -253,7 +304,9 @@ use App\Support\Money;
                 clearInterval(countdownTimer);
                 countdownTimer = null;
             }
-            document.getElementById('countdownBlock').classList.remove('is-active');
+            const block = document.getElementById('countdownBlock');
+            block.classList.remove('is-active', 'is-overdue');
+            setOverdueVisible(false);
         }
 
         function applyCountdownFromServer(data) {

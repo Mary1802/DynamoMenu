@@ -64,7 +64,7 @@ return [
         'auth' => 'admin',
         'setup' => ['schema'],
         'controller' => [AdminCommandeController::class, 'handle'],
-        'args' => ['get', 'post'],
+        'args' => ['get'],
     ],
     'admin/contact.php' => [
         'auth' => 'admin.auth',

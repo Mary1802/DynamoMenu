@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Core\Application;
 use App\Repository\CommandeRepository;
 use App\Repository\FactureRepository;
+use App\Support\MoneyFormatter;
 use PDO;
 use PDOException;
 use Throwable;
@@ -19,6 +20,7 @@ final class PaiementService
         private readonly PDO $pdo,
         private readonly FactureRepository $factures,
         private readonly CommandeRepository $commandes,
+        private readonly MoneyFormatter $money,
     ) {
     }
 
@@ -29,7 +31,8 @@ final class PaiementService
         return new self(
             $app->db(),
             $app->factureRepository(),
-            $app->commandeRepository()
+            $app->commandeRepository(),
+            $app->moneyFormatter()
         );
     }
 
@@ -50,9 +53,12 @@ final class PaiementService
         $this->pdo->beginTransaction();
 
         try {
-            $lock = $this->pdo->prepare('SELECT num_commande FROM commande WHERE num_commande = ? FOR UPDATE');
+            $lock = $this->pdo->prepare(
+                'SELECT num_commande, montant_total FROM commande WHERE num_commande = ? FOR UPDATE'
+            );
             $lock->execute([$numCommande]);
-            if (!$lock->fetch(PDO::FETCH_ASSOC)) {
+            $commande = $lock->fetch(PDO::FETCH_ASSOC);
+            if (!$commande) {
                 $this->pdo->rollBack();
 
                 return ['success' => false, 'error' => 'Commande introuvable.'];
@@ -69,8 +75,11 @@ final class PaiementService
                 ];
             }
 
+            // En CDF, l’encaissement s’aligne sur les coupures 50 / 100 FC.
+            $ttc = (float) ($commande['montant_total'] ?? $montantPaye);
+            $montantPaye = $this->money->roundPayable($ttc);
+
             $numFacture = $this->factures->create($numCommande, $montantPaye, $modePaiement);
-            $this->factures->markDemandesTraitees($numCommande);
             $this->pdo->commit();
         } catch (PDOException $e) {
             if ($this->pdo->inTransaction()) {
@@ -99,19 +108,11 @@ final class PaiementService
         return ['success' => true, 'num_facture' => $numFacture];
     }
 
-    public function cancelDemande(int $demandeId): void
-    {
-        if ($demandeId > 0) {
-            $this->factures->cancelDemande($demandeId);
-        }
-    }
-
     /**
      * @return array{
      *   commandes_a_payer: list<array<string,mixed>>,
      *   commande_details: array<string,mixed>|null,
      *   paiements_recents: list<array<string,mixed>>,
-     *   demandes_paiement: list<array<string,mixed>>,
      *   stats_jour: array{total_paiements:int, total_ca:float},
      *   dashboard_error: string|null
      * }
@@ -148,7 +149,6 @@ final class PaiementService
             'commandes_a_payer' => $commandesAPayer,
             'commande_details' => $commandeDetails,
             'paiements_recents' => $paiementsRecents,
-            'demandes_paiement' => $this->factures->findPendingDemandes(),
             'stats_jour' => $this->factures->todayStats(),
             'dashboard_error' => $dashboardError,
         ];

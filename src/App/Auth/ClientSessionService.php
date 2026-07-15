@@ -48,11 +48,13 @@ final class ClientSessionService
                 'client_prenom',
                 'client_email',
                 'client_telephone',
+                'client_fidele',
                 'id_client',
                 'client_identite_locked',
                 'order_access',
                 'suivi_commande_id',
                 '_client_started_at',
+                'identite_return_to',
             ];
             $preserved = [];
             foreach ($tableKeys as $key) {

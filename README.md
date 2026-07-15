@@ -24,7 +24,7 @@ Application web **PHP + MySQL (WAMP)** pour digitaliser le service en salle d’
 ### Côté client
 
 1. Accès depuis la **tablette de table** (application déjà ouverte, table associée en session)  
-2. **Identité** (nom, prénom, email, téléphone) — unicité email + téléphone  
+2. **Identité** (nom, prénom ; option client fidèle → téléphone obligatoire, e-mail facultatif)  
 3. Consultation du **menu** (plats + boissons, personnalisations)  
 4. Gestion du **panier** (quantités, validation stock boissons)  
 5. **Confirmation** de commande (+ mode de paiement souhaité : espèces ou mobile money)  
@@ -54,7 +54,7 @@ en_attente → en_preparation → prete → livree
 - Accès client via **tablette** déjà configurée pour la table
 - Menu plats & boissons (rupture gérée pour les **boissons** uniquement)
 - Panier session + compteur
-- Identité obligatoire avant validation ; profil verrouillable
+- Identité : nom / prénom suffisent ; option **client fidèle** (téléphone obligatoire, e-mail facultatif) ; profil verrouillable
 - Modes paiement **souhaités** : `especes` | `mobile_money` (préférence ; confirmation à la caisse)
 - Suivi avec countdown : **Σ (temps_préparation × quantité)** sur les plats ; figé au démarrage cuisine
 - Message « Bon appétit ! » lorsque le statut est `livree`
@@ -66,7 +66,7 @@ en_attente → en_preparation → prete → livree
 - CRUD **tables** (libellé, places, code interne, actif) — pour lier chaque tablette à une table
 - CRUD **employés** (admin, cuisinier, caissier, manager)
 - CRUD **clients** (édition, suppression, tri alphabétique)
-- Commandes, logs d’activité, paramètres (contacts, horaires)
+- Consultation des **commandes** (lecture seule — les statuts sont gérés par cuisine / manager / caisse), logs d’activité, paramètres (contacts, horaires)
 - Rapports PDF (journalier / mensuel) — export & impression
 
 ### Cuisine
@@ -95,8 +95,8 @@ Endpoints sous `api/` (détail dans `config/routes.php`) :
 ## Règles métier importantes
 
 1. **Stock** : suivi et décrémentation pour les **boissons** uniquement ; restauration en cas d’annulation. Les plats n’ont pas de stock quantitatif.
-2. **Identité unique** : email et téléphone uniques et cohérents (conflit si l’un est déjà lié à un autre couple).
-3. **Téléphone** : 10–13 caractères ; si commence par `0` → max 10 ; si par `+` → max 13.
+2. **Identité** : nom + prénom obligatoires. Si client fidèle → téléphone unique obligatoire, e-mail facultatif (unicité si renseigné).
+3. **Téléphone** (client fidèle) : 10–13 caractères ; si commence par `0` → max 10 ; si par `+` → max 13.
 4. **TVA 16 %** : montants en TTC ; HT/TVA dérivés à la facture.
 5. **Devise** : CDF (FC) ; multiplicateur legacy € → CDF configurable (`eur_to_cdf`).
 6. **Paiement à deux niveaux** : préférence client ≠ mode réel d’encaissement caisse (pas encore de passerelle Mobile Money / CinetPay).

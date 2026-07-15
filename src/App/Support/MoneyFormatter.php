@@ -67,6 +67,25 @@ final class MoneyFormatter
         return number_format($amountCdf, $c['decimals'], ',', ' ') . ' ' . $c['symbol'];
     }
 
+    /**
+     * Arrondit un montant CDF au multiple de 50 FC supérieur
+     * (coupure minimale 50 FC → montants finissant par 00 ou 50).
+     * Ex. : 12 320 → 12 350 ; 12 351 → 12 400 ; 12 350 → 12 350.
+     */
+    public function roundPayable(float $amountCdf): float
+    {
+        $decimals = $this->config()['decimals'];
+        $amount = round(max(0, $amountCdf), $decimals);
+        if ($amount <= 0) {
+            return 0.0;
+        }
+
+        $step = 50.0;
+        $rounded = ceil($amount / $step) * $step;
+
+        return round($rounded, $decimals);
+    }
+
     /** @return array{code:string,symbol:string,multiplier:float,decimals:int,tva_rate:float} */
     public function jsConfig(): array
     {

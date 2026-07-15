@@ -123,17 +123,6 @@ final class DatabaseInitializer
         FOREIGN KEY (num_commande) REFERENCES commande(num_commande) ON DELETE CASCADE
     )");
 
-        $pdo->exec("CREATE TABLE IF NOT EXISTS demande_paiement (
-        id_demande INT PRIMARY KEY AUTO_INCREMENT,
-        num_commande INT NOT NULL,
-        mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL,
-        montant DECIMAL(10, 2) NOT NULL,
-        statut ENUM('en_attente', 'traitee', 'annulee') DEFAULT 'en_attente',
-        date_demande TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        date_traitement TIMESTAMP NULL,
-        FOREIGN KEY (num_commande) REFERENCES commande(num_commande) ON DELETE CASCADE
-    )");
-
         $pdo->exec("CREATE TABLE IF NOT EXISTS log_activite (
         id_log INT PRIMARY KEY AUTO_INCREMENT,
         action VARCHAR(100) NOT NULL,

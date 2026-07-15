@@ -133,13 +133,7 @@ final class ClientPaymentService
             exit;
         }
 
-        if ($this->factures->hasPendingDemande($commandeId)) {
-            header('Location: ' . $redirectBase . '&error=pending_request');
-            exit;
-        }
-
-        $this->factures->createDemande($commandeId, $modePaiement, (float) $montant);
-
+        // Indication session uniquement — l'encaissement réel se fait en caisse (facture).
         $_SESSION['demande_paiement'] = [
             'commande_id' => $commandeId,
             'mode_paiement' => $modePaiement,

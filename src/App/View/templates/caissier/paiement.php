@@ -121,72 +121,6 @@ use App\Support\Money;
 
             <!-- Contenu principal -->
             <div class="main-content">
-                <!-- Section Demandes de paiement -->
-                <?php if (!empty($demandes_paiement)): ?>
-                <div class="commandes-section mb-4">
-                    <div class="section-title">
-                        Demandes de paiement
-                        <span class="section-count">(<?php echo count($demandes_paiement); ?> en attente)</span>
-                    </div>
-                    
-                    <div class="row g-3">
-                        <?php foreach ($demandes_paiement as $demande): ?>
-                        <div class="col-12">
-                            <div class="commande-item demande-highlight" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($demande)); ?>">
-                                <div class="commande-header">
-                                    <div class="commande-id">
-                                        Demande #<?php echo str_pad((string) $demande['id_demande'], 4, '0', STR_PAD_LEFT); ?>
-                                        <span style="font-size: 0.85rem; color: var(--text-muted);">
-                                            (Commande #<?php echo str_pad((string) $demande['num_commande'], 5, '0', STR_PAD_LEFT); ?>)
-                                        </span>
-                                    </div>
-                                    <div class="commande-montant"><?php echo Money::format((float) $demande['montant']); ?></div>
-                                </div>
-                                
-                                <div class="commande-details">
-                                    <div>
-                                        <span>Table <?php echo $demande['num_table'] ?? 'N/A'; ?></span>
-                                        <span> • </span>
-                                        <span><?php echo htmlspecialchars(trim(($demande['prenom_client'] ?? '') . ' ' . ($demande['nom_client'] ?? ''))); ?></span>
-                                    </div>
-                                    <div>
-                                        <?php
-                                        $mode_labels = [
-                                            'carte' => 'Carte',
-                                            'especes' => 'Espèces',
-                                            'mobile' => 'Mobile',
-                                        ];
-                                        ?>
-                                        <span class="mode-badge mode-<?php echo htmlspecialchars($demande['mode_paiement'], ENT_QUOTES, 'UTF-8'); ?>">
-                                            <?php echo $mode_labels[$demande['mode_paiement']] ?? ucfirst($demande['mode_paiement']); ?>
-                                        </span>
-                                        <span> • </span>
-                                        <span><?php echo date('H:i', strtotime($demande['date_demande'])); ?></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="commande-actions">
-                                    <a href="?voir_commande=<?php echo $demande['num_commande']; ?>" class="btn-details">
-                                        <i class="bi bi-list-ul" aria-hidden="true"></i> Voir détails
-                                    </a>
-                                    <a href="?voir_commande=<?php echo $demande['num_commande']; ?>" class="btn-payer">
-                                        <i class="bi bi-cash-coin" aria-hidden="true"></i> Traiter le paiement
-                                    </a>
-                                    <form method="POST" class="d-flex flex-grow-1" action="paiement.php">
-                                        <?php Dashboard::csrfField(); ?>
-                                        <input type="hidden" name="demande_id" value="<?php echo $demande['id_demande']; ?>">
-                                        <button type="submit" name="annuler_demande" class="btn-details btn-danger-outline w-100">
-                                            <i class="bi bi-x-lg" aria-hidden="true"></i> Annuler
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
                 <!-- Section Commandes à payer -->
                 <div class="commandes-section">
                     <div class="section-title">
@@ -357,6 +291,7 @@ use App\Support\Money;
                 $ht = $money->htFromTtc($ttc);
                 $tva = $money->tvaFromTtc($ttc);
                 $tvaPct = (int) round($money->tvaRate() * 100);
+                $totalAPayer = $money->roundPayable($ttc);
                 ?>
                 <div class="total-row">
                     <div>Total HT</div>
@@ -367,8 +302,12 @@ use App\Support\Money;
                     <div><?php echo Money::format($tva); ?></div>
                 </div>
                 <div class="total-row">
-                    <div><strong>Total TTC</strong></div>
-                    <div><strong><?php echo Money::format($ttc); ?></strong></div>
+                    <div>Total TTC</div>
+                    <div><?php echo Money::format($ttc); ?></div>
+                </div>
+                <div class="total-row">
+                    <div><strong>Total à payer</strong></div>
+                    <div><strong><?php echo Money::format($totalAPayer); ?></strong></div>
                 </div>
 
                 <?php if (!empty($payment_completed)): ?>
@@ -400,7 +339,7 @@ use App\Support\Money;
                 <form method="POST" id="paiementForm" data-payment-form action="paiement.php">
                     <?php Dashboard::csrfField(); ?>
                     <input type="hidden" name="commande_id" value="<?php echo $commande_details['num_commande']; ?>">
-                    <input type="hidden" name="montant_paye" value="<?php echo $commande_details['montant_total']; ?>">
+                    <input type="hidden" name="montant_paye" value="<?php echo htmlspecialchars((string) $totalAPayer); ?>">
                     <?php if (!empty($payment_token)): ?>
                     <input type="hidden" name="pay_token" value="<?php echo htmlspecialchars($payment_token); ?>">
                     <?php endif; ?>
@@ -419,7 +358,7 @@ use App\Support\Money;
                     
                     <button type="submit" name="payer_commande" value="1" class="btn-confirm" id="paiementSubmitBtn">
                         <i class="bi bi-check-lg" aria-hidden="true"></i>
-                        Confirmer le paiement de <?php echo Money::format((float) $commande_details['montant_total']); ?>
+                        Confirmer le paiement de <?php echo Money::format($totalAPayer); ?>
                     </button>
                 </form>
                 </div>

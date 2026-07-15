@@ -194,6 +194,14 @@ $dateFacture = date('d/m/Y H:i', strtotime((string) $facture['date_facture']));
             border-top: 1px solid #111;
         }
 
+        .totals-row.payable {
+            font-size: 1.02rem;
+            font-weight: 900;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 2px solid #111;
+        }
+
         .thanks {
             font-size: 0.78rem;
             font-weight: 700;
@@ -339,6 +347,10 @@ $dateFacture = date('d/m/Y H:i', strtotime((string) $facture['date_facture']));
 
             <hr class="divider">
 
+            <?php
+            $totalTtcAffiche = isset($total_ttc) ? (float) $total_ttc : (float) ($facture['montant_total'] ?? $facture['total_paye']);
+            $totalAPayerAffiche = isset($total_a_payer) ? (float) $total_a_payer : Money::roundPayable($totalTtcAffiche);
+            ?>
             <div class="totals">
                 <div class="totals-row">
                     <span>TOTAL HT</span>
@@ -350,7 +362,11 @@ $dateFacture = date('d/m/Y H:i', strtotime((string) $facture['date_facture']));
                 </div>
                 <div class="totals-row grand">
                     <span>TOTAL TTC</span>
-                    <span><?php echo Money::format((float) $facture['total_paye']); ?></span>
+                    <span><?php echo Money::format($totalTtcAffiche); ?></span>
+                </div>
+                <div class="totals-row payable">
+                    <span>TOTAL À PAYER</span>
+                    <span><?php echo Money::format($totalAPayerAffiche); ?></span>
                 </div>
             </div>
 

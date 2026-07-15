@@ -126,7 +126,7 @@ use App\Support\Money;
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($commandes_actives as $commande): ?>
-                                    <div class="order-card" id="cmd-<?php echo (int) $commande['num_commande']; ?>" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($commande)); ?>">
+                                    <div class="order-card" id="cmd-<?php echo (int) $commande['num_commande']; ?>" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($commande, false)); ?>">
                                         <div class="order-header">
                                             <div>
                                                 <div class="order-time">
@@ -153,9 +153,6 @@ use App\Support\Money;
                                             <span class="order-meta"><i class="bi bi-table" aria-hidden="true"></i> Table <?php echo htmlspecialchars((string) ($commande['num_table'] ?? '—')); ?></span>
                                             <span class="order-meta"><i class="bi bi-box-seam" aria-hidden="true"></i> <?php echo (int) $commande['nombre_items']; ?> article(s)</span>
                                             <span class="order-meta"><?php echo Money::format((float) $commande['montant_total']); ?></span>
-                                            <?php if (!empty($commande['nom_client']) || !empty($commande['prenom_client'])): ?>
-                                            <span class="order-meta"><i class="bi bi-person" aria-hidden="true"></i> <?php echo htmlspecialchars(trim(($commande['prenom_client'] ?? '') . ' ' . ($commande['nom_client'] ?? ''))); ?></span>
-                                            <?php endif; ?>
                                             <?php if ($commande['nombre_items'] > 3): ?>
                                                 <span class="priority-badge">Priorité</span>
                                             <?php endif; ?>
@@ -213,7 +210,7 @@ use App\Support\Money;
                         <?php else: ?>
                             <div class="order-timeline order-scroll-panel kitchen-scroll-panel">
                                 <?php foreach ($commandes_terminees as $cmd): ?>
-                                    <div class="order-card" style="margin-bottom: 0.75rem;" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($cmd)); ?>">
+                                    <div class="order-card" style="margin-bottom: 0.75rem;" data-searchable data-search="<?php echo htmlspecialchars(Dashboard::orderSearchBlob($cmd, false)); ?>">
                                         <div class="order-header">
                                             <div class="order-id">#<?php echo str_pad((string) $cmd['num_commande'], 5, '0', STR_PAD_LEFT); ?></div>
                                             <span class="order-status status-prete">Prêt</span>

@@ -46,7 +46,8 @@ use App\Http\ClientPage;
             <div class="login-form-grid">
                 <div class="form-group">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" placeholder="votre@email.com" required>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="votre@email.com" required autocomplete="username"
+                           value="<?php echo htmlspecialchars($postEmail ?? ''); ?>">
                 </div>
 
                 <div class="form-group">
@@ -57,17 +58,6 @@ use App\Http\ClientPage;
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="role" class="form-label">Rôle</label>
-                    <select id="role" name="role" class="form-select" required>
-                        <option value="">-- Sélectionner un rôle --</option>
-                        <option value="manager"<?php echo $postRole === 'manager' ? ' selected' : ''; ?>>Manager</option>
-                        <option value="cuisinier"<?php echo $postRole === 'cuisinier' ? ' selected' : ''; ?>>Cuisinier</option>
-                        <option value="caissier"<?php echo $postRole === 'caissier' ? ' selected' : ''; ?>>Caissier</option>
-                        <option value="admin"<?php echo $postRole === 'admin' ? ' selected' : ''; ?>>Administrateur</option>
-                    </select>
                 </div>
 
                 <div class="login-form-grid__submit">

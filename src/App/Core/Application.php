@@ -228,11 +228,7 @@ final class Application
     public function paiementService(): PaiementService
     {
         if ($this->paiementService === null) {
-            $this->paiementService = new PaiementService(
-                $this->db(),
-                $this->factureRepository(),
-                $this->commandeRepository()
-            );
+            $this->paiementService = PaiementService::fromApp($this);
         }
 
         return $this->paiementService;

@@ -19,27 +19,17 @@ final class CommandeController
     }
 
     /**
+     * Liste des commandes en lecture seule (filtre / recherche uniquement).
+     *
      * @return array{
-     *   message: string,
      *   statuts: array<string,string>,
      *   commandes: list<array<string,mixed>>,
      *   filter: string,
      *   q: string
      * }
      */
-    public function handle(array $get, array $post): array
+    public function handle(array $get): array
     {
-        $message = '';
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($post['update_statut'])) {
-            $num = (int) ($post['num_commande'] ?? 0);
-            $statut = (string) ($post['statut'] ?? '');
-            if ($num > 0 && CommandeStatut::isValid($statut)) {
-                $this->commandes->updateStatut($num, $statut);
-                $message = 'Statut mis à jour.';
-            }
-        }
-
         $filter = (string) ($get['statut'] ?? '');
         $q = trim((string) ($get['q'] ?? ''));
 
@@ -50,7 +40,6 @@ final class CommandeController
         );
 
         return [
-            'message' => $message,
             'statuts' => CommandeStatut::labels(),
             'commandes' => $commandes,
             'filter' => $filter,

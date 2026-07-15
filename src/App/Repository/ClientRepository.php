@@ -46,6 +46,9 @@ final class ClientRepository extends BaseRepository
     private function ensureClientUniqueness(): void
     {
         try {
+            // Les chaînes vides bloquent l’unicité MySQL : les convertir en NULL.
+            $this->pdo->exec('UPDATE client SET email_client = NULL WHERE email_client IS NOT NULL AND TRIM(email_client) = \'\'');
+            $this->pdo->exec('UPDATE client SET telephone_client = NULL WHERE telephone_client IS NOT NULL AND TRIM(telephone_client) = \'\'');
             $this->pdo->exec('UPDATE client SET email_client = LOWER(TRIM(email_client)) WHERE email_client IS NOT NULL AND email_client <> \'\'');
         } catch (PDOException) {
             // ignore
@@ -76,59 +79,52 @@ final class ClientRepository extends BaseRepository
         }
     }
 
+    /** @return array{0:?string,1:?string} email / téléphone pour la BDD (NULL si vide) */
+    private function nullableContacts(string $email, string $telephone): array
+    {
+        return [
+            $email !== '' ? $email : null,
+            $telephone !== '' ? $telephone : null,
+        ];
+    }
+
     public function normalizeEmail(string $email): string
     {
         return mb_strtolower(trim($email), 'UTF-8');
     }
 
     /**
-     * Retrouve le client dont l'identité est exactement (e-mail + téléphone),
-     * ou une fiche incomplète réutilisable (même e-mail sans tél, ou même tél sans e-mail).
+     * Retrouve un client fidèle : d’abord par téléphone (identité principale),
+     * sinon par e-mail si le téléphone n’est pas fourni.
      */
     public function findIdByEmailAndTelephone(string $email, string $telephone): ?int
     {
         $email = $this->normalizeEmail($email);
         $telephone = ClientProfileService::normalizeTelephone($telephone);
-        if ($email === '' || $telephone === '') {
-            return null;
+
+        if ($telephone !== '') {
+            $stmt = $this->pdo->prepare(
+                'SELECT id_client FROM client WHERE telephone_client = ? LIMIT 1'
+            );
+            $stmt->execute([$telephone]);
+            $id = $stmt->fetchColumn();
+
+            return $id !== false ? (int) $id : null;
         }
 
-        $stmt = $this->pdo->prepare(
-            'SELECT id_client FROM client
-             WHERE LOWER(TRIM(email_client)) = ?
-               AND telephone_client = ?
-             LIMIT 1'
-        );
-        $stmt->execute([$email, $telephone]);
-        $id = $stmt->fetchColumn();
-        if ($id !== false) {
-            return (int) $id;
+        if ($email !== '') {
+            $stmt = $this->pdo->prepare(
+                'SELECT id_client FROM client
+                 WHERE LOWER(TRIM(email_client)) = ?
+                 LIMIT 1'
+            );
+            $stmt->execute([$email]);
+            $id = $stmt->fetchColumn();
+
+            return $id !== false ? (int) $id : null;
         }
 
-        // Même e-mail, téléphone encore vide → même client (complétion).
-        $stmt = $this->pdo->prepare(
-            'SELECT id_client FROM client
-             WHERE LOWER(TRIM(email_client)) = ?
-               AND (telephone_client IS NULL OR TRIM(telephone_client) = \'\')
-             LIMIT 1'
-        );
-        $stmt->execute([$email]);
-        $id = $stmt->fetchColumn();
-        if ($id !== false) {
-            return (int) $id;
-        }
-
-        // Même téléphone, e-mail encore vide → même client (complétion).
-        $stmt = $this->pdo->prepare(
-            'SELECT id_client FROM client
-             WHERE telephone_client = ?
-               AND (email_client IS NULL OR TRIM(email_client) = \'\')
-             LIMIT 1'
-        );
-        $stmt->execute([$telephone]);
-        $id = $stmt->fetchColumn();
-
-        return $id !== false ? (int) $id : null;
+        return null;
     }
 
     /**
@@ -139,42 +135,60 @@ final class ClientRepository extends BaseRepository
         $email = $this->normalizeEmail($email);
         $telephone = ClientProfileService::normalizeTelephone($telephone);
 
-        if ($excludeId === null && $this->findIdByEmailAndTelephone($email, $telephone) !== null) {
+        $matchedId = $this->findIdByEmailAndTelephone($email, $telephone);
+        if ($excludeId === null && $matchedId !== null) {
+            // Même client (retour fidèle) : vérifier seulement qu’un e-mail fourni
+            // n’appartient pas déjà à un autre id.
+            if ($email !== '') {
+                $stmt = $this->pdo->prepare(
+                    'SELECT id_client FROM client WHERE LOWER(TRIM(email_client)) = ? LIMIT 1'
+                );
+                $stmt->execute([$email]);
+                $emailOwner = $stmt->fetchColumn();
+                if ($emailOwner !== false && (int) $emailOwner !== $matchedId) {
+                    return 'Cet e-mail est déjà utilisé par un autre client.';
+                }
+            }
+
             return null;
         }
 
-        $stmt = $this->pdo->prepare(
-            'SELECT id_client, telephone_client FROM client WHERE LOWER(TRIM(email_client)) = ? LIMIT 1'
-        );
-        $stmt->execute([$email]);
-        $byEmail = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($byEmail) {
-            $id = (int) $byEmail['id_client'];
-            if ($excludeId === null || $id !== $excludeId) {
-                if ($excludeId !== null) {
-                    return 'Cet e-mail est déjà utilisé par un autre client.';
-                }
-                $existingPhone = ClientProfileService::normalizeTelephone((string) ($byEmail['telephone_client'] ?? ''));
-                if ($existingPhone !== '' && $existingPhone !== $telephone) {
-                    return 'Cet e-mail est déjà associé à un autre numéro de téléphone.';
+        if ($email !== '') {
+            $stmt = $this->pdo->prepare(
+                'SELECT id_client, telephone_client FROM client WHERE LOWER(TRIM(email_client)) = ? LIMIT 1'
+            );
+            $stmt->execute([$email]);
+            $byEmail = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($byEmail) {
+                $id = (int) $byEmail['id_client'];
+                if ($excludeId === null || $id !== $excludeId) {
+                    if ($excludeId !== null) {
+                        return 'Cet e-mail est déjà utilisé par un autre client.';
+                    }
+                    $existingPhone = ClientProfileService::normalizeTelephone((string) ($byEmail['telephone_client'] ?? ''));
+                    if ($existingPhone !== '' && $existingPhone !== $telephone) {
+                        return 'Cet e-mail est déjà associé à un autre numéro de téléphone.';
+                    }
                 }
             }
         }
 
-        $stmt = $this->pdo->prepare(
-            'SELECT id_client, email_client FROM client WHERE telephone_client = ? LIMIT 1'
-        );
-        $stmt->execute([$telephone]);
-        $byPhone = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($byPhone) {
-            $id = (int) $byPhone['id_client'];
-            if ($excludeId === null || $id !== $excludeId) {
-                if ($excludeId !== null) {
-                    return 'Ce numéro de téléphone est déjà utilisé par un autre client.';
-                }
-                $existingEmail = $this->normalizeEmail((string) ($byPhone['email_client'] ?? ''));
-                if ($existingEmail !== '' && $existingEmail !== $email) {
-                    return 'Ce numéro de téléphone est déjà associé à une autre adresse e-mail.';
+        if ($telephone !== '') {
+            $stmt = $this->pdo->prepare(
+                'SELECT id_client, email_client FROM client WHERE telephone_client = ? LIMIT 1'
+            );
+            $stmt->execute([$telephone]);
+            $byPhone = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($byPhone) {
+                $id = (int) $byPhone['id_client'];
+                if ($excludeId === null || $id !== $excludeId) {
+                    if ($excludeId !== null) {
+                        return 'Ce numéro de téléphone est déjà utilisé par un autre client.';
+                    }
+                    $existingEmail = $this->normalizeEmail((string) ($byPhone['email_client'] ?? ''));
+                    if ($existingEmail !== '' && $email !== '' && $existingEmail !== $email) {
+                        return 'Ce numéro de téléphone est déjà associé à une autre adresse e-mail.';
+                    }
                 }
             }
         }
@@ -183,7 +197,20 @@ final class ClientRepository extends BaseRepository
     }
 
     /**
-     * Enregistre ou met à jour un client selon le couple (e-mail + téléphone).
+     * Client occasionnel (non fidèle) : nom / prénom uniquement.
+     */
+    public function createGuest(string $nom, string $prenom): int
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO client (nom_client, prenom_client, email_client, telephone_client) VALUES (?, ?, NULL, NULL)'
+        );
+        $stmt->execute([$nom, $prenom]);
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    /**
+     * Enregistre ou met à jour un client fidèle (téléphone obligatoire côté métier).
      *
      * @throws RuntimeException si e-mail ou téléphone déjà utilisés avec une autre identité
      */
@@ -191,6 +218,7 @@ final class ClientRepository extends BaseRepository
     {
         $email = $this->normalizeEmail($email);
         $telephone = ClientProfileService::normalizeTelephone($telephone);
+        [$emailDb, $telDb] = $this->nullableContacts($email, $telephone);
 
         $conflict = $this->findRegistrationConflict($email, $telephone);
         if ($conflict !== null) {
@@ -203,7 +231,7 @@ final class ClientRepository extends BaseRepository
             $stmt = $this->pdo->prepare(
                 'UPDATE client SET nom_client = ?, prenom_client = ?, email_client = ?, telephone_client = ? WHERE id_client = ?'
             );
-            $stmt->execute([$nom, $prenom, $email, $telephone, $existingId]);
+            $stmt->execute([$nom, $prenom, $emailDb, $telDb, $existingId]);
 
             return $existingId;
         }
@@ -212,7 +240,7 @@ final class ClientRepository extends BaseRepository
             $stmt = $this->pdo->prepare(
                 'INSERT INTO client (nom_client, prenom_client, email_client, telephone_client) VALUES (?, ?, ?, ?)'
             );
-            $stmt->execute([$nom, $prenom, $email, $telephone]);
+            $stmt->execute([$nom, $prenom, $emailDb, $telDb]);
         } catch (PDOException $e) {
             throw new RuntimeException(
                 'Un client existe déjà avec cet e-mail ou ce numéro de téléphone.',
@@ -237,6 +265,7 @@ final class ClientRepository extends BaseRepository
 
         $email = $this->normalizeEmail($email);
         $telephone = ClientProfileService::normalizeTelephone($telephone);
+        [$emailDb, $telDb] = $this->nullableContacts($email, $telephone);
 
         $conflict = $this->findRegistrationConflict($email, $telephone, $idClient);
         if ($conflict !== null) {
@@ -248,7 +277,7 @@ final class ClientRepository extends BaseRepository
              SET nom_client = ?, prenom_client = ?, email_client = ?, telephone_client = ?
              WHERE id_client = ?'
         );
-        $stmt->execute([$nom, $prenom, $email, $telephone, $idClient]);
+        $stmt->execute([$nom, $prenom, $emailDb, $telDb, $idClient]);
 
         if ($stmt->rowCount() === 0) {
             $check = $this->pdo->prepare('SELECT 1 FROM client WHERE id_client = ?');

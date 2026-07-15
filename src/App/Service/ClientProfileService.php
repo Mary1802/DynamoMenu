@@ -34,9 +34,7 @@ final class ClientProfileService
 
         return $profile !== null
             && $profile['nom'] !== ''
-            && $profile['prenom'] !== ''
-            && $profile['email'] !== ''
-            && $profile['telephone'] !== '';
+            && $profile['prenom'] !== '';
     }
 
     /** Profil enregistré une fois : plus de modification possible. */
@@ -64,7 +62,7 @@ final class ClientProfileService
         exit;
     }
 
-    /** @return array{nom:string,prenom:string,email:string,telephone:string,id_client:?int}|null */
+    /** @return array{nom:string,prenom:string,email:string,telephone:string,fidele:bool,id_client:?int}|null */
     public function get(): ?array
     {
         $this->session->start();
@@ -83,6 +81,7 @@ final class ClientProfileService
             'prenom' => $prenom,
             'email' => $email,
             'telephone' => $telephone,
+            'fidele' => !empty($_SESSION['client_fidele']),
             'id_client' => isset($_SESSION['id_client']) ? (int) $_SESSION['id_client'] : null,
         ];
     }
@@ -90,7 +89,7 @@ final class ClientProfileService
     /**
      * @return array{success:true}|array{success:false,error:string}
      */
-    public function save(string $nom, string $prenom, string $email, string $telephone): array
+    public function save(string $nom, string $prenom, string $email, string $telephone, bool $fidele = false): array
     {
         if ($this->isLocked()) {
             return ['success' => false, 'error' => 'Vos informations sont déjà enregistrées et ne peuvent plus être modifiées.'];
@@ -101,23 +100,36 @@ final class ClientProfileService
         $email = trim($email);
         $telephone = trim($telephone);
 
-        if ($nom === '' || $prenom === '' || $email === '' || $telephone === '') {
-            return ['success' => false, 'error' => 'Veuillez remplir tous les champs obligatoires.'];
+        if ($nom === '' || $prenom === '') {
+            return ['success' => false, 'error' => 'Veuillez renseigner votre nom et votre prénom.'];
         }
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return ['success' => false, 'error' => 'Adresse e-mail invalide.'];
-        }
+        if (!$fidele) {
+            $email = '';
+            $telephone = '';
+        } else {
+            if ($telephone === '') {
+                return ['success' => false, 'error' => 'Le numéro de téléphone est obligatoire pour devenir client fidèle.'];
+            }
 
-        $phoneCheck = self::validateTelephone($telephone);
-        if ($phoneCheck !== null) {
-            return ['success' => false, 'error' => $phoneCheck];
+            $phoneCheck = self::validateTelephone($telephone);
+            if ($phoneCheck !== null) {
+                return ['success' => false, 'error' => $phoneCheck];
+            }
+            $telephone = self::normalizeTelephone($telephone);
+
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return ['success' => false, 'error' => 'Adresse e-mail invalide.'];
+            }
         }
-        $telephone = self::normalizeTelephone($telephone);
 
         $this->clients->ensureSchema();
         try {
-            $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
+            if ($fidele) {
+                $idClient = $this->clients->upsert($nom, $prenom, $email, $telephone);
+            } else {
+                $idClient = $this->clients->createGuest($nom, $prenom);
+            }
         } catch (\RuntimeException $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
@@ -125,8 +137,9 @@ final class ClientProfileService
         $this->session->start();
         $_SESSION['client_nom'] = $nom;
         $_SESSION['client_prenom'] = $prenom;
-        $_SESSION['client_email'] = mb_strtolower($email, 'UTF-8');
+        $_SESSION['client_email'] = $email !== '' ? mb_strtolower($email, 'UTF-8') : '';
         $_SESSION['client_telephone'] = $telephone;
+        $_SESSION['client_fidele'] = $fidele;
         $_SESSION['id_client'] = $idClient;
         $_SESSION['client_identite_locked'] = true;
 
@@ -175,6 +188,7 @@ final class ClientProfileService
             $_SESSION['client_prenom'],
             $_SESSION['client_email'],
             $_SESSION['client_telephone'],
+            $_SESSION['client_fidele'],
             $_SESSION['id_client'],
             $_SESSION['client_identite_locked'],
             $_SESSION['identite_return_to'],
@@ -192,7 +206,7 @@ final class ClientProfileService
         if ($idClient <= 0) {
             $email = trim((string) ($_SESSION['client_email'] ?? ''));
             $telephone = trim((string) ($_SESSION['client_telephone'] ?? ''));
-            if ($email !== '' && $telephone !== '') {
+            if ($email !== '' || $telephone !== '') {
                 $idClient = (int) ($this->clients->findIdByEmailAndTelephone($email, $telephone) ?? 0);
             }
         }
@@ -216,7 +230,7 @@ final class ClientProfileService
     {
         $telephone = self::normalizeTelephone($telephone);
         if ($telephone === '') {
-            return 'Veuillez remplir tous les champs obligatoires.';
+            return 'Veuillez renseigner un numéro de téléphone.';
         }
 
         if (!preg_match('/^\+?\d+$/', $telephone)) {

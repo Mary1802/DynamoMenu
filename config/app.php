@@ -28,6 +28,7 @@ return [
         'telephone' => '+243 900 000 000',
         'email' => 'contact@dynamomenu.fr',
         'whatsapp' => '+243 900 000 001',
-        'horaires' => 'Lun–Dim : 11h00 – 23h00',
     ],
+    /** Horaires par défaut (table restaurant_horaires) — plus stockés dans contact. */
+    'horaires' => 'Lun–Dim : 11h00 – 23h00',
 ];

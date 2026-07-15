@@ -40,31 +40,6 @@ final class FactureRepository extends BaseRepository
         return (int) $this->pdo->lastInsertId();
     }
 
-    public function markDemandesTraitees(int $numCommande): void
-    {
-        try {
-            $stmt = $this->pdo->prepare(
-                "UPDATE demande_paiement SET statut = 'traitee', date_traitement = NOW()
-                 WHERE num_commande = ? AND statut = 'en_attente'"
-            );
-            $stmt->execute([$numCommande]);
-        } catch (PDOException) {
-            // Table absente sur anciennes installations
-        }
-    }
-
-    public function cancelDemande(int $demandeId): void
-    {
-        try {
-            $stmt = $this->pdo->prepare(
-                "UPDATE demande_paiement SET statut = 'annulee', date_traitement = NOW() WHERE id_demande = ?"
-            );
-            $stmt->execute([$demandeId]);
-        } catch (PDOException) {
-            // Table absente
-        }
-    }
-
     public function hasFacture(int $numCommande): bool
     {
         $stmt = $this->pdo->prepare('SELECT num_facture FROM facture WHERE num_commande = ? LIMIT 1');
@@ -83,65 +58,6 @@ final class FactureRepository extends BaseRepository
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $row !== false ? $row : null;
-    }
-
-    public function hasPendingDemande(int $numCommande): bool
-    {
-        try {
-            $stmt = $this->pdo->prepare(
-                "SELECT id_demande FROM demande_paiement WHERE num_commande = ? AND statut = 'en_attente' LIMIT 1"
-            );
-            $stmt->execute([$numCommande]);
-
-            return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException) {
-            return false;
-        }
-    }
-
-    public function createDemande(int $numCommande, string $modePaiement, float $montant): void
-    {
-        try {
-            $stmt = $this->pdo->prepare(
-                'INSERT INTO demande_paiement (num_commande, mode_paiement, montant) VALUES (?, ?, ?)'
-            );
-            $stmt->execute([$numCommande, $modePaiement, $montant]);
-        } catch (PDOException) {
-            // Table absente sur anciennes installations
-        }
-    }
-
-    /** @return list<array<string, mixed>> */
-    public function findPendingDemandes(): array
-    {
-        try {
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'demande_paiement'");
-            if ($stmt->fetchColumn() === false) {
-                return [];
-            }
-
-            $stmt = $this->pdo->prepare("
-                SELECT
-                    d.*,
-                    c.montant_total,
-                    c.date_commande,
-                    t.num_table,
-                    cl.nom_client,
-                    cl.prenom_client,
-                    cl.telephone_client
-                FROM demande_paiement d
-                JOIN commande c ON d.num_commande = c.num_commande
-                LEFT JOIN table_restaurant t ON c.num_table = t.num_table
-                LEFT JOIN client cl ON c.id_client = cl.id_client
-                WHERE d.statut = 'en_attente'
-                ORDER BY d.date_demande ASC
-            ");
-            $stmt->execute();
-
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException) {
-            return [];
-        }
     }
 
     /** @return list<array<string, mixed>> */

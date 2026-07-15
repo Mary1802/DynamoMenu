@@ -57,16 +57,6 @@ final class LegacyDatabaseUpdater
             'ALTER TABLE table_restaurant ADD COLUMN libelle VARCHAR(100) NULL AFTER nombre_place' => "Colonne table 'libelle'",
             "ALTER TABLE commande ADD COLUMN mode_paiement_souhaite ENUM('especes','mobile_money') NULL AFTER montant_total" => "Colonne commande 'mode_paiement_souhaite'",
             'ALTER TABLE commande ADD COLUMN instructions_speciales TEXT NULL AFTER mode_paiement_souhaite' => "Colonne commande 'instructions_speciales'",
-            "CREATE TABLE IF NOT EXISTS demande_paiement (
-            id_demande INT PRIMARY KEY AUTO_INCREMENT,
-            num_commande INT NOT NULL,
-            mode_paiement ENUM('carte', 'especes', 'mobile') NOT NULL,
-            montant DECIMAL(10, 2) NOT NULL,
-            statut ENUM('en_attente', 'traitee', 'annulee') DEFAULT 'en_attente',
-            date_demande TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            date_traitement TIMESTAMP NULL,
-            FOREIGN KEY (num_commande) REFERENCES commande(num_commande) ON DELETE CASCADE
-        )" => "Table 'demande_paiement'",
             "UPDATE boisson SET type_boisson = 'soda' WHERE nom_boisson LIKE '%Soda%' OR nom_boisson LIKE '%Coca%'" => 'Mise à jour type soda',
             "UPDATE boisson SET type_boisson = 'eau' WHERE nom_boisson LIKE '%Eau%'" => 'Mise à jour type eau',
             "UPDATE boisson SET type_boisson = 'jus' WHERE nom_boisson LIKE '%Jus%'" => 'Mise à jour type jus',
